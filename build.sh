@@ -7,7 +7,7 @@ APP="build/DeskPet.app"
 rm -rf build
 mkdir -p "$APP/Contents/MacOS"
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 # Universal binary: Apple silicon + Intel.
 swiftc -O -target arm64-apple-macos13 main.swift -o build/DeskPet-arm64
