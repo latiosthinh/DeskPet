@@ -6,9 +6,9 @@ A tiny pixel critter that lives in the bottom-right corner of your Mac, next to 
 - Bobs along while you type, falls asleep after 90 seconds away, and wakes up when you come back.
 - Click it to pet it. Drag it to move its home.
 - Optional reminder to stretch after 50 minutes of continuous use.
-- Menu-bar only (🐾), no Dock icon, and no Accessibility or Input Monitoring permission needed.
+- Menu-bar only (a tiny pink-eared pet face), no Dock icon, and no Accessibility or Input Monitoring permission needed.
 
-## Menu (🐾)
+## Menu-bar menu
 
 | Item | What it does |
 | --- | --- |

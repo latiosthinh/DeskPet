@@ -409,7 +409,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if visible { window.orderFrontRegardless() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "🐾"
+        statusItem.button?.image = Self.menuBarIcon()
         rebuildMenu()
 
         let timer = Timer(timeInterval: 1.0 / 30, target: self, selector: #selector(tick),
@@ -476,6 +476,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: Menu
+
+    /// The pet's face in its own colours (cream body, pink ears). 1.5 pt per art pixel
+    /// is 3 device pixels on Retina, so it stays crisp at about the height of other icons.
+    static func menuBarIcon() -> NSImage {
+        let rows = Array(makeFrame(.open, .none)[1...12])   // ears down to the bottom outline
+        let cols = 1...14
+        let px: CGFloat = 1.5
+        let size = NSSize(width: CGFloat(cols.count) * px, height: CGFloat(rows.count) * px)
+        let image = NSImage(size: size, flipped: false) { _ in
+            NSGraphicsContext.current?.shouldAntialias = false
+            for (r, row) in rows.enumerated() {
+                for (c, ch) in row.enumerated() where cols.contains(c) {
+                    guard let color = palette[ch] else { continue }
+                    color.setFill()
+                    NSRect(x: CGFloat(c - cols.lowerBound) * px, y: CGFloat(rows.count - 1 - r) * px,
+                           width: px, height: px).fill()
+                }
+            }
+            return true
+        }
+        image.isTemplate = false   // keep the colours instead of tinting to the menu bar
+        return image
+    }
 
     func rebuildMenu() {
         let menu = NSMenu()
