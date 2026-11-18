@@ -3,9 +3,11 @@
 A tiny pixel critter that lives in the bottom-right corner of your Mac, next to the Dock.
 
 - Wanders back and forth inside a small, limited area, sits, blinks, and turns to look at your mouse pointer.
-- Bobs along while you type, falls asleep after 90 seconds away, and wakes up when you come back.
-- Click it to pet it. Drag it to move its home.
-- Optional reminder to stretch after 50 minutes of continuous use.
+- When you type, it pulls out its own little laptop and types along.
+- Now and then it sweeps the floor with a broom or sits down to read a book.
+- Reminds you to drink water, eat lunch and dinner, and take a stretch break, and acts each one out.
+- Falls asleep after 90 seconds away, and wakes up when you come back.
+- Click it to pet it (this also dismisses a reminder). Drag it to move its home.
 - Menu-bar only (a tiny pink-eared pet face), no Dock icon, and no Accessibility or Input Monitoring permission needed.
 
 ## Menu-bar menu
@@ -16,7 +18,7 @@ A tiny pixel critter that lives in the bottom-right corner of your Mac, next to 
 | Roam Range | How far it may walk from home: Stay Put, Tiny ±80 pt (default), Small ±160, Medium ±300, Large ±500 |
 | Show Roam Area | Briefly outlines the area it walks in |
 | Move Home to Corner | Puts it back in the bottom-right corner |
-| Break Reminders | Stretch reminder every 50 minutes of use |
+| Reminders | Turn each reminder on or off (all on by default): **Drink Water** after every 45 minutes at the desk, **Main Meals** once a day between 12:00–14:00 and 18:30–20:30, **Stretch Break** after 50 minutes of use without a 5-minute pause, repeating every 10 minutes until you take one |
 | Open at Login | Start DeskPet automatically when you log in |
 
 Ranges larger than Tiny may overlap the right end of the Dock, depending on how wide your Dock is.
@@ -37,4 +39,5 @@ Requires the Xcode Command Line Tools. macOS 13 or later.
 ```bash
 ./build.sh          # build and install to ~/Applications
 ./build.sh --dmg    # build a release disk image in build/
+open ~/Applications/DeskPet.app --args --demo   # cycle through every activity and reminder
 ```

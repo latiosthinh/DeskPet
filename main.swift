@@ -1,10 +1,11 @@
-// DeskPet — a tiny pixel critter that lives on top of your Dock.
+// DeskPet — a tiny pixel critter that lives beside your Dock.
 //
-// It wanders back and forth inside a limited "pen" around its home spot,
-// reacts when you type, falls asleep when you're away, and nudges you to
-// take a break after long stretches at the keyboard.
+// It wanders back and forth inside a limited "pen" around its home spot.
+// When you type, it pulls out its own laptop and types along. Now and then it
+// sweeps the floor or reads a book. It reminds you to drink water, eat your
+// main meals and stretch, and falls asleep when you're away.
 //
-// Drag the pet to move its home. Click it to pet it.
+// Drag the pet to move its home. Click it to pet it (or dismiss a reminder).
 // Menu-bar pet face → Roam Range controls how far it may travel.
 
 import Cocoa
@@ -14,12 +15,26 @@ import ServiceManagement
 
 let pixel: CGFloat = 4                 // screen points per art pixel
 let petSize: CGFloat = 16 * pixel      // sprite is 16×16 art pixels
+let propRoom: CGFloat = 36             // space kept inside the pen for props held in front
+
+func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor {
+    NSColor(calibratedRed: r, green: g, blue: b, alpha: 1)
+}
 
 let palette: [Character: NSColor] = [
-    "k": NSColor(calibratedRed: 0.20, green: 0.16, blue: 0.24, alpha: 1),  // outline / eyes
-    "w": NSColor(calibratedRed: 0.99, green: 0.95, blue: 0.89, alpha: 1),  // body
-    "s": NSColor(calibratedRed: 0.89, green: 0.82, blue: 0.76, alpha: 1),  // shading
-    "p": NSColor(calibratedRed: 1.00, green: 0.62, blue: 0.70, alpha: 1),  // ears / cheeks
+    "k": rgb(0.20, 0.16, 0.24),  // outline / eyes
+    "w": rgb(0.99, 0.95, 0.89),  // body, book pages
+    "s": rgb(0.89, 0.82, 0.76),  // body shading
+    "p": rgb(1.00, 0.62, 0.70),  // ears / cheeks
+    "g": rgb(0.66, 0.68, 0.74),  // laptop
+    "b": rgb(0.45, 0.78, 1.00),  // laptop screen
+    "B": rgb(0.85, 0.97, 1.00),  // laptop screen, bright line
+    "n": rgb(0.58, 0.38, 0.22),  // broom handle
+    "y": rgb(0.96, 0.78, 0.36),  // broom straw
+    "r": rgb(0.87, 0.34, 0.38),  // book cover
+    "c": rgb(0.55, 0.82, 1.00),  // water
+    "o": rgb(0.93, 0.46, 0.32),  // bowl
+    "i": rgb(1.00, 1.00, 1.00),  // rice
 ]
 
 // Facing right. 13 body rows; feet and padding are added per frame.
@@ -66,9 +81,62 @@ func makeFrame(_ eyes: Eyes, _ feet: Feet, drop: Int = 0) -> [String] {
     return rows
 }
 
+/// Something the pet holds or uses, drawn in front of it.
+/// `col` is the sprite column of the prop's left edge (facing right); `lift` is art pixels above the ground.
+struct Prop {
+    let rows: [String]
+    let col: Int
+    let lift: Int
+}
+
+/// Props sit just in front of the body (sprite column 14 is the body's front outline).
+enum Props {
+    static let laptopClosed = ["kkkkkkkkk.", "kgggggggk.", "kkkkkkkkk."]
+
+    /// Side view: keyboard on the floor, lid tilted back with its glowing screen facing the pet.
+    static func laptopOpen(pawUp: Bool, flicker: Bool) -> [String] {
+        [
+            "........kk",
+            ".......kbk",
+            flicker ? ".......kBk" : ".......kbk",
+            "......kbk.",
+            pawUp ? "kwk...kbk." : ".kwk..kBk.",
+            "kkkkkkkkk.",
+            "kgggggggk.",
+            "kkkkkkkkk.",
+        ]
+    }
+
+    static func broom(swish: Bool) -> [String] {
+        let handle = ["n......", ".n.....", "..n....", "...n..."]
+        let straw = ["..kkk..", ".kyyyk.", "kyyyyyk"]
+        return handle + (swish ? straw.map { "." + $0.dropLast() } : straw)
+    }
+
+    /// An open book held up in front.
+    static func book(flip: Bool) -> [String] {
+        let page = flip ? "kiiksik" : "kiikiik"
+        return [".kk.kk.", page, "kiikiik", "kiikiik", "krrrrrk"]
+    }
+
+    /// `left` goes from 1 (full) to 0 (empty).
+    static func cup(left: Double) -> [String] {
+        let full = max(0, min(3, Int((left * 3).rounded(.up))))
+        return ["k...k"] + (0..<3).map { $0 >= 3 - full ? "kccck" : "k...k" } + [".kkk."]
+    }
+
+    static func bowl(left: Double) -> [String] {
+        let rice = left > 0.5 ? ["..iiiii..", ".iiiiiii."]
+                 : left > 0.05 ? [".........", ".iiiiiii."]
+                 : [".........", "........."]
+        return rice + ["koooooook", ".koooook."]
+    }
+}
+
 struct Particle {
     var text: String
     var color: NSColor
+    var size: CGFloat
     var x: CGFloat
     var y: CGFloat
     var vx: CGFloat
@@ -77,23 +145,26 @@ struct Particle {
     let maxLife: Double
 }
 
+enum Reminder { case water, lunch, dinner, stretch }
+
 // MARK: - Pet view (the window is the pet's pen; the pet moves inside it)
 
 @MainActor
 final class PetView: NSView {
-    enum Mode { case idle, walking, sitting, watching, cheering, sleeping }
+    enum Mode { case idle, walking, sitting, typing, cheering, sleeping, sweeping, reading, drinking, eating }
 
     var mode: Mode = .idle
+    var modeStart: TimeInterval = 0
     var modeUntil: TimeInterval = 0
     var petX: CGFloat = 0
     var targetX: CGFloat = 0
     var facingLeft = false
-    var range: CGFloat = 160
+    var range: CGFloat = 80
     var screenFrame: NSRect = .zero
 
     var clock: TimeInterval = 0
     var now: TimeInterval = 0
-    var lastZ: TimeInterval = 0
+    var lastPuff: TimeInterval = 0
     var particles: [Particle] = []
     var bubbleText: String?
     var bubbleUntil: TimeInterval = 0
@@ -106,18 +177,28 @@ final class PetView: NSView {
     var onHomeMoved: (() -> Void)?
 
     let walkSpeed: CGFloat = 42       // points per second
+    let sweepSpeed: CGFloat = 12
     let sleepAfter: Double = 90       // seconds of no input
-    let walkSpeedFrame: Double = 0.18
+    let typingLinger: Double = 3      // keep the laptop out this long after the last key
 
-    var maxPetX: CGFloat { max(0, bounds.width - petSize) }
+    var minPetX: CGFloat { propRoom }
+    var maxPetX: CGFloat { max(minPetX, bounds.width - petSize - propRoom) }
     /// Clickable area of the sprite in view coordinates.
     var petRect: NSRect { NSRect(x: petX + pixel, y: 0, width: petSize - 2 * pixel, height: petSize - 2 * pixel) }
     var petCenterX: CGFloat { petX + petSize / 2 }
+    /// Free to show a reminder: not asleep, not being dragged, nothing else being said.
+    var canRemind: Bool { mode != .sleeping && !dragging && bubbleText == nil }
 
     override var isOpaque: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     // MARK: Behaviour
+
+    func setMode(_ m: Mode, for seconds: Double = 0) {
+        mode = m
+        modeStart = now
+        modeUntil = now + seconds
+    }
 
     func say(_ text: String, for seconds: Double) {
         bubbleText = text
@@ -126,45 +207,73 @@ final class PetView: NSView {
 
     func showPen(for seconds: Double) { showPenUntil = max(showPenUntil, now + seconds) }
 
-    func spawn(_ text: String, _ color: NSColor, count: Int, life: Double = 1.4) {
+    /// Screen x of a sprite column, honouring which way the pet faces.
+    func xForColumn(_ col: CGFloat) -> CGFloat {
+        petX + (facingLeft ? 15 - col : col) * pixel
+    }
+
+    func spawn(_ text: String, _ color: NSColor, at point: NSPoint, size: CGFloat = 14,
+               vx: ClosedRange<CGFloat> = -10...10, vy: ClosedRange<CGFloat> = 22...36, life: Double = 1.4) {
+        particles.append(Particle(text: text, color: color, size: size, x: point.x, y: point.y,
+                                  vx: .random(in: vx), vy: .random(in: vy), life: life, maxLife: life))
+    }
+
+    func spawnAboveHead(_ text: String, _ color: NSColor, count: Int, life: Double = 1.4) {
         for _ in 0..<count {
-            particles.append(Particle(
-                text: text, color: color,
-                x: petCenterX + .random(in: -14...10), y: petSize - 14 + .random(in: -4...4),
-                vx: .random(in: -10...10), vy: .random(in: 22...36),
-                life: life, maxLife: life))
+            spawn(text, color, at: NSPoint(x: petCenterX + .random(in: -14...10), y: petSize - 14 + .random(in: -4...4)), life: life)
         }
     }
 
     func petted() {
-        mode = .cheering
-        modeUntil = now + 1.6
-        spawn("♥", NSColor.systemPink, count: 3)
+        bubbleText = nil   // a click also dismisses a reminder
+        setMode(.cheering, for: 1.6)
+        spawnAboveHead("♥", NSColor.systemPink, count: 3)
     }
 
-    func remindBreak() {
-        mode = .cheering
-        modeUntil = now + 3
-        say("Stretch break? 🙆", for: 8)
+    func remind(_ reminder: Reminder) {
+        switch reminder {
+        case .water:
+            setMode(.drinking, for: 7)
+            say("Time for some water 💧", for: 9)
+        case .lunch:
+            setMode(.eating, for: 9)
+            say("Lunch time! Go eat 🍚", for: 12)
+        case .dinner:
+            setMode(.eating, for: 9)
+            say("Dinner time! 🍲", for: 12)
+        case .stretch:
+            setMode(.cheering, for: 3)
+            say("Stretch break? 🙆", for: 9)
+        }
+    }
+
+    func randomTarget(near x: CGFloat, within reach: CGFloat) -> CGFloat {
+        let lo = max(minPetX, x - reach), hi = min(maxPetX, x + reach)
+        guard hi > lo else { return x }
+        var t = x
+        for _ in 0..<6 {
+            t = .random(in: lo...hi)
+            if abs(t - x) > 20 { break }
+        }
+        return t
     }
 
     func decideNext() {
-        let canWalk = range > 0 && maxPetX > 24
+        let canWalk = maxPetX - minPetX > 24
         let r = Double.random(in: 0..<1)
-        if canWalk && r < 0.55 {
-            var t = petX
-            for _ in 0..<6 {
-                t = .random(in: 0...maxPetX)
-                if abs(t - petX) > 24 { break }
-            }
-            targetX = t
-            mode = .walking
-        } else if r < 0.85 {
-            mode = .sitting
-            modeUntil = now + .random(in: 3...8)
-        } else {
-            mode = .idle
-            modeUntil = now + .random(in: 2...4)
+        switch r {
+        case ..<0.45 where canWalk:
+            targetX = randomTarget(near: petX, within: .greatestFiniteMagnitude)
+            setMode(.walking)
+        case ..<0.57:
+            setMode(.sweeping, for: .random(in: 6...10))
+            targetX = randomTarget(near: petX, within: 50)
+        case ..<0.70:
+            setMode(.reading, for: .random(in: 8...14))
+        case ..<0.90:
+            setMode(.sitting, for: .random(in: 3...8))
+        default:
+            setMode(.idle, for: .random(in: 2...4))
         }
     }
 
@@ -183,59 +292,117 @@ final class PetView: NSView {
         if dragging { return }
 
         // React to what the human is doing.
+        let busyWithReminder = mode == .drinking || mode == .eating || mode == .cheering
         if mode != .sleeping && idle > sleepAfter {
-            mode = .sleeping
-            lastZ = now
+            setMode(.sleeping)
         } else if mode == .sleeping && idle < 1 {
-            mode = .idle
-            modeUntil = now + 1.5
+            setMode(.idle, for: 1.5)
             say("!", for: 1.2)
-        } else if mode != .sleeping && mode != .cheering && keyIdle < 0.6 {
-            mode = .watching
-            modeUntil = now + 1.2
+        } else if mode != .sleeping && !busyWithReminder && keyIdle < 0.6 {
+            if mode != .typing { setMode(.typing) }   // pull the laptop out
+            modeUntil = now + typingLinger
         }
 
         switch mode {
         case .walking:
-            let dx = targetX - petX
-            let stride = walkSpeed * dt
-            facingLeft = dx < 0
-            if abs(dx) <= stride {
-                petX = targetX
-                mode = .idle
-                modeUntil = now + .random(in: 2...5)
-            } else {
-                petX += dx > 0 ? stride : -stride
+            if moveToward(targetX, speed: walkSpeed, dt: dt) { setMode(.idle, for: .random(in: 2...5)) }
+
+        case .sweeping:
+            if moveToward(targetX, speed: sweepSpeed, dt: dt) { targetX = randomTarget(near: petX, within: 50) }
+            if now - lastPuff > 0.35 {
+                lastPuff = now
+                spawn("·", NSColor.systemBrown.withAlphaComponent(0.8),
+                      at: NSPoint(x: xForColumn(19), y: 0),
+                      size: 16, vx: -14...14, vy: 6...16, life: 0.9)
             }
+            if now >= modeUntil { decideNext() }
+
         case .sleeping:
-            if now - lastZ > 1.3 {
-                lastZ = now
-                spawn("z", NSColor.secondaryLabelColor, count: 1, life: 2.2)
+            if now - lastPuff > 1.3 {
+                lastPuff = now
+                spawnAboveHead("z", NSColor.secondaryLabelColor, count: 1, life: 2.2)
             }
-        case .idle, .sitting, .watching, .cheering:
+
+        case .eating:
+            if now - lastPuff > 0.8 {
+                lastPuff = now
+                spawn("~", NSColor.secondaryLabelColor, at: NSPoint(x: xForColumn(18), y: 18),
+                      size: 12, vx: -3...3, vy: 10...16, life: 1.2)
+            }
+            if now >= modeUntil { petDoneEating() }
+
+        case .drinking:
+            if now >= modeUntil { petDoneEating() }
+
+        case .idle, .sitting, .typing, .cheering, .reading:
             if now >= modeUntil { decideNext() }
         }
-        petX = min(max(petX, 0), maxPetX)   // never leave the pen
+        petX = min(max(petX, minPetX), maxPetX)   // never leave the pen
 
-        // Look at the cursor when it comes close.
-        if mode != .walking && mode != .sleeping,
+        // Look at the cursor when it comes close (not while using a prop).
+        if [.idle, .sitting, .cheering].contains(mode),
            mouse.y < bounds.height + 160, abs(mouse.x - petCenterX) < 220, abs(mouse.x - petCenterX) > 6 {
             facingLeft = mouse.x < petCenterX
         }
+    }
+
+    private func petDoneEating() {
+        setMode(.cheering, for: 1.2)
+        spawnAboveHead("♥", NSColor.systemPink, count: 1)
+    }
+
+    /// Walks toward x; returns true on arrival.
+    private func moveToward(_ x: CGFloat, speed: CGFloat, dt: Double) -> Bool {
+        let dx = x - petX
+        let stride = speed * dt
+        if abs(dx) <= stride { petX = x; return true }
+        facingLeft = dx < 0
+        petX += dx > 0 ? stride : -stride
+        return false
     }
 
     func currentFrame() -> [String] {
         let blink = clock.truncatingRemainder(dividingBy: 4.2) < 0.14
         let eyes: Eyes = blink ? .closed : .open
         let beat = Int(clock / 0.16) % 2 == 0
+        let t = now - modeStart
         if dragging { return makeFrame(.happy, Int(clock / 0.1) % 2 == 0 ? .a : .b) }
         switch mode {
-        case .walking:  return makeFrame(.open, Int(clock / walkSpeedFrame) % 2 == 0 ? .a : .b)
+        case .walking:  return makeFrame(.open, Int(clock / 0.18) % 2 == 0 ? .a : .b)
         case .idle:     return makeFrame(eyes, .a)
         case .sitting:  return makeFrame(eyes, .none, drop: 1)
-        case .watching: return makeFrame(.open, .none, drop: Int(clock / 0.25) % 2 == 0 ? 1 : 0)
+        case .typing:   return makeFrame(eyes, .none, drop: 1)
         case .cheering: return makeFrame(.happy, beat ? .a : .none, drop: beat ? 0 : 1)
         case .sleeping: return makeFrame(.closed, .none, drop: 1)
+        case .sweeping: return makeFrame(eyes, Int(clock / 0.3) % 2 == 0 ? .a : .b)
+        case .reading:  return makeFrame(eyes, .none, drop: 1)
+        case .drinking: return makeFrame(isSipping(t) ? .happy : .open, .none, drop: 1)
+        case .eating:   return makeFrame(Int(clock / 0.4) % 2 == 0 ? .happy : .open, .none, drop: 1)
+        }
+    }
+
+    private func isSipping(_ t: Double) -> Bool { t.truncatingRemainder(dividingBy: 1.6) > 1.0 }
+
+    func currentProp() -> Prop? {
+        if dragging { return nil }
+        let t = now - modeStart
+        let progress = modeUntil > modeStart ? min(1, t / (modeUntil - modeStart)) : 0
+        switch mode {
+        case .typing:
+            if t < 0.3 { return Prop(rows: Props.laptopClosed, col: 14, lift: 0) }
+            let paw = Int(clock / 0.12) % 2 == 0
+            let flicker = Int(clock / 0.5) % 2 == 0
+            return Prop(rows: Props.laptopOpen(pawUp: paw, flicker: flicker), col: 14, lift: 0)
+        case .sweeping:
+            return Prop(rows: Props.broom(swish: Int(clock / 0.3) % 2 == 0), col: 14, lift: 0)
+        case .reading:
+            return Prop(rows: Props.book(flip: t.truncatingRemainder(dividingBy: 3) < 0.25), col: 13, lift: 3)
+        case .drinking:
+            return Prop(rows: Props.cup(left: 1 - progress), col: 14, lift: isSipping(t) ? 5 : 3)
+        case .eating:
+            return Prop(rows: Props.bowl(left: 1 - progress), col: 14, lift: 0)
+        default:
+            return nil
         }
     }
 
@@ -247,21 +414,15 @@ final class PetView: NSView {
 
         if dragging || now < showPenUntil { drawPen() }
 
-        // Sprite: art row 13 (feet) sits on the ground line, so shift down 2 art pixels.
-        let originY = -2 * pixel
         // Snap to whole device pixels and skip anti-aliasing so the art has no seams.
         let scale = window?.backingScaleFactor ?? 2
         let drawX = (petX * scale).rounded() / scale
         NSGraphicsContext.current?.shouldAntialias = false
-        let rows = currentFrame()
-        for (r, row) in rows.enumerated() {
-            for (c, ch) in row.enumerated() {
-                guard let color = palette[ch] else { continue }
-                let col = facingLeft ? 15 - c : c
-                color.setFill()
-                NSRect(x: drawX + CGFloat(col) * pixel, y: originY + CGFloat(15 - r) * pixel,
-                       width: pixel, height: pixel).fill()
-            }
+
+        // Sprite: art row 13 (feet) sits on the ground line, so shift down 2 art pixels.
+        drawGrid(currentFrame(), x: drawX, col: 0, bottomY: -2 * pixel)
+        if let prop = currentProp() {
+            drawGrid(prop.rows, x: drawX, col: prop.col, bottomY: CGFloat(prop.lift) * pixel)
         }
 
         NSGraphicsContext.current?.shouldAntialias = true
@@ -269,7 +430,7 @@ final class PetView: NSView {
         for p in particles {
             let alpha = max(0, min(1, p.life / p.maxLife * 1.5))
             let attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.boldSystemFont(ofSize: 14),
+                .font: NSFont.boldSystemFont(ofSize: p.size),
                 .foregroundColor: p.color.withAlphaComponent(alpha),
             ]
             NSAttributedString(string: p.text, attributes: attrs).draw(at: NSPoint(x: p.x, y: p.y))
@@ -278,8 +439,22 @@ final class PetView: NSView {
         if let text = bubbleText { drawBubble(text) }
     }
 
+    /// Draws pixel rows whose left edge is sprite column `col` and whose bottom row sits at `bottomY`.
+    private func drawGrid(_ rows: [String], x: CGFloat, col: Int, bottomY: CGFloat) {
+        for (r, row) in rows.enumerated() {
+            let y = bottomY + CGFloat(rows.count - 1 - r) * pixel
+            for (c, ch) in row.enumerated() {
+                guard let color = palette[ch] else { continue }
+                let spriteCol = col + c
+                let drawCol = facingLeft ? 15 - spriteCol : spriteCol
+                color.setFill()
+                NSRect(x: x + CGFloat(drawCol) * pixel, y: y, width: pixel, height: pixel).fill()
+            }
+        }
+    }
+
     private func drawPen() {
-        let rect = NSRect(x: 1, y: 1, width: bounds.width - 2, height: petSize - 4)
+        let rect = NSRect(x: minPetX, y: 1, width: maxPetX - minPetX + petSize, height: petSize - 4)
         let path = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
         NSColor.systemTeal.withAlphaComponent(0.12).setFill()
         path.fill()
@@ -344,8 +519,7 @@ final class PetView: NSView {
     override func mouseUp(with event: NSEvent) {
         dragging = false
         if dragMoved {
-            mode = .idle
-            modeUntil = now + 2
+            setMode(.idle, for: 2)
             showPen(for: 1.5)
             say("new home!", for: 1.5)
             onHomeMoved?()
@@ -371,8 +545,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     var range: CGFloat = 80
     var homeX: CGFloat?
-    let cornerMargin: CGFloat = 12
+    let cornerMargin: CGFloat = 4
     var breaksOn = true
+    var waterOn = true
+    var mealsOn = true
     var visible = true
 
     var lastTick = ProcessInfo.processInfo.systemUptime
@@ -382,12 +558,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let nagEvery: Double = 10 * 60
     let breakResetIdle: Double = 5 * 60
 
+    var activeSinceWater: Double = 0
+    let waterEvery: Double = 45 * 60
+    /// Main meals as (name, hour, minute). A meal reminder can fire once a day, up to 2 hours after its time.
+    let meals: [(Reminder, String, Int, Int)] = [(.lunch, "lunch", 12, 0), (.dinner, "dinner", 18, 30)]
+    var lastMealCheck: TimeInterval = 0
+
+    var demoQueue: [() -> Void] = []
+    var nextDemo: TimeInterval = 0
+
     var screen: NSScreen { NSScreen.screens.first ?? NSScreen.main! }
 
     func applicationDidFinishLaunching(_ note: Notification) {
         if defaults.object(forKey: "range") != nil { range = CGFloat(defaults.double(forKey: "range")) }
         if defaults.object(forKey: "homeX") != nil { homeX = CGFloat(defaults.double(forKey: "homeX")) }
         if defaults.object(forKey: "breaks") != nil { breaksOn = defaults.bool(forKey: "breaks") }
+        if defaults.object(forKey: "water") != nil { waterOn = defaults.bool(forKey: "water") }
+        if defaults.object(forKey: "meals") != nil { mealsOn = defaults.bool(forKey: "meals") }
         if defaults.object(forKey: "visible") != nil { visible = defaults.bool(forKey: "visible") }
 
         window = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
@@ -405,13 +592,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         view.onHomeMoved = { [weak self] in self?.homeMoved() }
         window.contentView = view
         layout()
-        view.petX = view.maxPetX / 2
+        view.petX = (view.minPetX + view.maxPetX) / 2
         view.say("hi!", for: 2)
         if visible { window.orderFrontRegardless() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = Self.menuBarIcon()
         rebuildMenu()
+
+        // `--demo` cycles through every activity and reminder, for trying the app out.
+        if CommandLine.arguments.contains("--demo") {
+            let v = view!
+            demoQueue = [
+                { v.setMode(.typing, for: 6) },
+                { v.setMode(.sweeping, for: 6); v.targetX = v.randomTarget(near: v.petX, within: 50) },
+                { v.setMode(.reading, for: 6) },
+                { v.remind(.water) },
+                { v.remind(.lunch) },
+                { v.remind(.stretch) },
+            ]
+            nextDemo = ProcessInfo.processInfo.systemUptime + 2
+        }
 
         let timer = Timer(timeInterval: 1.0 / 30, target: self, selector: #selector(tick),
                           userInfo: nil, repeats: true)
@@ -425,13 +626,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// With no saved home, the pen sits in the bottom-right corner, beside the Dock.
     func layout() {
         let sf = screen.frame
-        let width = min(sf.width, 2 * range + petSize)
+        let width = min(sf.width, 2 * range + petSize + 2 * propRoom)
         let height = petSize + 70
         let home = homeX ?? (sf.maxX - cornerMargin - width / 2)
         let x = min(max(home - width / 2, sf.minX), sf.maxX - width)
         window.setFrame(NSRect(x: x, y: sf.minY + 2, width: width, height: height), display: true)
         view.screenFrame = sf
         view.range = range
+    }
+
+    func keepPet(atScreenX absX: CGFloat) {
+        view.petX = min(max(absX - window.frame.minX, view.minPetX), view.maxPetX)
     }
 
     func homeMoved() {
@@ -442,7 +647,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func screensChanged() {
         let absX = window.frame.minX + view.petX
         layout()
-        view.petX = min(max(absX - window.frame.minX, 0), view.maxPetX)
+        keepPet(atScreenX: absX)
     }
 
     static func secondsSince(_ type: CGEventType) -> Double {
@@ -458,22 +663,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let idle = [keyIdle, Self.secondsSince(.mouseMoved), Self.secondsSince(.leftMouseDown),
                     Self.secondsSince(.scrollWheel), Self.secondsSince(.flagsChanged)].min()!
 
-        if idle > breakResetIdle { streakStart = now }
-        if breaksOn && visible && now - streakStart > breakAfter && now - lastNag > nagEvery {
-            lastNag = now
-            view.remindBreak()
-        }
+        checkReminders(now: now, dt: dt, idle: idle)
 
         guard visible else { return }
+        if !demoQueue.isEmpty && now >= nextDemo {
+            demoQueue.removeFirst()()
+            nextDemo = now + 7
+        }
+
         let mouse = NSEvent.mouseLocation
         let frame = window.frame
-        view.step(dt: dt, now: now, idle: idle, keyIdle: keyIdle,
+        let demoRunning = !demoQueue.isEmpty || now < nextDemo   // demo ignores real typing and idleness
+        view.step(dt: dt, now: now, idle: demoRunning ? 0 : idle, keyIdle: demoRunning ? 99 : keyIdle,
                   mouse: NSPoint(x: mouse.x - frame.minX, y: mouse.y - frame.minY))
 
         // Only the pet itself catches clicks; the rest of the pen is click-through.
         let petOnScreen = view.petRect.offsetBy(dx: frame.minX, dy: frame.minY)
         window.ignoresMouseEvents = !(view.dragging || petOnScreen.contains(mouse))
         view.needsDisplay = true
+    }
+
+    // MARK: Reminders
+
+    func checkReminders(now: TimeInterval, dt: Double, idle: Double) {
+        let atDesk = idle < 60
+        if atDesk { activeSinceWater += dt }
+        if idle > breakResetIdle { streakStart = now }
+        guard visible && atDesk && view.canRemind else { return }
+
+        if breaksOn && now - streakStart > breakAfter && now - lastNag > nagEvery {
+            lastNag = now
+            view.remind(.stretch)
+        } else if waterOn && activeSinceWater > waterEvery {
+            activeSinceWater = 0
+            view.remind(.water)
+        } else if mealsOn && now - lastMealCheck > 30 {
+            lastMealCheck = now
+            checkMeals()
+        }
+    }
+
+    func checkMeals() {
+        let date = Date()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: date)
+        for (reminder, key, hour, minute) in meals {
+            guard let start = cal.date(bySettingHour: hour, minute: minute, second: 0, of: date) else { continue }
+            let lastShown = defaults.object(forKey: "lastMeal.\(key)") as? Date ?? .distantPast
+            if date >= start && date < start.addingTimeInterval(2 * 3600) && lastShown < today {
+                defaults.set(date, forKey: "lastMeal.\(key)")
+                view.remind(reminder)
+                return
+            }
+        }
     }
 
     // MARK: Menu
@@ -510,22 +752,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         let rangeItem = NSMenuItem(title: "Roam Range", action: nil, keyEquivalent: "")
-        let sub = NSMenu()
+        let rangeMenu = NSMenu()
         for (i, opt) in rangeOptions.enumerated() {
             let item = NSMenuItem(title: opt.1, action: #selector(pickRange(_:)), keyEquivalent: "")
             item.tag = i
             item.state = opt.0 == range ? .on : .off
-            sub.addItem(item)
+            item.target = self
+            rangeMenu.addItem(item)
         }
-        rangeItem.submenu = sub
+        rangeItem.submenu = rangeMenu
         menu.addItem(rangeItem)
         menu.addItem(NSMenuItem(title: "Show Roam Area", action: #selector(showArea), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Move Home to Corner", action: #selector(centerHome), keyEquivalent: ""))
         menu.addItem(.separator())
 
-        let breaks = NSMenuItem(title: "Break Reminders (every 50 min)", action: #selector(toggleBreaks), keyEquivalent: "")
-        breaks.state = breaksOn ? .on : .off
-        menu.addItem(breaks)
+        let remindItem = NSMenuItem(title: "Reminders", action: nil, keyEquivalent: "")
+        let remindMenu = NSMenu()
+        for (title, on, action) in [
+            ("Drink Water (every 45 min at the desk)", waterOn, #selector(toggleWater)),
+            ("Main Meals (lunch 12:00, dinner 18:30)", mealsOn, #selector(toggleMeals)),
+            ("Stretch Break (after 50 min of use)", breaksOn, #selector(toggleBreaks)),
+        ] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.state = on ? .on : .off
+            item.target = self
+            remindMenu.addItem(item)
+        }
+        remindItem.submenu = remindMenu
+        menu.addItem(remindItem)
+
         let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
         loginItem = login
         refreshLoginState()
@@ -538,7 +793,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Quit DeskPet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
-        for item in sub.items { item.target = self }
         menu.delegate = self
         statusItem.menu = menu
     }
@@ -597,8 +851,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         range = rangeOptions[sender.tag].0
         defaults.set(Double(range), forKey: "range")
         layout()
-        view.petX = min(max(absX - window.frame.minX, 0), view.maxPetX)
-        if view.mode == .walking { view.mode = .idle; view.modeUntil = 0 }
+        keepPet(atScreenX: absX)
+        if view.mode == .walking || view.mode == .sweeping { view.setMode(.idle) }
         view.showPen(for: 2.5)
         rebuildMenu()
     }
@@ -606,10 +860,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func showArea() { view.showPen(for: 3) }
 
     @objc func centerHome() {
+        let absX = window.frame.minX + view.petX
         homeX = nil
         defaults.removeObject(forKey: "homeX")
         layout()
-        view.petX = min(view.petX, view.maxPetX)
+        keepPet(atScreenX: absX)
         view.showPen(for: 2)
     }
 
@@ -617,6 +872,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         breaksOn.toggle()
         defaults.set(breaksOn, forKey: "breaks")
         streakStart = ProcessInfo.processInfo.systemUptime
+        rebuildMenu()
+    }
+
+    @objc func toggleWater() {
+        waterOn.toggle()
+        defaults.set(waterOn, forKey: "water")
+        activeSinceWater = 0
+        rebuildMenu()
+    }
+
+    @objc func toggleMeals() {
+        mealsOn.toggle()
+        defaults.set(mealsOn, forKey: "meals")
         rebuildMenu()
     }
 }
