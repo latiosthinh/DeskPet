@@ -553,13 +553,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     var lastTick = ProcessInfo.processInfo.systemUptime
     var streakStart = ProcessInfo.processInfo.systemUptime
-    var lastNag: TimeInterval = 0
-    let breakAfter: Double = 50 * 60
-    let nagEvery: Double = 10 * 60
+    /// Each interval is re-picked at random within its range, so reminders don't feel mechanical.
+    static let breakRange: ClosedRange<Double> = 40 * 60...60 * 60
+    static let waterRange: ClosedRange<Double> = 20 * 60...30 * 60
+    var breakDue = Double.random(in: breakRange)
     let breakResetIdle: Double = 5 * 60
 
     var activeSinceWater: Double = 0
-    let waterEvery: Double = 45 * 60
+    var waterDue = Double.random(in: waterRange)
     /// Main meals as (name, hour, minute). A meal reminder can fire once a day, up to 2 hours after its time.
     let meals: [(Reminder, String, Int, Int)] = [(.lunch, "lunch", 12, 0), (.dinner, "dinner", 18, 30)]
     var lastMealCheck: TimeInterval = 0
@@ -688,14 +689,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func checkReminders(now: TimeInterval, dt: Double, idle: Double) {
         let atDesk = idle < 60
         if atDesk { activeSinceWater += dt }
-        if idle > breakResetIdle { streakStart = now }
+        if idle > breakResetIdle { streakStart = now }   // a 5-minute pause counts as a break
         guard visible && atDesk && view.canRemind else { return }
 
-        if breaksOn && now - streakStart > breakAfter && now - lastNag > nagEvery {
-            lastNag = now
+        if breaksOn && now - streakStart > breakDue {
+            streakStart = now
+            breakDue = .random(in: Self.breakRange)
             view.remind(.stretch)
-        } else if waterOn && activeSinceWater > waterEvery {
+        } else if waterOn && activeSinceWater > waterDue {
             activeSinceWater = 0
+            waterDue = .random(in: Self.waterRange)
             view.remind(.water)
         } else if mealsOn && now - lastMealCheck > 30 {
             lastMealCheck = now
@@ -769,9 +772,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let remindItem = NSMenuItem(title: "Reminders", action: nil, keyEquivalent: "")
         let remindMenu = NSMenu()
         for (title, on, action) in [
-            ("Drink Water (every 45 min at the desk)", waterOn, #selector(toggleWater)),
+            ("Drink Water (every 20–30 min)", waterOn, #selector(toggleWater)),
             ("Main Meals (lunch 12:00, dinner 18:30)", mealsOn, #selector(toggleMeals)),
-            ("Stretch Break (after 50 min of use)", breaksOn, #selector(toggleBreaks)),
+            ("Stretch Break (every 40–60 min)", breaksOn, #selector(toggleBreaks)),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.state = on ? .on : .off

@@ -18,7 +18,7 @@ A tiny pixel critter that lives in the bottom-right corner of your Mac, next to 
 | Roam Range | How far it may walk from home: Stay Put, Tiny ±80 pt (default), Small ±160, Medium ±300, Large ±500 |
 | Show Roam Area | Briefly outlines the area it walks in |
 | Move Home to Corner | Puts it back in the bottom-right corner |
-| Reminders | Turn each reminder on or off (all on by default): **Drink Water** after every 45 minutes at the desk, **Main Meals** once a day between 12:00–14:00 and 18:30–20:30, **Stretch Break** after 50 minutes of use without a 5-minute pause, repeating every 10 minutes until you take one |
+| Reminders | Turn each reminder on or off (all on by default): **Drink Water** every 20–30 minutes at the desk, **Main Meals** only at lunch (12:00–14:00) and dinner (18:30–20:30), once each a day, **Stretch Break** every 40–60 minutes of use (a 5-minute pause counts as a break). |
 | Open at Login | Start DeskPet automatically when you log in |
 
 Ranges larger than Tiny may overlap the right end of the Dock, depending on how wide your Dock is.
