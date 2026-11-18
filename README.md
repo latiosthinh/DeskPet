@@ -17,6 +17,7 @@ A tiny pixel critter that lives in the bottom-right corner of your Mac, next to 
 | Show Roam Area | Briefly outlines the area it walks in |
 | Move Home to Corner | Puts it back in the bottom-right corner |
 | Break Reminders | Stretch reminder every 50 minutes of use |
+| Open at Login | Start DeskPet automatically when you log in |
 
 Ranges larger than Tiny may overlap the right end of the Dock, depending on how wide your Dock is.
 

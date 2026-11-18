@@ -8,6 +8,7 @@
 // Menu-bar pet face → Roam Range controls how far it may travel.
 
 import Cocoa
+import ServiceManagement
 
 // MARK: - Pixel art
 
@@ -357,7 +358,7 @@ final class PetView: NSView {
 // MARK: - App
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let rangeOptions: [(CGFloat, String)] = [
         (0, "Stay Put"), (80, "Tiny  (±80 pt)"), (160, "Small  (±160 pt)"),
         (300, "Medium  (±300 pt)"), (500, "Large  (±500 pt)"),
@@ -525,6 +526,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let breaks = NSMenuItem(title: "Break Reminders (every 50 min)", action: #selector(toggleBreaks), keyEquivalent: "")
         breaks.state = breaksOn ? .on : .off
         menu.addItem(breaks)
+        let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
+        loginItem = login
+        refreshLoginState()
+        menu.addItem(login)
         menu.addItem(.separator())
 
         let tip = NSMenuItem(title: "Drag the pet to move its home · click to pet", action: nil, keyEquivalent: "")
@@ -534,7 +539,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
         for item in sub.items { item.target = self }
+        menu.delegate = self
         statusItem.menu = menu
+    }
+
+    // MARK: Open at login
+
+    var loginItem: NSMenuItem?
+
+    /// The setting can also change in System Settings → General → Login Items, so re-read it each time.
+    func menuWillOpen(_ menu: NSMenu) { refreshLoginState() }
+
+    func refreshLoginState() {
+        switch SMAppService.mainApp.status {
+        case .enabled:          loginItem?.state = .on
+        case .requiresApproval: loginItem?.state = .mixed
+        default:                loginItem?.state = .off
+        }
+    }
+
+    @objc func toggleLogin() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled || service.status == .requiresApproval {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Couldn't change Open at Login"
+            alert.informativeText = "\(error.localizedDescription)\n\nYou can add DeskPet yourself in System Settings → General → Login Items."
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+        if service.status == .requiresApproval {
+            let alert = NSAlert()
+            alert.messageText = "Allow DeskPet in Login Items"
+            alert.informativeText = "macOS needs you to switch DeskPet on in System Settings → General → Login Items."
+            alert.addButton(withTitle: "Open Login Items")
+            alert.addButton(withTitle: "Later")
+            NSApp.activate(ignoringOtherApps: true)
+            if alert.runModal() == .alertFirstButtonReturn { SMAppService.openSystemSettingsLoginItems() }
+        }
+        refreshLoginState()
     }
 
     @objc func toggleVisible() {
