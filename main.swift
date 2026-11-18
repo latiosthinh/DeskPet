@@ -5,7 +5,7 @@
 // take a break after long stretches at the keyboard.
 //
 // Drag the pet to move its home. Click it to pet it.
-// Menu bar 🐾 → Roam Range controls how far it may travel.
+// Menu-bar pet face → Roam Range controls how far it may travel.
 
 import Cocoa
 
