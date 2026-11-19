@@ -1,4 +1,4 @@
-// DeskPet — a tiny pixel critter that lives beside your Dock.
+// DeskPet — a tiny pixel pet (Mochi, Ember, Pip, Puddle or Sprout) that lives beside your Dock.
 //
 // It wanders back and forth inside a limited "pen" around its home spot.
 // When you type, it pulls out its own laptop and types along. Now and then it
@@ -21,65 +21,110 @@ func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor {
     NSColor(calibratedRed: r, green: g, blue: b, alpha: 1)
 }
 
-let palette: [Character: NSColor] = [
-    "k": rgb(0.20, 0.16, 0.24),  // outline / eyes
-    "w": rgb(0.99, 0.95, 0.89),  // body, book pages
-    "s": rgb(0.89, 0.82, 0.76),  // body shading
-    "p": rgb(1.00, 0.62, 0.70),  // ears / cheeks
+/// Colours for props. "w" (the paw on the laptop) comes from the pet's own body colour.
+let propPalette: [Character: NSColor] = [
+    "k": rgb(0.20, 0.16, 0.24),  // outline
     "g": rgb(0.66, 0.68, 0.74),  // laptop
     "b": rgb(0.45, 0.78, 1.00),  // laptop screen
     "B": rgb(0.85, 0.97, 1.00),  // laptop screen, bright line
     "n": rgb(0.58, 0.38, 0.22),  // broom handle
     "y": rgb(0.96, 0.78, 0.36),  // broom straw
     "r": rgb(0.87, 0.34, 0.38),  // book cover
+    "s": rgb(0.85, 0.82, 0.78),  // turning page
     "c": rgb(0.55, 0.82, 1.00),  // water
     "o": rgb(0.93, 0.46, 0.32),  // bowl
-    "i": rgb(1.00, 1.00, 1.00),  // rice
+    "i": rgb(1.00, 1.00, 1.00),  // rice, book pages
 ]
 
-// Facing right. 13 body rows; feet and padding are added per frame.
-let bodyRows = [
-    "................",
-    "...kk......kk...",
-    "..kppk....kppk..",
-    "..kpwkkkkkkwpk..",
-    ".kwwwwwwwwwwwwk.",
-    ".kwwwwwwwwwwwwk.",
-    ".kwwwwwwwkwwkwk.",
-    ".kwwwwwwwkwwkwk.",
-    ".kwwwwwwpwwwwpk.",
-    ".kswwwwwwwwwwwk.",
-    ".ksswwwwwwwwwwk.",
-    "..ksssswwwwwwk..",
-    "...kkkkkkkkkk...",
-]
-let noEyesRow   = ".kwwwwwwwwwwwwk."
-let closedRow   = ".kwwwwwwkkwkkwk."
-let happyTopRow = ".kwwwwwwwkwwkwk."
-let happyBotRow = ".kwwwwwwkwkkwkk."
-let feetA       = "..kwk.....kwk..."
-let feetB       = "....kwk.kwk....."
-let emptyRow    = "................"
+let emptyRow = "................"
 
 enum Eyes { case open, closed, happy }
-enum Feet { case a, b, none }
+/// Standing on one of the two walking-feet rows, or sitting down.
+enum Pose { case stand(Int), sit }
 
-func makeFrame(_ eyes: Eyes, _ feet: Feet, drop: Int = 0) -> [String] {
-    var rows = bodyRows
-    switch eyes {
-    case .open: break
-    case .closed: rows[6] = noEyesRow; rows[7] = closedRow
-    case .happy:  rows[6] = happyTopRow; rows[7] = happyBotRow
+/// A pet design on the 16×16 grid, facing right. Sprite column 14 is the front outline,
+/// where props are held; eyes are drawn on rows 6–7 at `eyeCols`.
+struct Pet {
+    let id: String
+    let name: String
+    let palette: [Character: NSColor]
+    let body: [String]        // 13 rows, eyes left out
+    let feet: [String]        // two walking rows
+    var sitBase: String? = nil   // a pet without legs keeps this row under it when it sits
+    var paw: Character = "w"
+    var eyeCols = [9, 12]
+
+    func rows(eyes: Eyes) -> [String] {
+        var grid = body.map { Array($0) }
+        for c in eyeCols {
+            switch eyes {
+            case .open:   grid[6][c] = "k"; grid[7][c] = "k"
+            case .closed: grid[7][c - 1] = "k"; grid[7][c] = "k"
+            case .happy:  grid[6][c] = "k"; grid[7][c - 1] = "k"; grid[7][c + 1] = "k"
+            }
+        }
+        return grid.map { String($0) }
     }
-    switch feet {
-    case .a: rows.append(feetA)
-    case .b: rows.append(feetB)
-    case .none: break
+
+    func frame(_ eyes: Eyes, _ pose: Pose) -> [String] {
+        var out = rows(eyes: eyes)
+        var drop = 0
+        switch pose {
+        case .stand(let step): out.append(feet[step % 2])
+        case .sit:
+            if let base = sitBase { out.append(base) } else { drop = 1 }
+        }
+        while out.count < 16 { out.append(emptyRow) }
+        for _ in 0..<drop { out.insert(emptyRow, at: 0); out.removeLast() }
+        return out
     }
-    while rows.count < 16 { rows.append(emptyRow) }
-    for _ in 0..<drop { rows.insert(emptyRow, at: 0); rows.removeLast() }
-    return rows
 }
+
+let pets: [Pet] = [
+    Pet(id: "mochi", name: "Mochi", palette: [
+            "k": rgb(0.20, 0.16, 0.24), "w": rgb(0.99, 0.95, 0.89),
+            "s": rgb(0.89, 0.82, 0.76), "p": rgb(1.00, 0.62, 0.70)],
+        body: ["................", "...kk......kk...", "..kppk....kppk..", "..kpwkkkkkkwpk..",
+               ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.",
+               ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
+               "...kkkkkkkkkk..."],
+        feet: ["..kwk.....kwk...", "....kwk.kwk....."]),
+    Pet(id: "ember", name: "Ember the fox", palette: [
+            "k": rgb(0.23, 0.14, 0.13), "w": rgb(0.95, 0.53, 0.23),
+            "s": rgb(0.83, 0.42, 0.16), "c": rgb(1.00, 0.95, 0.86)],
+        body: [".....k.....k....", "....kwk...kwk...", "....kwwk.kwwk...", "...kwwwkkkwwwk..",
+               "...kwwwwwwwwwwk.", "...kwwwwwwwwwwk.", ".k.kwwwwwwwwwwk.", "kckkwwwwwwwwwwk.",
+               "kwkkwwwwccccckk.", "kwwkswwwcccccck.", "kwwksswwwccccck.", ".kkkssswwwwwwk..",
+               "....kkkkkkkkk..."],
+        feet: ["....kwk...kwk...", ".....kwk.kwk...."]),
+    Pet(id: "pip", name: "Pip the penguin", palette: [
+            "k": rgb(0.12, 0.13, 0.20), "b": rgb(0.24, 0.29, 0.43), "w": rgb(1.00, 1.00, 1.00),
+            "o": rgb(1.00, 0.65, 0.24), "p": rgb(1.00, 0.62, 0.70)],
+        body: ["................", "................", ".....kkkkkk.....", "...kkbbbbbbkk...",
+               "..kbbbbbbwwwwk..", ".kbbbbbbwwwwwwk.", ".kbbbbbwwwwwwwk.", ".kbbbbbwwwwwwwko",
+               ".kbbbbbwwwwwwpk.", ".kbbkbbwwwwwwwk.", ".kbbbkbwwwwwwwk.", "..kbbbkwwwwwwk..",
+               "...kkkkkkkkkk..."],
+        feet: ["...kook..kook...", "....kook.kook..."]),
+    Pet(id: "puddle", name: "Puddle the slime", palette: [
+            "k": rgb(0.14, 0.31, 0.42), "c": rgb(0.56, 0.85, 0.95), "H": rgb(1.00, 1.00, 1.00),
+            "d": rgb(0.39, 0.71, 0.86), "p": rgb(1.00, 0.62, 0.70)],
+        body: ["................", "................", "................", ".....kkkkkk.....",
+               "...kkcccccckk...", "..kcHcccccccck..", ".kcHcccccccccck.", ".kcccccccccccck.",
+               ".kccccccpccccpk.", ".kcccccccccccck.", ".kdccccccccccck.", ".kddcccccccccck.",
+               ".kddddcccccccck."],
+        feet: ["..kkkkkkkkkkkk..", ".kkkkkkkkkkkkkk."],
+        sitBase: "..kkkkkkkkkkkk..", paw: "c"),
+    Pet(id: "sprout", name: "Sprout the seedling", palette: [
+            "k": rgb(0.14, 0.25, 0.16), "w": rgb(0.71, 0.88, 0.54), "s": rgb(0.55, 0.76, 0.40),
+            "L": rgb(0.36, 0.70, 0.32), "S": rgb(0.25, 0.54, 0.23), "p": rgb(1.00, 0.62, 0.70)],
+        body: ["..kkk...kkk.....", ".kLLLk.kLLLk....", "..kLLLkLLLk.....", "..kkkkSkkkkkkk..",
+               ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.",
+               ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
+               "...kkkkkkkkkk..."],
+        feet: ["..kwk.....kwk...", "....kwk.kwk....."]),
+]
+
+func pet(withID id: String) -> Pet { pets.first { $0.id == id } ?? pets[0] }
 
 /// Something the pet holds or uses, drawn in front of it.
 /// `col` is the sprite column of the prop's left edge (facing right); `lift` is art pixels above the ground.
@@ -159,6 +204,7 @@ final class PetView: NSView {
     var petX: CGFloat = 0
     var targetX: CGFloat = 0
     var facingLeft = false
+    var pet: Pet = pets[0]
     var range: CGFloat = 80
     var screenFrame: NSRect = .zero
 
@@ -366,18 +412,18 @@ final class PetView: NSView {
         let eyes: Eyes = blink ? .closed : .open
         let beat = Int(clock / 0.16) % 2 == 0
         let t = now - modeStart
-        if dragging { return makeFrame(.happy, Int(clock / 0.1) % 2 == 0 ? .a : .b) }
+        let step = { (period: Double) in Int(self.clock / period) % 2 }
+        if dragging { return pet.frame(.happy, .stand(step(0.1))) }
         switch mode {
-        case .walking:  return makeFrame(.open, Int(clock / 0.18) % 2 == 0 ? .a : .b)
-        case .idle:     return makeFrame(eyes, .a)
-        case .sitting:  return makeFrame(eyes, .none, drop: 1)
-        case .typing:   return makeFrame(eyes, .none, drop: 1)
-        case .cheering: return makeFrame(.happy, beat ? .a : .none, drop: beat ? 0 : 1)
-        case .sleeping: return makeFrame(.closed, .none, drop: 1)
-        case .sweeping: return makeFrame(eyes, Int(clock / 0.3) % 2 == 0 ? .a : .b)
-        case .reading:  return makeFrame(eyes, .none, drop: 1)
-        case .drinking: return makeFrame(isSipping(t) ? .happy : .open, .none, drop: 1)
-        case .eating:   return makeFrame(Int(clock / 0.4) % 2 == 0 ? .happy : .open, .none, drop: 1)
+        case .walking:  return pet.frame(.open, .stand(step(0.18)))
+        case .idle:     return pet.frame(eyes, .stand(0))
+        case .sitting, .typing, .reading:
+                        return pet.frame(eyes, .sit)
+        case .cheering: return pet.frame(.happy, beat ? .stand(0) : .sit)
+        case .sleeping: return pet.frame(.closed, .sit)
+        case .sweeping: return pet.frame(eyes, .stand(step(0.3)))
+        case .drinking: return pet.frame(isSipping(t) ? .happy : .open, .sit)
+        case .eating:   return pet.frame(step(0.4) == 0 ? .happy : .open, .sit)
         }
     }
 
@@ -420,9 +466,12 @@ final class PetView: NSView {
         NSGraphicsContext.current?.shouldAntialias = false
 
         // Sprite: art row 13 (feet) sits on the ground line, so shift down 2 art pixels.
-        drawGrid(currentFrame(), x: drawX, col: 0, bottomY: -2 * pixel)
+        drawGrid(currentFrame(), palette: pet.palette, x: drawX, col: 0, bottomY: -2 * pixel)
         if let prop = currentProp() {
-            drawGrid(prop.rows, x: drawX, col: prop.col, bottomY: CGFloat(prop.lift) * pixel)
+            var colors = propPalette
+            colors["w"] = pet.palette[pet.paw]
+            colors["k"] = pet.palette["k"]
+            drawGrid(prop.rows, palette: colors, x: drawX, col: prop.col, bottomY: CGFloat(prop.lift) * pixel)
         }
 
         NSGraphicsContext.current?.shouldAntialias = true
@@ -440,7 +489,7 @@ final class PetView: NSView {
     }
 
     /// Draws pixel rows whose left edge is sprite column `col` and whose bottom row sits at `bottomY`.
-    private func drawGrid(_ rows: [String], x: CGFloat, col: Int, bottomY: CGFloat) {
+    private func drawGrid(_ rows: [String], palette: [Character: NSColor], x: CGFloat, col: Int, bottomY: CGFloat) {
         for (r, row) in rows.enumerated() {
             let y = bottomY + CGFloat(rows.count - 1 - r) * pixel
             for (c, ch) in row.enumerated() {
@@ -590,6 +639,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
 
         view = PetView()
+        view.pet = pet(withID: defaults.string(forKey: "pet") ?? "mochi")
         view.onHomeMoved = { [weak self] in self?.homeMoved() }
         window.contentView = view
         layout()
@@ -598,7 +648,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if visible { window.orderFrontRegardless() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.image = Self.menuBarIcon()
+        statusItem.button?.image = Self.menuBarIcon(for: view.pet)
         rebuildMenu()
 
         // `--demo` cycles through every activity and reminder, for trying the app out.
@@ -723,11 +773,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Menu
 
-    /// The pet's face in its own colours (cream body, pink ears). 1.5 pt per art pixel
+    /// The pet in its own colours, cropped to its drawn pixels. 1.5 pt per art pixel
     /// is 3 device pixels on Retina, so it stays crisp at about the height of other icons.
-    static func menuBarIcon() -> NSImage {
-        let rows = Array(makeFrame(.open, .none)[1...12])   // ears down to the bottom outline
-        let cols = 1...14
+    static func menuBarIcon(for pet: Pet) -> NSImage {
+        let all = pet.rows(eyes: .open)
+        let used = all.indices.filter { all[$0].contains { $0 != "." } }
+        let rows = Array(all[used.first!...used.last!])
+        let colsUsed = (0..<16).filter { c in rows.contains { Array($0)[c] != "." } }
+        let cols = colsUsed.first!...colsUsed.last!
+        let palette = pet.palette
         let px: CGFloat = 1.5
         let size = NSSize(width: CGFloat(cols.count) * px, height: CGFloat(rows.count) * px)
         let image = NSImage(size: size, flipped: false) { _ in
@@ -752,6 +806,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let show = NSMenuItem(title: "Show Pet", action: #selector(toggleVisible), keyEquivalent: "")
         show.state = visible ? .on : .off
         menu.addItem(show)
+
+        let petItem = NSMenuItem(title: "Pet", action: nil, keyEquivalent: "")
+        let petMenu = NSMenu()
+        for (i, p) in pets.enumerated() {
+            let item = NSMenuItem(title: p.name, action: #selector(pickPet(_:)), keyEquivalent: "")
+            item.tag = i
+            item.image = Self.menuBarIcon(for: p)
+            item.state = p.id == view.pet.id ? .on : .off
+            item.target = self
+            petMenu.addItem(item)
+        }
+        petItem.submenu = petMenu
+        menu.addItem(petItem)
         menu.addItem(.separator())
 
         let rangeItem = NSMenuItem(title: "Roam Range", action: nil, keyEquivalent: "")
@@ -882,6 +949,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         waterOn.toggle()
         defaults.set(waterOn, forKey: "water")
         activeSinceWater = 0
+        rebuildMenu()
+    }
+
+    @objc func pickPet(_ sender: NSMenuItem) {
+        let chosen = pets[sender.tag]
+        view.pet = chosen
+        defaults.set(chosen.id, forKey: "pet")
+        statusItem.button?.image = Self.menuBarIcon(for: chosen)
+        view.petted()
+        view.say("hi, I'm \(chosen.name.components(separatedBy: " ").first!)!", for: 2.5)
         rebuildMenu()
     }
 

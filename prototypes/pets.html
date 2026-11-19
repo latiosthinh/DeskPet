@@ -1,0 +1,398 @@
+<title>DeskPet Pet Lineup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column; current pet as a wide reference card, then a 3-up grid of candidates. */
+:root {
+  --bg: #f4f3f8;
+  --surface: #ffffff;
+  --ink: #241f31;
+  --muted: #676179;
+  --line: #e1dde9;
+  --accent: #d4587a;
+  --accent-ink: #ffffff;
+  --sky: #faf9fd;
+  --floor: #e7e3ef;
+  --floor-edge: #d3cde0;
+  --font-display: "Silkscreen", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15131c; --surface: #1e1b27; --ink: #eeeaf6; --muted: #a39db4; --line: #2e2a3a;
+    --accent: #ff9eb3; --accent-ink: #241f31; --sky: #1a1822; --floor: #2a2636; --floor-edge: #373146;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15131c; --surface: #1e1b27; --ink: #eeeaf6; --muted: #a39db4; --line: #2e2a3a;
+  --accent: #ff9eb3; --accent-ink: #241f31; --sky: #1a1822; --floor: #2a2636; --floor-edge: #373146;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 28px;
+}
+header { display: grid; gap: 10px; max-width: 64ch; }
+.eyebrow { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; color: var(--accent); text-transform: uppercase; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); }
+
+.toolbar { display: grid; gap: 8px; }
+.toolbar-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions button {
+  font: 500 13px/1 var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 13px; cursor: pointer;
+}
+.actions button:hover { border-color: var(--accent); }
+.actions button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 18px; margin: 0; }
+.section-head span { color: var(--muted); font-size: 13px; }
+
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  display: grid; grid-template-rows: auto 1fr; overflow: hidden; min-width: 0;
+}
+.card.wide { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto; }
+@media (max-width: 560px) { .card.wide { grid-template-columns: minmax(0, 1fr); } }
+.stage { background: var(--sky); border-bottom: 1px solid var(--line); display: grid; place-items: center; cursor: pointer; }
+.card.wide .stage { border-bottom: 0; border-right: 1px solid var(--line); }
+.card.wide canvas { max-width: 340px; }
+@media (max-width: 560px) { .card.wide .stage { border-right: 0; border-bottom: 1px solid var(--line); } }
+canvas { display: block; width: 100%; max-width: 100%; height: auto; image-rendering: pixelated; }
+.info { padding: 14px 16px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.name { font-family: var(--font-display); font-size: 18px; }
+.chip { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+.chip.now { color: var(--accent); border-color: var(--accent); }
+.info p { margin: 0; color: var(--muted); font-size: 14px; }
+.swatches { display: flex; gap: 6px; }
+.swatches i { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); display: block; }
+.trait { font-size: 13px; }
+.trait b { font-weight: 600; }
+
+.note { background: var(--surface); border: 1px dashed var(--floor-edge); border-radius: 14px; padding: 16px 18px; display: grid; gap: 6px; }
+.note h2 { font-size: 15px; }
+.note p, .note li { margin: 0; color: var(--muted); font-size: 14px; }
+.note ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+</style>
+
+<main class="wrap">
+  <header>
+    <div class="eyebrow">DeskPet · prototype for review</div>
+    <h1>Pick the next pets</h1>
+    <p>Six new pets on the same 16×16 grid as Mochi, so each one can use the laptop, broom, book, cup and bowl. Choose an action to see them all do it. Click a pet to pet it.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-label" id="actions-label">Action</div>
+    <div class="actions" role="group" aria-labelledby="actions-label" id="actions"></div>
+  </div>
+
+  <section style="display:grid; gap:12px">
+    <div class="section-head"><h2>Current pet</h2><span>For comparison</span></div>
+    <div id="current"></div>
+  </section>
+
+  <section style="display:grid; gap:12px">
+    <div class="section-head"><h2>New candidates</h2><span>6 pets</span></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="note">
+    <h2>How this would work in the app</h2>
+    <ul>
+      <li>A new <b>Pet</b> submenu in the menu bar to switch between the pets you keep. The menu-bar icon follows the chosen pet.</li>
+      <li>Every pet does all the same things: laptop when you type, sweeping, reading, water and meal reminders, sleeping.</li>
+      <li>Tell me which pets to keep, and anything to change about their looks or colours.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+// ---- Pet designs: 13 body rows facing right (eyes drawn separately at row 6–7), plus two walking-feet rows.
+const PETS = [
+  { id: "mochi", name: "Mochi", species: "Cat", now: true,
+    blurb: "The cream critter with pink ears that lives beside your Dock today.",
+    trait: "<b>Looks:</b> round head, pointy ears, rosy cheeks.",
+    pal: { k: "#33293d", w: "#fcf2e3", s: "#e3d1c2", p: "#ff9eb3" },
+    rows: ["................","...kk......kk...","..kppk....kppk..","..kpwkkkkkkwpk..",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwpwwwwpk.",".kswwwwwwwwwwwk.",".ksswwwwwwwwwwk.","..ksssswwwwwwk..","...kkkkkkkkkk..."],
+    feet: ["..kwk.....kwk...","....kwk.kwk....."] },
+  { id: "bao", name: "Bao", species: "Bunny",
+    blurb: "Lavender-white bunny, a little shy.",
+    trait: "<b>Looks:</b> tall ears, cotton tail at the back.",
+    pal: { k: "#3a3150", w: "#f6f3ff", s: "#d9d3f0", p: "#ffa8c2" },
+    rows: ["......k...k.....",".....kpk.kpk....",".....kpk.kpk....","..kkkkpkkkpkkk..",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwpwwwwpk.","kwswwwwwwwwwwwk.","kwsswwwwwwwwwwk.",".kksssswwwwwwk..","...kkkkkkkkkk..."],
+    feet: ["..kwk.....kwk...","....kwk.kwk....."] },
+  { id: "ember", name: "Ember", species: "Fox",
+    blurb: "Orange fox, busy and curious.",
+    trait: "<b>Looks:</b> pointed ears, cream muzzle, white-tipped tail.",
+    pal: { k: "#3b2420", w: "#f2873a", s: "#d46a2a", c: "#fff1dc" },
+    rows: [".....k.....k....","....kwk...kwk...","....kwwk.kwwk...","...kwwwkkkwwwk..","...kwwwwwwwwwwk.","...kwwwwwwwwwwk.",".k.kwwwwwwwwwwk.","kckkwwwwwwwwwwk.","kwkkwwwwccccckk.","kwwkswwwcccccck.","kwwksswwwccccck.",".kkkssswwwwwwk..","....kkkkkkkkk..."],
+    feet: ["....kwk...kwk...",".....kwk.kwk...."] },
+  { id: "pip", name: "Pip", species: "Penguin",
+    blurb: "Small penguin that waddles along the floor.",
+    trait: "<b>Looks:</b> navy back, white face, orange beak and feet.",
+    pal: { k: "#1e2233", b: "#3c4a6e", w: "#ffffff", o: "#ffa63d", p: "#ff9eb3" },
+    rows: ["................","................",".....kkkkkk.....","...kkbbbbbbkk...","..kbbbbbbwwwwk..",".kbbbbbbwwwwwwk.",".kbbbbbwwwwwwwk.",".kbbbbbwwwwwwwko",".kbbbbbwwwwwwpk.",".kbbkbbwwwwwwwk.",".kbbbkbwwwwwwwk.","..kbbbkwwwwwwk..","...kkkkkkkkkk..."],
+    feet: ["...kook..kook...","....kook.kook..."] },
+  { id: "puddle", name: "Puddle", species: "Slime",
+    blurb: "A blue jelly blob that wobbles instead of walking.",
+    trait: "<b>Looks:</b> glossy shine, no ears or legs.",
+    pal: { k: "#24506b", c: "#8fd8f2", H: "#ffffff", d: "#63b5db", p: "#ff9eb3" },
+    rows: ["................","................","................",".....kkkkkk.....","...kkcccccckk...","..kcHcccccccck..",".kcHcccccccccck.",".kcccccccccccck.",".kccccccpccccpk.",".kcccccccccccck.",".kdccccccccccck.",".kddcccccccccck.",".kddddcccccccck."],
+    feet: ["..kkkkkkkkkkkk..",".kkkkkkkkkkkkkk."] },
+  { id: "nugget", name: "Nugget", species: "Hamster",
+    blurb: "Golden hamster with a round, chubby face.",
+    trait: "<b>Looks:</b> small round ears, puffy cheeks, cream tummy.",
+    pal: { k: "#4a2e1e", w: "#f7c276", s: "#e09f55", c: "#fff1d6", p: "#ff9eb3" },
+    rows: ["................","................","..kkk.....kkk...","..kpkkkkkkkpkk..",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwpccccpk.",".kswwwwwcccccck.",".ksswwwwcccccck.","..kssssswcccck..","...kkkkkkkkkk..."],
+    feet: ["..kpk.....kpk...","....kpk.kpk....."] },
+  { id: "sprout", name: "Sprout", species: "Seedling",
+    blurb: "A leafy little bean that grew legs.",
+    trait: "<b>Looks:</b> two-leaf sprout on top, spring green.",
+    pal: { k: "#24402a", w: "#b6e08a", s: "#8cc266", L: "#5db352", S: "#3f8a3b", p: "#ff9eb3" },
+    rows: ["..kkk...kkk.....",".kLLLk.kLLLk....","..kLLLkLLLk.....","..kkkkSkkkkkkk..",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwwwwwwwk.",".kwwwwwwpwwwwpk.",".kswwwwwwwwwwwk.",".ksswwwwwwwwwwk.","..ksssswwwwwwk..","...kkkkkkkkkk..."],
+    feet: ["..kwk.....kwk...","....kwk.kwk....."] },
+];
+const EYES = [9, 12];
+
+// ---- Props, same art as the app. Column 14 is the body's front outline.
+const PROP_PAL = { k: "#33293d", g: "#a8adbd", b: "#73c7ff", B: "#d9f7ff", n: "#94613a", y: "#f5c75c",
+                   r: "#de5761", i: "#ffffff", s: "#d9d3c8", c: "#8cd1ff", o: "#ed7552" };
+const Props = {
+  laptopClosed: ["kkkkkkkkk.","kgggggggk.","kkkkkkkkk."],
+  laptopOpen: (pawUp, flicker) => ["........kk",".......kbk",flicker ? ".......kBk" : ".......kbk","......kbk.",
+    pawUp ? "kwk...kbk." : ".kwk..kBk.","kkkkkkkkk.","kgggggggk.","kkkkkkkkk."],
+  broom: swish => { const h = ["n......",".n.....","..n....","...n..."], s = ["..kkk..",".kyyyk.","kyyyyyk"];
+    return h.concat(swish ? s.map(r => "." + r.slice(0, -1)) : s); },
+  book: flip => [".kk.kk.", flip ? "kiiksik" : "kiikiik", "kiikiik", "kiikiik", "krrrrrk"],
+  cup: left => { const full = Math.max(0, Math.min(3, Math.ceil(left * 3)));
+    return ["k...k"].concat([0,1,2].map(i => i >= 3 - full ? "kccck" : "k...k"), [".kkk."]); },
+  bowl: left => (left > 0.5 ? ["..iiiii..",".iiiiiii."] : left > 0.05 ? [".........",".iiiiiii."] : [".........","........."])
+    .concat(["koooooook",".koooook."]),
+};
+
+const ACTIONS = [
+  ["walk", "Walk"], ["type", "Type on laptop"], ["sweep", "Sweep"], ["read", "Read"],
+  ["drink", "Drink water"], ["eat", "Eat"], ["sleep", "Sleep"], ["sit", "Sit"],
+];
+let action = "walk";
+let actionStart = performance.now() / 1000;
+
+// ---- Building a frame
+function petFrame(pet, eyes, feetIndex, drop) {
+  const rows = pet.rows.map(r => r.split(""));
+  for (const c of EYES) {
+    if (eyes === "open") { rows[6][c] = "k"; rows[7][c] = "k"; }
+    else if (eyes === "closed") { rows[7][c - 1] = "k"; rows[7][c] = "k"; }
+    else if (eyes === "happy") { rows[6][c] = "k"; rows[7][c - 1] = "k"; rows[7][c + 1] = "k"; }
+  }
+  if (feetIndex != null) rows.push(pet.feet[feetIndex].split(""));
+  return { rows, drop };
+}
+
+// ---- Stages
+const COLS = 36, ROWS = 21, FLOOR = 19;   // art pixels; the floor line is at row 19
+const stages = [];
+
+function makeCard(pet, wide) {
+  const card = document.createElement("article");
+  card.className = "card" + (wide ? " wide" : "");
+  const sw = Object.entries(pet.pal).filter(([k]) => k !== "k").map(([, v]) => `<i style="background:${v}" title="${v}"></i>`).join("");
+  card.innerHTML = `
+    <div class="stage" role="button" tabindex="0" aria-label="Pet ${pet.name}"><canvas></canvas></div>
+    <div class="info">
+      <div class="name-row"><span class="name">${pet.name}</span><span class="chip${pet.now ? " now" : ""}">${pet.now ? "In the app now" : pet.species}</span></div>
+      <p>${pet.blurb}</p>
+      <div class="trait">${pet.trait}</div>
+      <div class="swatches" aria-label="Colours">${sw}</div>
+    </div>`;
+  const stageEl = card.querySelector(".stage");
+  const canvas = card.querySelector("canvas");
+  const st = { pet, canvas, ctx: canvas.getContext("2d"), cheerUntil: 0, particles: [], lastPuff: 0,
+               seed: Math.random() * 10 };
+  const cheer = () => {
+    const t = performance.now() / 1000;
+    st.cheerUntil = t + 1.6;
+    for (let i = 0; i < 3; i++) st.particles.push(particle("♥", "#ff6f96", st._petCenter ?? 14, 7, 1.4));
+  };
+  stageEl.addEventListener("click", cheer);
+  stageEl.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cheer(); } });
+  stages.push(st);
+  return card;
+}
+
+function particle(text, color, x, y, life, opts = {}) {
+  return { text, color, x: x + (Math.random() * 3 - 2), y: y + (Math.random() * 1.5 - 0.75),
+           vx: opts.vx ?? (Math.random() * 3 - 1.5), vy: opts.vy ?? -(3.5 + Math.random() * 2.5),
+           life, maxLife: life, size: opts.size ?? 2.4 };
+}
+
+document.getElementById("current").appendChild(makeCard(PETS[0], true));
+const grid = document.getElementById("grid");
+PETS.slice(1).forEach(p => grid.appendChild(makeCard(p, false)));
+
+const actionsEl = document.getElementById("actions");
+for (const [id, label] of ACTIONS) {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = label; b.id = "action-" + id;
+  b.setAttribute("aria-pressed", String(id === action));
+  b.addEventListener("click", () => {
+    action = id; actionStart = performance.now() / 1000;
+    stages.forEach(s => { s.particles = []; });
+    actionsEl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  });
+  actionsEl.appendChild(b);
+}
+
+// ---- Drawing
+let colors = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  colors = { sky: cs.getPropertyValue("--sky").trim(), floor: cs.getPropertyValue("--floor").trim(),
+             edge: cs.getPropertyValue("--floor-edge").trim(), muted: cs.getPropertyValue("--muted").trim() };
+}
+readColors();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readColors);
+new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function sizeCanvas(st) {
+  const cssW = st.canvas.clientWidth || 300;
+  const px = cssW / COLS;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(cssW * dpr), h = Math.round(px * ROWS * dpr);
+  if (st.canvas.width !== w || st.canvas.height !== h) { st.canvas.width = w; st.canvas.height = h; }
+  return w / COLS;   // device pixels per art pixel
+}
+
+function drawGrid(ctx, rows, pal, x0, yTop, facingLeft, colOffset, u) {
+  rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      const color = pal[row[c]];
+      if (!color) continue;
+      const col = colOffset + c;
+      const drawCol = facingLeft ? 15 - col : col;
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round((x0 + drawCol) * u), Math.round((yTop + r) * u), Math.ceil(u), Math.ceil(u));
+    }
+  });
+}
+
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+
+function render(st, now, dt) {
+  const { ctx, pet } = st;
+  const u = sizeCanvas(st);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = colors.sky; ctx.fillRect(0, 0, st.canvas.width, st.canvas.height);
+  ctx.fillStyle = colors.floor; ctx.fillRect(0, FLOOR * u, st.canvas.width, (ROWS - FLOOR) * u);
+  ctx.fillStyle = colors.edge; ctx.fillRect(0, FLOOR * u, st.canvas.width, Math.max(1, Math.round(u / 3)));
+
+  const clock = reduceMotion.matches ? 0.5 : now + st.seed * 0.37;
+  const t = reduceMotion.matches ? 1 : now - actionStart;
+  const blink = (clock % 4.2) < 0.14;
+  const eyes = blink ? "closed" : "open";
+  const alt = period => Math.floor(clock / period) % 2 === 0;
+
+  // Position and facing
+  let x = 10, facingLeft = false;
+  if (action === "walk" || action === "sweep") {
+    const lo = action === "walk" ? 3 : 7, hi = action === "walk" ? 17 : 12, speed = action === "walk" ? 7 : 2;
+    const span = hi - lo, p = ((t + st.seed) * speed) % (2 * span);
+    x = p < span ? lo + p : hi - (p - span);
+    facingLeft = p >= span;
+  }
+  const cheering = now < st.cheerUntil;
+  let frame, prop = null;
+  if (cheering) {
+    const beat = alt(0.16);
+    frame = petFrame(pet, "happy", beat ? 0 : null, beat ? 0 : 1);
+  } else switch (action) {
+    case "walk":  frame = petFrame(pet, "open", alt(0.18) ? 0 : 1, 0); break;
+    case "sit":   frame = petFrame(pet, eyes, null, 1); break;
+    case "sleep": frame = petFrame(pet, "closed", null, 1); break;
+    case "type":
+      frame = petFrame(pet, eyes, null, 1);
+      prop = (t % 6) < 0.3 ? { rows: Props.laptopClosed, col: 14, lift: 0 }
+                           : { rows: Props.laptopOpen(alt(0.12), alt(0.5)), col: 14, lift: 0 };
+      break;
+    case "sweep":
+      frame = petFrame(pet, eyes, alt(0.3) ? 0 : 1, 0);
+      prop = { rows: Props.broom(alt(0.3)), col: 14, lift: 0 };
+      break;
+    case "read":
+      frame = petFrame(pet, eyes, null, 1);
+      prop = { rows: Props.book((t % 3) < 0.25), col: 13, lift: 3 };
+      break;
+    case "drink": {
+      const sip = (t % 1.6) > 1.0;
+      frame = petFrame(pet, sip ? "happy" : "open", null, 1);
+      prop = { rows: Props.cup(1 - (t % 7) / 7), col: 14, lift: sip ? 5 : 3 };
+      break;
+    }
+    case "eat":
+      frame = petFrame(pet, alt(0.4) ? "happy" : "open", null, 1);
+      prop = { rows: Props.bowl(1 - (t % 9) / 9), col: 14, lift: 0 };
+      break;
+  }
+
+  // Sprite row 13 (feet) sits on the floor: top of sprite at FLOOR - 14.
+  const xi = Math.round(x);
+  const top = FLOOR - 14 + frame.drop;
+  drawGrid(ctx, frame.rows, pet.pal, xi, top, facingLeft, 0, u);
+  if (prop) {
+    const propTop = FLOOR - prop.lift - prop.rows.length;
+    drawGrid(ctx, prop.rows, { ...PROP_PAL, w: pet.pal.w }, xi, propTop, facingLeft, prop.col, u);
+  }
+  st._petCenter = xi + 7;
+
+  // Particles
+  if (!reduceMotion.matches && !cheering) {
+    const colX = col => xi + (facingLeft ? 15 - col : col);
+    if (action === "sweep" && now - st.lastPuff > 0.35) {
+      st.lastPuff = now; st.particles.push(particle("·", "#b08458", colX(19), FLOOR - 0.5, 0.9, { vx: Math.random() * 5 - 2.5, vy: -(1 + Math.random() * 2), size: 3 }));
+    }
+    if (action === "sleep" && now - st.lastPuff > 1.3) {
+      st.lastPuff = now; st.particles.push(particle("z", colors.muted, xi + 9, top + 3, 2.2));
+    }
+    if (action === "eat" && now - st.lastPuff > 0.8) {
+      st.lastPuff = now; st.particles.push(particle("~", colors.muted, colX(18), FLOOR - 4, 1.2, { vx: Math.random() - 0.5, vy: -(2 + Math.random()), size: 2.2 }));
+    }
+  }
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  st.particles = st.particles.filter(p => (p.life -= dt) > 0);
+  for (const p of st.particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    ctx.globalAlpha = Math.max(0, Math.min(1, (p.life / p.maxLife) * 1.5));
+    ctx.fillStyle = p.color;
+    ctx.font = `700 ${Math.round(p.size * u)}px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.fillText(p.text, p.x * u, p.y * u);
+  }
+  ctx.globalAlpha = 1;
+}
+
+let last = performance.now() / 1000;
+function loop() {
+  const now = performance.now() / 1000;
+  const dt = Math.min(0.1, now - last); last = now;
+  stages.forEach(st => render(st, now, dt));
+  requestAnimationFrame(loop);
+}
+loop();
+addEventListener("resize", () => stages.forEach(st => render(st, performance.now() / 1000, 0)));
+</script>

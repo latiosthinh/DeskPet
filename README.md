@@ -1,6 +1,8 @@
 # DeskPet
 
-A tiny pixel critter that lives in the bottom-right corner of your Mac, next to the Dock.
+A tiny pixel pet that lives in the bottom-right corner of your Mac, next to the Dock.
+
+Choose from five pets: **Mochi** the cream cat, **Ember** the fox, **Pip** the penguin, **Puddle** the slime and **Sprout** the seedling.
 
 - Wanders back and forth inside a small, limited area, sits, blinks, and turns to look at your mouse pointer.
 - When you type, it pulls out its own little laptop and types along.
@@ -8,13 +10,14 @@ A tiny pixel critter that lives in the bottom-right corner of your Mac, next to 
 - Reminds you to drink water, eat lunch and dinner, and take a stretch break, and acts each one out.
 - Falls asleep after 90 seconds away, and wakes up when you come back.
 - Click it to pet it (this also dismisses a reminder). Drag it to move its home.
-- Menu-bar only (a tiny pink-eared pet face), no Dock icon, and no Accessibility or Input Monitoring permission needed.
+- Menu-bar only (a tiny picture of your pet), no Dock icon, and no Accessibility or Input Monitoring permission needed.
 
 ## Menu-bar menu
 
 | Item | What it does |
 | --- | --- |
 | Show Pet | Show or hide the pet |
+| Pet | Switch between Mochi, Ember, Pip, Puddle and Sprout. The menu-bar icon follows your choice |
 | Roam Range | How far it may walk from home: Stay Put, Tiny ±80 pt (default), Small ±160, Medium ±300, Large ±500 |
 | Show Roam Area | Briefly outlines the area it walks in |
 | Move Home to Corner | Puts it back in the bottom-right corner |
