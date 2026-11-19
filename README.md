@@ -1,6 +1,6 @@
 # DeskPet
 
-A tiny pixel pet that lives in the bottom-right corner of your Mac, next to the Dock.
+A tiny pixel pet that lives in the bottom-right corner of your Mac, next to the Dock. There's a [Windows 10/11 version](#windows) too, which stands on top of the taskbar.
 
 Choose from five pets: **Mochi** the cream cat comes free, and **Ember** the fox, **Pip** the penguin, **Puddle** the slime and **Sprout** the seedling are premium pets you unlock with a code.
 
@@ -63,6 +63,43 @@ open ~/Applications/DeskPet.app --args --demo     # cycle through every activity
 open ~/Applications/DeskPet.app --args --tricks   # only the current pet's tricks
 open ~/Applications/DeskPet.app --args --typing   # what the current pet does while you type
 ```
+
+## Windows
+
+The Windows version (in `windows/`) has the same pets, tricks, typing activities, reminders and menu. The pet stands on top of the taskbar, above the clock.
+
+- **Menu:** click the pet's icon in the system tray, or right-click the pet itself. Windows 11 puts new tray icons in the overflow (**^**) at first; drag it onto the taskbar, or turn it on in **Settings → Personalization → Taskbar → Other system tray icons**.
+- **Open at Login** adds DeskPet to your startup apps. If you turn it off in **Task Manager → Startup apps**, the menu shows a dot instead of a tick; choosing it turns it back on.
+- The pet hides while a fullscreen app, game or presentation is in front.
+- Speech bubbles show little pixel pictures instead of emoji.
+- Settings are kept in the registry under `HKCU\Software\DeskPet`. Your code is remembered on this PC.
+
+### Install
+
+1. Download `DeskPet-<version>-windows.zip` from the latest release and unzip it anywhere, for example into `%LOCALAPPDATA%\Programs\DeskPet`.
+2. Run `DeskPet.exe`. It isn't signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
+
+It needs nothing else: it runs on .NET Framework 4.8, which comes with Windows 10 and 11.
+
+### Build from source
+
+Requires the [.NET SDK](https://dotnet.microsoft.com/download) (any recent version).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\build.ps1                    # build build\DeskPet.exe
+powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Zip               # also make the release zip
+powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run -RunArgs --demo
+```
+
+`--demo`, `--tricks` and `--typing` work the same as on the Mac. `windows\make-icon.ps1` redraws `DeskPet.ico` from Mochi's art.
+
+To make codes on Windows, use `Scripts\make-codes.ps1` (same codes, same secret file):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10
+```
+
+**Copy your secret first.** The Windows build reads the same `~/.config/deskpet/code-secret` as the Mac build (`C:\Users\<you>\.config\deskpet\code-secret` on Windows). Copy that file over from your Mac before the first Windows build, or the build makes a new secret and your existing codes won't work in it.
 
 ## Making unlock codes (developer)
 
