@@ -6,7 +6,7 @@ Choose from five pets: **Mochi** the cream cat, **Ember** the fox, **Pip** the p
 
 ## Pet tricks
 
-Besides the shared activities, each pet has its own tricks, which it does now and then on its own. You can also start one from the menu bar under **Tricks**.
+Besides the shared activities, each pet has its own tricks. It does one on its own every 4–8 minutes (the first comes 1–3 minutes after launch). You can also start one from the menu bar under **Tricks**.
 
 | Pet | Tricks |
 | --- | --- |

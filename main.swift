@@ -270,6 +270,9 @@ final class PetView: NSView {
     var chaseMoving = false
     var bubbleScale: CGFloat = 1
     var dotX: CGFloat = 0
+    /// When the pet may do its next trick on its own.
+    var nextTrickAt: TimeInterval?
+    static let trickGap: ClosedRange<Double> = 4 * 60...8 * 60
     var range: CGFloat = 80
     var screenFrame: NSRect = .zero
 
@@ -371,8 +374,9 @@ final class PetView: NSView {
     }
 
     func decideNext() {
-        // About a third of the time, the pet does one of its own tricks.
-        if !pet.tricks.isEmpty && Double.random(in: 0..<1) < 0.33 {
+        // A trick now and then: the first 1–3 minutes after launch, then 4–8 minutes apart.
+        if nextTrickAt == nil { nextTrickAt = now + .random(in: 60...180) }
+        if !pet.tricks.isEmpty, let due = nextTrickAt, now >= due {
             let choices = pet.tricks.filter { $0 != lastTrick }
             startTrick(choices.randomElement() ?? pet.tricks[0])
             return
@@ -855,6 +859,7 @@ extension PetView {
         trickFlags = []
         trickTimers = [:]
         setMode(.trick, for: t.duration)
+        nextTrickAt = now + t.duration + .random(in: PetView.trickGap)
         trickStartFacing = facingLeft
         switch t {
         case .swim:
