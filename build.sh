@@ -9,9 +9,12 @@ mkdir -p "$APP/Contents/MacOS"
 
 VERSION="1.2.0"
 
+# The unlock-code secret lives in ~/.config/deskpet (created on first use), never in the repo.
+swift Scripts/make-codes.swift --swift-file build/CodeSecret.swift
+
 # Universal binary: Apple silicon + Intel.
-swiftc -O -target arm64-apple-macos13 main.swift -o build/DeskPet-arm64
-swiftc -O -target x86_64-apple-macos13 main.swift -o build/DeskPet-x86_64
+swiftc -O -target arm64-apple-macos13 main.swift build/CodeSecret.swift -o build/DeskPet-arm64
+swiftc -O -target x86_64-apple-macos13 main.swift build/CodeSecret.swift -o build/DeskPet-x86_64
 lipo -create build/DeskPet-arm64 build/DeskPet-x86_64 -output "$APP/Contents/MacOS/DeskPet"
 rm build/DeskPet-arm64 build/DeskPet-x86_64
 

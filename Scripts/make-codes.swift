@@ -1,77 +1,76 @@
-// Makes DeskPet unlock codes.
+// Makes DeskPet unlock codes, like 04HX7-2KQ9M-T8W3E-RZ6PN.
 //
-//   swift Scripts/make-codes.swift 5        # print 5 new codes
-//   swift Scripts/make-codes.swift --public # print the public key to put in main.swift
+//   swift Scripts/make-codes.swift 5                       # print 5 new codes
+//   swift Scripts/make-codes.swift --swift-file <path>     # used by build.sh: writes the secret as Swift
 //
-// The first run creates a private signing key at ~/.config/deskpet/signing-key.
-// Keep that file safe and private: anyone with it can make codes, and if you
-// lose it you can't make codes that existing copies of the app accept.
+// The first run creates a secret at ~/.config/deskpet/code-secret. It never goes into the repo;
+// build.sh puts it into the app when it builds. Keep it safe and private: anyone with it can make
+// codes, and if you lose it, copies of the app already out there won't accept new codes.
 // Codes are also appended to ~/.config/deskpet/codes.txt so you have a record.
+//
+// A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256 over it.
 
 import CryptoKit
 import Foundation
 
 let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/deskpet")
-let keyFile = dir.appendingPathComponent("signing-key")
+let secretFile = dir.appendingPathComponent("code-secret")
 let logFile = dir.appendingPathComponent("codes.txt")
 
-func loadOrCreateKey() throws -> Curve25519.Signing.PrivateKey {
-    if let data = try? Data(contentsOf: keyFile) {
-        return try Curve25519.Signing.PrivateKey(rawRepresentation: data)
-    }
+func loadOrCreateSecret() throws -> Data {
+    if let data = try? Data(contentsOf: secretFile), data.count == 32 { return data }
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
                                             attributes: [.posixPermissions: 0o700])
-    let key = Curve25519.Signing.PrivateKey()
-    try key.rawRepresentation.write(to: keyFile)
-    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: keyFile.path)
-    FileHandle.standardError.write("Created a new signing key at \(keyFile.path). Back it up somewhere safe.\n".data(using: .utf8)!)
-    return key
+    let secret = Data((0..<32).map { _ in UInt8.random(in: 0...255) })
+    try secret.write(to: secretFile)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: secretFile.path)
+    FileHandle.standardError.write("Created a new code secret at \(secretFile.path). Back it up somewhere safe.\n".data(using: .utf8)!)
+    return secret
 }
 
-/// Crockford base32: no I, L, O or U, so codes are easy to read back.
+/// Crockford base32: no I, L, O or U, so codes are easy to read and type.
 let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
-func base32(_ data: Data) -> String {
-    var out = "", buffer = 0, bits = 0
-    for byte in data {
-        buffer = (buffer << 8) | Int(byte)
-        bits += 8
-        while bits >= 5 {
-            out.append(alphabet[(buffer >> (bits - 5)) & 31])
-            bits -= 5
-        }
-    }
-    if bits > 0 { out.append(alphabet[(buffer << (5 - bits)) & 31]) }
-    return out
+func bits(_ bytes: [UInt8], count: Int) -> [Bool] {
+    (0..<count).map { i in bytes[i / 8] & (0x80 >> UInt8(i % 8)) != 0 }
 }
 
-/// Payload: version (1), what it unlocks (1: all pets), and 6 random bytes as a serial.
-func makeCode(_ key: Curve25519.Signing.PrivateKey) throws -> String {
-    var payload = Data([1, 1])
-    payload.append(contentsOf: (0..<6).map { _ in UInt8.random(in: 0...255) })
-    let signature = try key.signature(for: payload)
-    let body = base32(payload + signature)
-    let groups = stride(from: 0, to: body.count, by: 6).map { i -> String in
-        let start = body.index(body.startIndex, offsetBy: i)
-        let end = body.index(start, offsetBy: min(6, body.count - i))
-        return String(body[start..<end])
+func makeCode(secret: Data) -> String {
+    let serial = (0..<5).map { _ in UInt8.random(in: 0...255) }
+    let mac = Array(HMAC<SHA256>.authenticationCode(for: Data([1] + serial), using: SymmetricKey(data: secret)))
+    let all = bits(serial, count: 40) + bits(mac, count: 60)   // 100 bits = 20 characters
+    let chars = stride(from: 0, to: 100, by: 5).map { i -> Character in
+        alphabet[(0..<5).reduce(0) { ($0 << 1) | (all[i + $1] ? 1 : 0) }]
     }
-    return "PET-" + groups.joined(separator: "-")
+    return stride(from: 0, to: 20, by: 5).map { String(chars[$0..<$0 + 5]) }.joined(separator: "-")
 }
 
 do {
-    let key = try loadOrCreateKey()
-    let args = CommandLine.arguments.dropFirst()
-    if args.first == "--public" {
-        print(key.publicKey.rawRepresentation.base64EncodedString())
+    let secret = try loadOrCreateSecret()
+    let args = Array(CommandLine.arguments.dropFirst())
+
+    if args.first == "--swift-file", args.count == 2 {
+        // Stored as two random-looking halves so the secret isn't sitting in the app as one string.
+        let mask = (0..<32).map { _ in UInt8.random(in: 0...255) }
+        let masked = zip(secret, mask).map { $0 ^ $1 }
+        let list = { (b: [UInt8]) in b.map { String(format: "0x%02x", $0) }.joined(separator: ", ") }
+        let swift = """
+        // Generated by build.sh from ~/.config/deskpet/code-secret. Do not commit.
+        let codeSecretParts: ([UInt8], [UInt8]) = (
+            [\(list(masked))],
+            [\(list(mask))]
+        )
+
+        """
+        try swift.write(toFile: args[1], atomically: true, encoding: .utf8)
         exit(0)
     }
+
     let count = Int(args.first ?? "1") ?? 1
-    var lines: [String] = []
-    for _ in 0..<count { lines.append(try makeCode(key)) }
-    lines.forEach { print($0) }
+    let codes = (0..<count).map { _ in makeCode(secret: secret) }
+    codes.forEach { print($0) }
     let stamp = ISO8601DateFormatter().string(from: Date())
-    let record = lines.map { "\(stamp)  \($0)\n" }.joined()
+    let record = codes.map { "\(stamp)  \($0)\n" }.joined()
     if let handle = try? FileHandle(forWritingTo: logFile) {
         handle.seekToEndOfFile()
         handle.write(record.data(using: .utf8)!)

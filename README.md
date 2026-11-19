@@ -6,7 +6,7 @@ Choose from five pets: **Mochi** the cream cat comes free, and **Ember** the fox
 
 ## Premium pets
 
-Pick a locked pet (🔒) in the **Pet** menu, or choose **Unlock All Pets…**, and paste your code. It looks like `PET-040PCF-…`; spaces, dashes and upper or lower case don't matter. The code works offline and is remembered on this Mac.
+Pick a locked pet (🔒) in the **Pet** menu, or choose **Unlock All Pets…**, and paste your code. It looks like `FNPW2-A4V00-T2WYH-026P8`; spaces, dashes and upper or lower case don't matter. The code works offline and is remembered on this Mac.
 
 ## Pet tricks
 
@@ -66,14 +66,13 @@ open ~/Applications/DeskPet.app --args --typing   # what the current pet does wh
 
 ## Making unlock codes (developer)
 
-Codes are signed with a private key that never goes into the repo, so the app can check a code but nobody can make one from the app or the source.
+A code is 20 characters: a random serial number plus a check value made with a secret key. The secret is never in the repo; `build.sh` builds it into the app from your Mac.
 
 ```bash
-swift Scripts/make-codes.swift 10        # print 10 new codes
-swift Scripts/make-codes.swift --public  # print the public key that main.swift checks against
+swift Scripts/make-codes.swift 10   # print 10 new codes
 ```
 
-- The first run creates the key at `~/.config/deskpet/signing-key`. **Back it up.** Anyone who has it can make codes, and if it's lost, new codes won't work in copies of the app already out there.
+- The first run (or the first `./build.sh`) creates the secret at `~/.config/deskpet/code-secret`. **Back it up.** Anyone who has it can make codes, and if it's lost, copies of the app already out there won't accept new codes.
 - Every code made is also logged in `~/.config/deskpet/codes.txt`.
-- If you ever replace the key, put the new public key in `License.publicKey` in `main.swift` and release a new build; old codes will stop working.
-
+- Someone who builds from source without your secret gets their own new secret, so your codes won't work in their build, and theirs won't work in yours.
+- Because the app has to contain the secret to check codes, a determined person could dig it out of the app and make codes. Short codes trade that risk for being easy to type.

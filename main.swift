@@ -14,38 +14,32 @@ import CryptoKit
 
 // MARK: - Unlock codes
 
-/// Ember, Pip, Puddle and Sprout are unlocked with a code. Codes are signed with a private key
-/// that only the developer has (see Scripts/make-codes.swift), so the app can check them offline
-/// but can't make them.
+/// Ember, Pip, Puddle and Sprout are unlocked with a 20-character code (XXXXX-XXXXX-XXXXX-XXXXX):
+/// a 40-bit serial plus 60 bits of HMAC-SHA256 over it, made by Scripts/make-codes.swift.
+/// The secret comes from `codeSecretParts`, which build.sh generates outside the repo.
 enum License {
-    static let publicKey = "Mwd3j265dFNTspVBuGUDahG3FPzkTCHyEjfjYihlqUk="
     private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
     static func isValid(_ code: String) -> Bool {
         // Ignore dashes and spaces, and accept common misreadings (O for 0, I or L for 1).
-        var chars: [Character] = code.uppercased().compactMap { ch in
+        let chars: [Character] = code.uppercased().compactMap { ch in
             switch ch {
             case "O": return "0"
             case "I", "L": return "1"
             default: return alphabet.contains(ch) ? ch : nil
             }
         }
-        // Every code body starts with "0", so a leading "PET" is always the prefix.
-        if chars.starts(with: ["P", "E", "T"]) { chars.removeFirst(3) }
-        var bytes: [UInt8] = [], buffer = 0, bits = 0
-        for ch in chars {
-            buffer = (buffer << 5) | alphabet.firstIndex(of: ch)!
-            bits += 5
-            if bits >= 8 {
-                bytes.append(UInt8((buffer >> (bits - 8)) & 0xFF))
-                bits -= 8
-            }
-            buffer &= (1 << bits) - 1
+        guard chars.count == 20 else { return false }
+        let bits: [Bool] = chars.flatMap { ch -> [Bool] in
+            let v = alphabet.firstIndex(of: ch)!
+            return (0..<5).map { v & (16 >> $0) != 0 }
         }
-        guard bytes.count == 72, bytes[0] == 1, bytes[1] == 1,
-              let keyData = Data(base64Encoded: publicKey),
-              let key = try? Curve25519.Signing.PublicKey(rawRepresentation: keyData) else { return false }
-        return key.isValidSignature(Data(bytes[8..<72]), for: Data(bytes[0..<8]))
+        let serial: [UInt8] = (0..<5).map { byte in
+            (0..<8).reduce(UInt8(0)) { ($0 << 1) | (bits[byte * 8 + $1] ? 1 : 0) }
+        }
+        let secret = zip(codeSecretParts.0, codeSecretParts.1).map { $0 ^ $1 }
+        let mac = Array(HMAC<SHA256>.authenticationCode(for: Data([1] + serial), using: SymmetricKey(data: Data(secret))))
+        return (0..<60).allSatisfy { i in bits[40 + i] == (mac[i / 8] & (0x80 >> UInt8(i % 8)) != 0) }
     }
 }
 
@@ -1479,6 +1473,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         view.say("hi!", for: 2)
         if visible { window.orderFrontRegardless() }
 
+        installEditMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = Self.menuBarIcon(for: view.pet)
         rebuildMenu()
@@ -1737,6 +1732,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.menu = menu
     }
 
+    /// A menu-bar-only app has no menu bar of its own, so without this ⌘V, ⌘C and friends
+    /// do nothing in the unlock code field. The menu is never shown; it only provides the shortcuts.
+    func installEditMenu() {
+        let main = NSMenu()
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(NSMenuItem())   // the app menu slot
+        main.addItem(editItem)
+        NSApp.mainMenu = main
+    }
+
     // MARK: Open at login
 
     var loginItem: NSMenuItem?
@@ -1861,8 +1875,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             alert.informativeText = problem ?? "\(lead)Enter your DeskPet code to unlock \(ListFormatter.localizedString(byJoining: names))."
             alert.addButton(withTitle: "Unlock")
             alert.addButton(withTitle: "Cancel")
-            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 340, height: 24))
-            field.placeholderString = "PET-XXXXXX-XXXXXX-…"
+            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+            field.placeholderString = "XXXXX-XXXXX-XXXXX-XXXXX"
             field.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             alert.accessoryView = field
             alert.window.initialFirstResponder = field
@@ -1874,7 +1888,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 rebuildMenu()
                 return true
             }
-            problem = "Check that you pasted the whole code, starting with PET-. Spaces and dashes don't matter."
+            problem = "Check the code and try again. It has 20 letters and numbers; dashes, spaces and capitals don't matter."
         }
     }
 
