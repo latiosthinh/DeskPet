@@ -33,7 +33,13 @@ let propPalette: [Character: NSColor] = [
     "s": rgb(0.85, 0.82, 0.78),  // turning page
     "c": rgb(0.55, 0.82, 1.00),  // water
     "o": rgb(0.93, 0.46, 0.32),  // bowl
-    "i": rgb(1.00, 1.00, 1.00),  // rice, book pages
+    "i": rgb(1.00, 1.00, 1.00),  // rice, book pages, egg white, marshmallow
+    "d": rgb(0.30, 0.30, 0.35),  // frying pan
+    "C": rgb(0.80, 0.94, 1.00),  // water surface
+    "P": rgb(1.00, 0.62, 0.76),  // petals, butterfly, ice cream
+    "G": rgb(0.33, 0.64, 0.30),  // stems
+    "N": rgb(0.40, 0.26, 0.15),  // dark soil
+    "W": rgb(0.95, 0.96, 0.99),  // cloud
 ]
 
 let emptyRow = "................"
@@ -53,6 +59,7 @@ struct Pet {
     var sitBase: String? = nil   // a pet without legs keeps this row under it when it sits
     var paw: Character = "w"
     var eyeCols = [9, 12]
+    var tricks: [Trick] = []
 
     func rows(eyes: Eyes) -> [String] {
         var grid = body.map { Array($0) }
@@ -96,7 +103,8 @@ let pets: [Pet] = [
                "...kwwwwwwwwwwk.", "...kwwwwwwwwwwk.", ".k.kwwwwwwwwwwk.", "kckkwwwwwwwwwwk.",
                "kwkkwwwwccccckk.", "kwwkswwwcccccck.", "kwwksswwwccccck.", ".kkkssswwwwwwk..",
                "....kkkkkkkkk..."],
-        feet: ["....kwk...kwk...", ".....kwk.kwk...."]),
+        feet: ["....kwk...kwk...", ".....kwk.kwk...."],
+        tricks: [.firework, .flashlight, .flipEgg, .campfire]),
     Pet(id: "pip", name: "Pip the penguin", palette: [
             "k": rgb(0.12, 0.13, 0.20), "b": rgb(0.24, 0.29, 0.43), "w": rgb(1.00, 1.00, 1.00),
             "o": rgb(1.00, 0.65, 0.24), "p": rgb(1.00, 0.62, 0.70)],
@@ -104,7 +112,8 @@ let pets: [Pet] = [
                "..kbbbbbbwwwwk..", ".kbbbbbbwwwwwwk.", ".kbbbbbwwwwwwwk.", ".kbbbbbwwwwwwwko",
                ".kbbbbbwwwwwwpk.", ".kbbkbbwwwwwwwk.", ".kbbbkbwwwwwwwk.", "..kbbbkwwwwwwk..",
                "...kkkkkkkkkk..."],
-        feet: ["...kook..kook...", "....kook.kook..."]),
+        feet: ["...kook..kook...", "....kook.kook..."],
+        tricks: [.hideInWater, .spitWater, .swim, .bubbles]),
     Pet(id: "puddle", name: "Puddle the slime", palette: [
             "k": rgb(0.14, 0.31, 0.42), "c": rgb(0.56, 0.85, 0.95), "H": rgb(1.00, 1.00, 1.00),
             "d": rgb(0.39, 0.71, 0.86), "p": rgb(1.00, 0.62, 0.70)],
@@ -113,7 +122,8 @@ let pets: [Pet] = [
                ".kccccccpccccpk.", ".kcccccccccccck.", ".kdccccccccccck.", ".kddcccccccccck.",
                ".kddddcccccccck."],
         feet: ["..kkkkkkkkkkkk..", ".kkkkkkkkkkkkkk."],
-        sitBase: "..kkkkkkkkkkkk..", paw: "c"),
+        sitBase: "..kkkkkkkkkkkk..", paw: "c",
+        tricks: [.iceCream, .twin, .colorShift, .popFood]),
     Pet(id: "sprout", name: "Sprout the seedling", palette: [
             "k": rgb(0.14, 0.25, 0.16), "w": rgb(0.71, 0.88, 0.54), "s": rgb(0.55, 0.76, 0.40),
             "L": rgb(0.36, 0.70, 0.32), "S": rgb(0.25, 0.54, 0.23), "p": rgb(1.00, 0.62, 0.70)],
@@ -121,7 +131,8 @@ let pets: [Pet] = [
                ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.",
                ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
                "...kkkkkkkkkk..."],
-        feet: ["..kwk.....kwk...", "....kwk.kwk....."]),
+        feet: ["..kwk.....kwk...", "....kwk.kwk....."],
+        tricks: [.giveFlower, .shower, .plantSelf, .growUp, .chaseButterfly]),
 ]
 
 func pet(withID id: String) -> Pet { pets.first { $0.id == id } ?? pets[0] }
@@ -130,8 +141,37 @@ func pet(withID id: String) -> Pet { pets.first { $0.id == id } ?? pets[0] }
 /// `col` is the sprite column of the prop's left edge (facing right); `lift` is art pixels above the ground.
 struct Prop {
     let rows: [String]
-    let col: Int
-    let lift: Int
+    let col: CGFloat
+    let lift: CGFloat
+}
+
+/// A grid drawn at a fixed spot in the pen (in points), not attached to the pet.
+struct FreeSprite {
+    let rows: [String]
+    let x: CGFloat
+    let y: CGFloat
+    var px: CGFloat = pixel
+}
+
+/// A second copy of the pet (Puddle's twin), centred at `centerX`.
+struct Twin {
+    let frame: [String]
+    let centerX: CGFloat
+    let scale: CGFloat
+    let yOffset: CGFloat
+    let facingLeft: Bool
+}
+
+/// Everything drawn for one moment: the pet, how it is placed, and what is around it.
+struct Look {
+    var frame: [String]
+    var palette: [Character: NSColor]
+    var yOffset: CGFloat = 0        // art pixels; negative sinks into water or soil
+    var scale: CGFloat = 1
+    var props: [Prop] = []          // held or placed in front of the pet
+    var free: [FreeSprite] = []
+    var twin: Twin? = nil
+    var beam: (origin: NSPoint, angle: CGFloat)? = nil   // flashlight light
 }
 
 /// Props sit just in front of the body (sprite column 14 is the body's front outline).
@@ -188,6 +228,7 @@ struct Particle {
     var vy: CGFloat
     var life: Double
     let maxLife: Double
+    var ay: CGFloat = 0             // gravity (negative falls)
 }
 
 enum Reminder { case water, lunch, dinner, stretch }
@@ -196,7 +237,7 @@ enum Reminder { case water, lunch, dinner, stretch }
 
 @MainActor
 final class PetView: NSView {
-    enum Mode { case idle, walking, sitting, typing, cheering, sleeping, sweeping, reading, drinking, eating }
+    enum Mode { case idle, walking, sitting, typing, cheering, sleeping, sweeping, reading, drinking, eating, trick }
 
     var mode: Mode = .idle
     var modeStart: TimeInterval = 0
@@ -205,6 +246,20 @@ final class PetView: NSView {
     var targetX: CGFloat = 0
     var facingLeft = false
     var pet: Pet = pets[0]
+
+    // Trick state
+    var trick: Trick?
+    var lastTrick: Trick?
+    var trickFlags: Set<Int> = []
+    var trickTimers: [Int: TimeInterval] = [:]
+    var trickStartFacing = false
+    var burstCycle = -1
+    var poolLeft: CGFloat = 0
+    var poolWidth: CGFloat = 0
+    var twinCenterX: CGFloat = 0
+    var foodKind = 0
+    var chaseMoving = false
+    var bubbleScale: CGFloat = 1
     var range: CGFloat = 80
     var screenFrame: NSRect = .zero
 
@@ -259,9 +314,10 @@ final class PetView: NSView {
     }
 
     func spawn(_ text: String, _ color: NSColor, at point: NSPoint, size: CGFloat = 14,
-               vx: ClosedRange<CGFloat> = -10...10, vy: ClosedRange<CGFloat> = 22...36, life: Double = 1.4) {
+               vx: ClosedRange<CGFloat> = -10...10, vy: ClosedRange<CGFloat> = 22...36, life: Double = 1.4,
+               ay: CGFloat = 0) {
         particles.append(Particle(text: text, color: color, size: size, x: point.x, y: point.y,
-                                  vx: .random(in: vx), vy: .random(in: vy), life: life, maxLife: life))
+                                  vx: .random(in: vx), vy: .random(in: vy), life: life, maxLife: life, ay: ay))
     }
 
     func spawnAboveHead(_ text: String, _ color: NSColor, count: Int, life: Double = 1.4) {
@@ -305,6 +361,12 @@ final class PetView: NSView {
     }
 
     func decideNext() {
+        // About a third of the time, the pet does one of its own tricks.
+        if !pet.tricks.isEmpty && Double.random(in: 0..<1) < 0.33 {
+            let choices = pet.tricks.filter { $0 != lastTrick }
+            startTrick(choices.randomElement() ?? pet.tricks[0])
+            return
+        }
         let canWalk = maxPetX - minPetX > 24
         let r = Double.random(in: 0..<1)
         switch r {
@@ -330,6 +392,7 @@ final class PetView: NSView {
         for i in particles.indices {
             particles[i].x += particles[i].vx * dt
             particles[i].y += particles[i].vy * dt
+            particles[i].vy += particles[i].ay * dt
             particles[i].life -= dt
         }
         particles.removeAll { $0.life <= 0 }
@@ -380,6 +443,10 @@ final class PetView: NSView {
         case .drinking:
             if now >= modeUntil { petDoneEating() }
 
+        case .trick:
+            if let trick { stepTrick(trick, dt: dt) }
+            if now >= modeUntil { trick = nil; decideNext() }
+
         case .idle, .sitting, .typing, .cheering, .reading:
             if now >= modeUntil { decideNext() }
         }
@@ -398,7 +465,7 @@ final class PetView: NSView {
     }
 
     /// Walks toward x; returns true on arrival.
-    private func moveToward(_ x: CGFloat, speed: CGFloat, dt: Double) -> Bool {
+    func moveToward(_ x: CGFloat, speed: CGFloat, dt: Double) -> Bool {
         let dx = x - petX
         let stride = speed * dt
         if abs(dx) <= stride { petX = x; return true }
@@ -424,6 +491,7 @@ final class PetView: NSView {
         case .sweeping: return pet.frame(eyes, .stand(step(0.3)))
         case .drinking: return pet.frame(isSipping(t) ? .happy : .open, .sit)
         case .eating:   return pet.frame(step(0.4) == 0 ? .happy : .open, .sit)
+        case .trick:    return pet.frame(eyes, .sit)
         }
     }
 
@@ -460,18 +528,28 @@ final class PetView: NSView {
 
         if dragging || now < showPenUntil { drawPen() }
 
-        // Snap to whole device pixels and skip anti-aliasing so the art has no seams.
-        let scale = window?.backingScaleFactor ?? 2
-        let drawX = (petX * scale).rounded() / scale
-        NSGraphicsContext.current?.shouldAntialias = false
+        let look = currentLook()
+        bubbleScale = look.scale   // a grown pet gets its speech bubble above its head
+        if let beam = look.beam { drawBeam(from: beam.origin, angle: beam.angle) }
 
-        // Sprite: art row 13 (feet) sits on the ground line, so shift down 2 art pixels.
-        drawGrid(currentFrame(), palette: pet.palette, x: drawX, col: 0, bottomY: -2 * pixel)
-        if let prop = currentProp() {
-            var colors = propPalette
-            colors["w"] = pet.palette[pet.paw]
-            colors["k"] = pet.palette["k"]
-            drawGrid(prop.rows, palette: colors, x: drawX, col: prop.col, bottomY: CGFloat(prop.lift) * pixel)
+        // Skip anti-aliasing so the art has no seams; positions are snapped to device pixels.
+        NSGraphicsContext.current?.shouldAntialias = false
+        var colors = propPalette
+        colors["w"] = look.palette[pet.paw]
+        colors["k"] = look.palette["k"]
+
+        if let twin = look.twin {
+            drawSprite(twin.frame, palette: look.palette, centerX: twin.centerX, scale: twin.scale,
+                       yOffset: twin.yOffset, mirrored: twin.facingLeft)
+        }
+        drawSprite(look.frame, palette: look.palette, centerX: petCenterX, scale: look.scale,
+                   yOffset: look.yOffset, mirrored: facingLeft)
+        for prop in look.props {
+            drawGrid(prop.rows, palette: colors, x: snap(petX), col: prop.col, bottomY: prop.lift * pixel,
+                     px: pixel, mirrored: facingLeft)
+        }
+        for f in look.free {
+            drawGrid(f.rows, palette: colors, x: snap(f.x), col: 0, bottomY: snap(f.y), px: f.px, mirrored: false)
         }
 
         NSGraphicsContext.current?.shouldAntialias = true
@@ -488,18 +566,46 @@ final class PetView: NSView {
         if let text = bubbleText { drawBubble(text) }
     }
 
+    func snap(_ v: CGFloat) -> CGFloat {
+        let scale = window?.backingScaleFactor ?? 2
+        return (v * scale).rounded() / scale
+    }
+
+    /// Draws the 16×16 pet sprite scaled around its centre, standing on the ground.
+    /// Art row 13 (feet) sits on the ground line, so the sprite starts 2 art pixels below it.
+    private func drawSprite(_ rows: [String], palette: [Character: NSColor], centerX: CGFloat, scale: CGFloat,
+                            yOffset: CGFloat, mirrored: Bool) {
+        let px = max(0.5, (pixel * scale * 2).rounded() / 2)
+        drawGrid(rows, palette: palette, x: snap(centerX - 8 * px), col: 0,
+                 bottomY: snap(-2 * px + yOffset * pixel), px: px, mirrored: mirrored)
+    }
+
     /// Draws pixel rows whose left edge is sprite column `col` and whose bottom row sits at `bottomY`.
-    private func drawGrid(_ rows: [String], palette: [Character: NSColor], x: CGFloat, col: Int, bottomY: CGFloat) {
+    /// Mirrored grids flip around the 16-column sprite, so props stay in front of a pet facing left.
+    private func drawGrid(_ rows: [String], palette: [Character: NSColor], x: CGFloat, col: CGFloat,
+                          bottomY: CGFloat, px: CGFloat = pixel, mirrored: Bool) {
         for (r, row) in rows.enumerated() {
-            let y = bottomY + CGFloat(rows.count - 1 - r) * pixel
+            let y = bottomY + CGFloat(rows.count - 1 - r) * px
             for (c, ch) in row.enumerated() {
                 guard let color = palette[ch] else { continue }
-                let spriteCol = col + c
-                let drawCol = facingLeft ? 15 - spriteCol : spriteCol
+                let spriteCol = col + CGFloat(c)
+                let drawCol = mirrored ? 15 - spriteCol : spriteCol
                 color.setFill()
-                NSRect(x: x + CGFloat(drawCol) * pixel, y: y, width: pixel, height: pixel).fill()
+                NSRect(x: snap(x + drawCol * px), y: y, width: px, height: px).fill()
             }
         }
+    }
+
+    private func drawBeam(from p: NSPoint, angle: CGFloat) {
+        let dir: CGFloat = facingLeft ? -1 : 1
+        let length: CGFloat = 96, spread: CGFloat = 0.34
+        let path = NSBezierPath()
+        path.move(to: p)
+        path.line(to: NSPoint(x: p.x + dir * length * cos(angle - spread), y: p.y + length * sin(angle - spread)))
+        path.line(to: NSPoint(x: p.x + dir * length * cos(angle + spread), y: p.y + length * sin(angle + spread)))
+        path.close()
+        let light = NSColor(calibratedRed: 1, green: 0.93, blue: 0.55, alpha: 0.5)
+        NSGradient(starting: light, ending: light.withAlphaComponent(0))?.draw(in: path, angle: facingLeft ? 180 : 0)
     }
 
     private func drawPen() {
@@ -528,7 +634,7 @@ final class PetView: NSView {
         ]
         let s = NSAttributedString(string: text, attributes: attrs)
         let size = s.size()
-        var box = NSRect(x: petCenterX - size.width / 2 - 8, y: petSize + 4,
+        var box = NSRect(x: petCenterX - size.width / 2 - 8, y: petSize * bubbleScale + 4,
                          width: size.width + 16, height: size.height + 8)
         box.origin.x = min(max(box.origin.x, 2), bounds.width - box.width - 2)
 
@@ -578,6 +684,478 @@ final class PetView: NSView {
     }
 }
 
+// MARK: - Tricks (each pet's own activities)
+
+enum Trick: CaseIterable {
+    case firework, flashlight, flipEgg, campfire               // Ember
+    case hideInWater, spitWater, swim, bubbles                 // Pip
+    case iceCream, twin, colorShift, popFood                   // Puddle
+    case giveFlower, shower, plantSelf, growUp, chaseButterfly // Sprout
+
+    var duration: Double {
+        switch self {
+        case .firework: 8
+        case .flashlight: 8
+        case .flipEgg: 9
+        case .campfire: 10
+        case .hideInWater: 9.5
+        case .spitWater: 6
+        case .swim: 10
+        case .bubbles: 7
+        case .iceCream: 9
+        case .twin: 11
+        case .colorShift: 8
+        case .popFood: 7
+        case .giveFlower: 7
+        case .shower: 9
+        case .plantSelf: 10
+        case .growUp: 9
+        case .chaseButterfly: 12
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .firework: "Light Fireworks"
+        case .flashlight: "Explore with a Flashlight"
+        case .flipEgg: "Flip an Egg"
+        case .campfire: "Toast a Marshmallow"
+        case .hideInWater: "Hide in the Water"
+        case .spitWater: "Spit Water"
+        case .swim: "Go for a Swim"
+        case .bubbles: "Blow Bubbles"
+        case .iceCream: "Eat Ice Cream"
+        case .twin: "Split in Two and Play"
+        case .colorShift: "Change Colour"
+        case .popFood: "Pop Out a Snack"
+        case .giveFlower: "Give You a Flower"
+        case .shower: "Take a Shower"
+        case .plantSelf: "Plant Itself"
+        case .growUp: "Grow Up"
+        case .chaseButterfly: "Chase a Butterfly"
+        }
+    }
+}
+
+/// Pixel art for tricks, facing right, coloured from `propPalette`.
+enum TrickArt {
+    static let rocket = [".k.", "krk", "krk", "kyk", ".n."]
+    static let flashlight = ["kkkkk", "kgggy", "kkkkk"]
+    static let pan = ["....kkkkkk", "nnnnkddddk"]
+    static let eggUp = [".iyi.", "iiiii"]
+    static let eggDown = [".iii.", "iiiii"]
+    static let fireA = ["...y...", "..yoy..", ".yooy..", ".yoooy.", "nknnnkn"]
+    static let fireB = ["....y..", "..yoy..", "..yooy.", ".yoooy.", "nknnnkn"]
+    static func stick(toasted: Bool) -> [String] {
+        let m: Character = toasted ? "y" : "i"
+        return ["....\(m)\(m)", "...n\(m)\(m)", "..n...", ".n....", "n....."]
+    }
+    static func pool(_ width: Int) -> [String] {
+        ["." + String(repeating: "C", count: width - 2) + ".",
+         String(repeating: "c", count: width), String(repeating: "c", count: width)]
+    }
+    static func iceCream(left: Double) -> [String] {
+        let scoop = left > 0.66 ? ["..PP.", ".PPPP", "PPPPP"]
+                  : left > 0.33 ? [".....", ".PPP.", "PPPPP"]
+                  : left > 0.05 ? [".....", ".....", ".PPP."]
+                  : [".....", ".....", "....."]
+        return scoop + ["nyyyn", ".nyn.", "..n.."]
+    }
+    static let food = [
+        ["..G.", ".rr.", "rrrr", "rrrr", ".rr."],      // apple
+        [".yy.", "ynyy", "yyny", ".yy."],              // cookie
+        ["..i..", ".iii.", "iiiii", "ikkki"],          // rice ball
+    ]
+    static let flower = ["..P..", ".PyP.", "..P..", "..G..", ".GG..", "..G.."]
+    static let cloud = ["...kkkk...", "..kWWWWk..", ".kWWWWWWkk", "kWWWWWWWWk", ".kkkkkkkk."]
+    static let soil = ["....nnnnnnnnnnnn....", "..nnnNnnnnNnnnnNnn..", "nnnnnnnnnnnnnnnnnnnn"]
+    static let butterflyA = ["P...P", "PPkPP", ".PkP."]
+    static let butterflyB = ["..k..", "PPkPP", "P.k.P"]
+    static let ball = ["rr", "rr"]
+}
+
+let sparkleColors: [NSColor] = [.systemYellow, .systemPink, .systemOrange, .systemTeal, .systemPurple, .systemGreen]
+
+func hueShifted(_ palette: [Character: NSColor], by amount: CGFloat, keys: [Character]) -> [Character: NSColor] {
+    var out = palette
+    for key in keys {
+        guard let c = palette[key]?.usingColorSpace(.deviceRGB) else { continue }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        out[key] = NSColor(deviceHue: (h + amount).truncatingRemainder(dividingBy: 1), saturation: s, brightness: b, alpha: a)
+    }
+    return out
+}
+
+func lerp(_ a: CGFloat, _ b: CGFloat, _ t: Double) -> CGFloat { a + (b - a) * CGFloat(min(1, max(0, t))) }
+
+extension PetView {
+    /// Centre x of a sprite column, honouring which way the pet faces.
+    func centerX(col: CGFloat) -> CGFloat {
+        petX + (facingLeft ? 15.5 - col : col + 0.5) * pixel
+    }
+
+    /// Velocity range pointing the way the pet faces.
+    func forward(_ a: CGFloat, _ b: CGFloat) -> ClosedRange<CGFloat> {
+        facingLeft ? -b ... -a : a...b
+    }
+
+    /// True once per trick for each id.
+    func once(_ id: Int) -> Bool { trickFlags.insert(id).inserted }
+
+    /// True every `seconds` for each timer id.
+    func every(_ id: Int, _ seconds: Double) -> Bool {
+        if now - (trickTimers[id] ?? 0) >= seconds { trickTimers[id] = now; return true }
+        return false
+    }
+
+    func startTrick(_ t: Trick) {
+        trick = t
+        lastTrick = t
+        trickFlags = []
+        trickTimers = [:]
+        setMode(.trick, for: t.duration)
+        trickStartFacing = facingLeft
+        switch t {
+        case .swim:
+            poolWidth = 30 * pixel
+            poolLeft = min(max(petCenterX - poolWidth / 2, 0), max(0, bounds.width - poolWidth))
+            targetX = swimRange().upperBound
+        case .twin:
+            let roomRight = bounds.width - (petX + petSize), roomLeft = petX
+            let side: CGFloat = roomRight >= roomLeft ? 1 : -1
+            twinCenterX = min(max(petCenterX + side * 68, petSize / 2), bounds.width - petSize / 2)
+        case .popFood:
+            foodKind = Int.random(in: 0..<TrickArt.food.count)
+        default:
+            break
+        }
+    }
+
+    func swimRange() -> ClosedRange<CGFloat> {
+        let lo = max(0, poolLeft - 8), hi = max(lo, min(bounds.width - petSize, poolLeft + poolWidth - petSize + 8))
+        return lo...hi
+    }
+
+    func butterflyPoint(_ t: Double, _ d: Double) -> NSPoint {
+        let lo: CGFloat = 16, hi = max(lo + 1, bounds.width - 16)
+        let mid = (lo + hi) / 2, half = max(0, (hi - lo) / 2 - 10)
+        let x = mid + half * CGFloat(sin(t * 0.8)) + 8 * CGFloat(sin(t * 3.1))
+        var y = 46 + 14 * CGFloat(sin(t * 2.2))
+        if t > d - 1.5 { y += CGFloat(t - (d - 1.5)) * 70 }   // flies away at the end
+        return NSPoint(x: x, y: y)
+    }
+
+    func firework(at p: NSPoint) {
+        for i in 0..<16 {
+            let a = Double(i) / 16 * 2 * .pi
+            let speed = Double.random(in: 34...52)
+            particles.append(Particle(text: i % 2 == 0 ? "✦" : "•", color: sparkleColors.randomElement()!, size: 11,
+                                      x: p.x - 4, y: p.y, vx: CGFloat(cos(a) * speed), vy: CGFloat(sin(a) * speed),
+                                      life: 1.3, maxLife: 1.3, ay: -24))
+        }
+    }
+
+    // MARK: Trick motion and particles
+
+    func stepTrick(_ tr: Trick, dt: Double) {
+        let t = now - modeStart, d = modeUntil - modeStart
+        switch tr {
+        case .firework:
+            let cycle = Int(t / 3.5), p = t.truncatingRemainder(dividingBy: 3.5)
+            if p < 1.2, every(1, 0.08) {
+                spawn("✦", .systemOrange, at: NSPoint(x: centerX(col: 17) - 4, y: 22), size: 9,
+                      vx: -10...10, vy: 4...14, life: 0.45)
+            }
+            if p >= 2.0 && burstCycle != cycle {
+                burstCycle = cycle
+                firework(at: NSPoint(x: centerX(col: 17), y: 98))
+            }
+
+        case .flashlight:
+            facingLeft = (Int(t / 2.7) % 2 == 1) != trickStartFacing
+            if every(1, 2.2) { spawnAboveHead("?", .secondaryLabelColor, count: 1) }
+
+        case .flipEgg:
+            if t.truncatingRemainder(dividingBy: 2.0) < 0.7, every(1, 0.3) {
+                spawn("~", .secondaryLabelColor, at: NSPoint(x: centerX(col: 19) - 4, y: 8 * pixel), size: 11,
+                      vx: -3...3, vy: 10...16, life: 0.8)
+            }
+
+        case .campfire:
+            if every(1, 0.45) {
+                spawn("~", .secondaryLabelColor, at: NSPoint(x: centerX(col: 18) - 4, y: 6 * pixel), size: 12,
+                      vx: -4...4, vy: 12...20, life: 1.6)
+            }
+            if every(2, 0.3) {
+                spawn("·", .systemOrange, at: NSPoint(x: centerX(col: 18) - 3, y: 5 * pixel), size: 16,
+                      vx: -10...10, vy: 18...32, life: 0.8)
+            }
+
+        case .hideInWater:
+            if t > 0.8 && t < 3.5, every(1, 0.4) {
+                spawn("°", .systemBlue, at: NSPoint(x: petCenterX + .random(in: -12...6), y: 6), size: 13,
+                      vx: -3...3, vy: 14...22, life: 1.0)
+            }
+            if t > 5.2 && once(1) { facingLeft.toggle() }
+            if t > 6.4 && once(2) { facingLeft.toggle() }
+            if t > 7.9 && once(3) {
+                for _ in 0..<10 {
+                    spawn("•", .systemBlue, at: NSPoint(x: petCenterX - 4, y: 10), size: 10,
+                          vx: -55...55, vy: 35...75, life: 0.9, ay: -170)
+                }
+            }
+
+        case .spitWater:
+            if t.truncatingRemainder(dividingBy: 0.9) < 0.1 && once(100 + Int(t / 0.9)) {
+                for _ in 0..<7 {
+                    spawn("•", .systemBlue, at: NSPoint(x: centerX(col: 15), y: 5.5 * pixel), size: 9,
+                          vx: forward(55, 95), vy: 25...55, life: 1.1, ay: -170)
+                }
+            }
+
+        case .swim:
+            let range = swimRange()
+            if moveToward(targetX, speed: 22, dt: dt) {
+                targetX = abs(targetX - range.lowerBound) < 1 ? range.upperBound : range.lowerBound
+            }
+            if every(1, 0.35) {
+                spawn("~", .systemBlue, at: NSPoint(x: petCenterX + (facingLeft ? 22 : -30), y: 6), size: 12,
+                      vx: -4...4, vy: 2...6, life: 0.8)
+            }
+
+        case .bubbles:
+            if every(1, 0.45) {
+                spawn("○", .systemTeal, at: NSPoint(x: centerX(col: 15), y: 5.5 * pixel), size: .random(in: 9...15),
+                      vx: forward(8, 22), vy: 12...24, life: 2.4)
+            }
+
+        case .iceCream:
+            if every(1, 1.8) { spawnAboveHead("♥", .systemPink, count: 1) }
+
+        case .twin:
+            facingLeft = twinCenterX < petCenterX
+            if t > 0.6 && once(1) { say("pop!", for: 1) }
+            if t > 1.4, every(1, 1.1) {
+                spawn("♪", .systemPink, at: NSPoint(x: (petCenterX + twinCenterX) / 2 - 4, y: petSize - 8), size: 13)
+            }
+            if t > d - 0.6 && once(2) { say("pop!", for: 1) }
+
+        case .colorShift:
+            if every(1, 0.22) {
+                spawn("✦", sparkleColors.randomElement()!,
+                      at: NSPoint(x: petCenterX + .random(in: -32...26), y: .random(in: 6...50)), size: 10,
+                      vx: -4...4, vy: 4...10, life: 0.8)
+            }
+
+        case .popFood:
+            if t > 1.2 && once(1) { say("!", for: 0.8) }
+            if t > 2.0 && once(2) {
+                say("a snack for you!", for: 3)
+                spawn("✦", .systemYellow, at: NSPoint(x: centerX(col: 20) - 4, y: 12), size: 11, life: 0.9)
+            }
+
+        case .giveFlower:
+            if once(1) { say("for you! 🌷", for: 4) }
+            if t > 1, every(1, 1.1) { spawnAboveHead("♥", .systemPink, count: 1) }
+
+        case .shower:
+            let cloudLeft = petCenterX - 20
+            if every(1, 0.06) {
+                spawn("|", NSColor.systemBlue.withAlphaComponent(0.8),
+                      at: NSPoint(x: cloudLeft + .random(in: 4...34), y: 17 * pixel - 6), size: 9,
+                      vx: 0...0, vy: -95 ... -80, life: 0.65)
+            }
+            if every(2, 1.4) { spawn("♪", .systemPink, at: NSPoint(x: petCenterX + 22, y: 40), size: 13) }
+
+        case .plantSelf:
+            if t < 1 || (t > 7.5 && t < 8.3), every(1, 0.08) {
+                spawn("·", .brown, at: NSPoint(x: petCenterX + .random(in: -26...20), y: 8), size: 16,
+                      vx: -40...40, vy: 30...60, life: 0.7, ay: -150)
+            }
+            if t > 8.0 && once(1) { say("!", for: 1) }
+            if t > 8.3 && t < 9.3 { facingLeft = Int(t / 0.2) % 2 == 0 }   // shakes off the dirt
+
+        case .growUp:
+            if (t > 0.5 && t < 3) || (t > 6 && t < 7), every(1, 0.15) {
+                spawn("✦", .systemYellow, at: NSPoint(x: petCenterX + .random(in: -40...34), y: .random(in: 4...70)),
+                      size: 10, vx: -4...4, vy: 4...12, life: 0.8)
+            }
+            if t > 3 && once(1) { say("so big!", for: 2) }
+
+        case .chaseButterfly:
+            let b = butterflyPoint(t, d)
+            let behind: CGFloat = b.x > petCenterX ? 16 : -16
+            let target = min(max(b.x - petSize / 2 - behind, 0), bounds.width - petSize)
+            chaseMoving = !moveToward(target, speed: 55, dt: dt)
+            if !chaseMoving { facingLeft = b.x < petCenterX }
+            if t > d - 1.5 && once(1) { say("bye!", for: 1.5) }
+        }
+    }
+
+    // MARK: Trick looks
+
+    func currentLook() -> Look {
+        if mode == .trick, let trick, !dragging { return trickLook(trick) }
+        return Look(frame: currentFrame(), palette: pet.palette, props: currentProp().map { [$0] } ?? [])
+    }
+
+    private func trickLook(_ tr: Trick) -> Look {
+        let t = now - modeStart, d = modeUntil - modeStart
+        let blink = clock.truncatingRemainder(dividingBy: 4.2) < 0.14
+        let eyes: Eyes = blink ? .closed : .open
+        func alt(_ period: Double) -> Bool { Int(clock / period) % 2 == 0 }
+        var look = Look(frame: pet.frame(eyes, .sit), palette: pet.palette)
+
+        switch tr {
+        case .firework:
+            let p = t.truncatingRemainder(dividingBy: 3.5)
+            look.frame = pet.frame(p > 2.0 ? .happy : eyes, .sit)
+            if p < 1.2 { look.props = [Prop(rows: TrickArt.rocket, col: 16, lift: 0)] }
+            else if p < 2.0 { look.props = [Prop(rows: TrickArt.rocket, col: 16, lift: CGFloat((p - 1.2) / 0.8) * 20)] }
+
+        case .flashlight:
+            look.frame = pet.frame(eyes, .stand(0))
+            look.props = [Prop(rows: TrickArt.flashlight, col: 14, lift: 5)]
+            look.beam = (NSPoint(x: centerX(col: 18) + (facingLeft ? -2 : 2), y: 6.5 * pixel),
+                         CGFloat(0.05 + 0.22 * sin(t * 1.6)))
+
+        case .flipEgg:
+            let p = t.truncatingRemainder(dividingBy: 2.0)
+            var egg = TrickArt.eggUp
+            var lift: CGFloat = 7
+            if p >= 0.7 && p < 1.6 {
+                lift = 7 + 10 * CGFloat(sin(.pi * (p - 0.7) / 0.9))
+                egg = alt(0.1) ? TrickArt.eggUp : TrickArt.eggDown
+            }
+            look.frame = pet.frame(p >= 1.6 ? .happy : eyes, .stand(0))
+            look.props = [Prop(rows: TrickArt.pan, col: 13, lift: 5), Prop(rows: egg, col: 18, lift: lift)]
+
+        case .campfire:
+            look.frame = pet.frame(t > d - 2 ? .happy : eyes, .sit)
+            look.props = [Prop(rows: alt(0.25) ? TrickArt.fireA : TrickArt.fireB, col: 15, lift: 0),
+                          Prop(rows: TrickArt.stick(toasted: t > d * 0.5), col: 13, lift: 3)]
+
+        case .hideInWater:
+            // Sink, wait under water, peek out with just the eyes, then jump out with a splash.
+            let y: Double
+            switch t {
+            case ..<0.8: y = -12 * t / 0.8
+            case ..<3.5: y = -12
+            case ..<4.3: y = -12 + 8 * (t - 3.5) / 0.8
+            case ..<7.5: y = -4
+            case ..<7.9: y = -4 + 7 * (t - 7.5) / 0.4
+            case ..<8.2: y = 3 - 3 * (t - 7.9) / 0.3
+            default: y = 0
+            }
+            look.yOffset = CGFloat(y)
+            look.frame = pet.frame(t > 7.5 ? .happy : eyes, .stand(0))
+            if t < 8.6 { look.props = [Prop(rows: TrickArt.pool(20), col: -2, lift: 0)] }
+
+        case .spitWater:
+            look.frame = pet.frame(t.truncatingRemainder(dividingBy: 0.9) < 0.2 ? .happy : .open, .sit)
+
+        case .swim:
+            look.yOffset = -3
+            look.frame = pet.frame(.open, .stand(Int(clock / 0.25) % 2))
+            look.free = [FreeSprite(rows: TrickArt.pool(Int(poolWidth / pixel)), x: poolLeft, y: 0)]
+
+        case .bubbles:
+            look.frame = pet.frame(alt(0.45) ? .happy : .open, .sit)
+
+        case .iceCream:
+            look.frame = pet.frame(alt(0.5) ? .happy : .open, .sit)
+            look.props = [Prop(rows: TrickArt.iceCream(left: 1 - t / d), col: 14, lift: 3)]
+
+        case .twin:
+            let start = 0.6, end = d - 1.2
+            if t < start {
+                look.frame = pet.frame(.closed, .sit)
+                break
+            }
+            let hop = sin((t - start) * 2 * .pi / 0.8)
+            look.frame = pet.frame(.happy, .stand(0))
+            look.yOffset = CGFloat(max(0, hop)) * 3
+            var scale: CGFloat = 1
+            var cx = twinCenterX
+            if t < start + 0.5 {
+                scale = 0.4 + 0.6 * CGFloat((t - start) / 0.5)
+                cx = lerp(petCenterX, twinCenterX, (t - start) / 0.5)
+            } else if t > end {
+                let q = (t - end) / 0.6
+                scale = 1 - 0.6 * CGFloat(min(1, q))
+                cx = lerp(twinCenterX, petCenterX, q)
+            }
+            if t < end + 0.6 {
+                look.twin = Twin(frame: pet.frame(.happy, .stand(0)), centerX: cx, scale: scale,
+                                 yOffset: CGFloat(max(0, -hop)) * 3, facingLeft: twinCenterX > petCenterX)
+            }
+            if t > start + 0.9 && t < end - 0.2 {   // a ball passed back and forth
+                let f = ((t - start - 0.9) / 1.2).truncatingRemainder(dividingBy: 2)
+                let q = f < 1 ? f : 2 - f
+                look.free = [FreeSprite(rows: TrickArt.ball, x: lerp(petCenterX, twinCenterX, q) - 4,
+                                        y: 30 + 26 * CGFloat(sin(.pi * q)))]
+            }
+
+        case .colorShift:
+            look.palette = hueShifted(pet.palette, by: CGFloat(t / d), keys: ["c", "d", "k"])
+            look.frame = pet.frame(.happy, .stand(alt(0.5) ? 0 : 1))
+
+        case .popFood:
+            if t < 1.2 {
+                look.frame = pet.frame(.closed, .stand(Int(clock / 0.12) % 2))
+            } else {
+                look.frame = pet.frame(.happy, .sit)
+                let q = min(1, (t - 1.2) / 0.8)
+                look.props = [Prop(rows: TrickArt.food[foodKind], col: 6 + 13 * CGFloat(q),
+                                   lift: CGFloat((1 - q) * 10 + 12 * sin(.pi * q)))]
+            }
+
+        case .giveFlower:
+            look.frame = pet.frame(.happy, .stand(0))
+            look.props = [Prop(rows: TrickArt.flower, col: 14, lift: alt(0.6) ? 4 : 5)]
+
+        case .shower:
+            look.frame = pet.frame(.happy, alt(0.4) ? .stand(0) : .sit)
+            look.free = [FreeSprite(rows: TrickArt.cloud, x: petCenterX - 20, y: 17 * pixel)]
+
+        case .plantSelf:
+            // Dig, sink until only the leaves show, nap, then pop out and shake off.
+            let y: Double
+            switch t {
+            case ..<1: y = 0
+            case ..<2.5: y = -8 * (t - 1) / 1.5
+            case ..<7.5: y = -8
+            case ..<8.0: y = -8 + 10 * (t - 7.5) / 0.5
+            case ..<8.3: y = 2 - 2 * (t - 8.0) / 0.3
+            default: y = 0
+            }
+            look.yOffset = CGFloat(y)
+            look.frame = pet.frame(t > 2.5 && t < 7.5 ? .closed : .open, t < 1 ? .stand(Int(clock / 0.15) % 2) : .stand(0))
+            if t < 9.2 { look.props = [Prop(rows: TrickArt.soil, col: -2, lift: 0)] }
+
+        case .growUp:
+            let scale: CGFloat
+            switch t {
+            case ..<1: scale = 1
+            case ..<3: scale = 1 + 0.125 * CGFloat(min(4, Int((t - 1) / 0.5) + 1))
+            case ..<6: scale = 1.5
+            case ..<7: scale = 1.5 - 0.125 * CGFloat(min(4, Int((t - 6) / 0.25) + 1))
+            default: scale = 1
+            }
+            look.scale = scale
+            look.frame = pet.frame(scale > 1 ? .happy : eyes, .stand(0))
+
+        case .chaseButterfly:
+            look.frame = pet.frame(.happy, chaseMoving ? .stand(Int(clock / 0.14) % 2) : .stand(0))
+            let b = butterflyPoint(t, d)
+            look.free = [FreeSprite(rows: alt(0.15) ? TrickArt.butterflyA : TrickArt.butterflyB,
+                                    x: b.x - 7.5, y: b.y, px: 3)]
+        }
+        return look
+    }
+}
+
 // MARK: - App
 
 @MainActor
@@ -614,7 +1192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let meals: [(Reminder, String, Int, Int)] = [(.lunch, "lunch", 12, 0), (.dinner, "dinner", 18, 30)]
     var lastMealCheck: TimeInterval = 0
 
-    var demoQueue: [() -> Void] = []
+    var demoQueue: [(seconds: Double, run: () -> Void)] = []
     var nextDemo: TimeInterval = 0
 
     var screen: NSScreen { NSScreen.screens.first ?? NSScreen.main! }
@@ -651,17 +1229,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.image = Self.menuBarIcon(for: view.pet)
         rebuildMenu()
 
-        // `--demo` cycles through every activity and reminder, for trying the app out.
-        if CommandLine.arguments.contains("--demo") {
+        // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks.
+        let args = CommandLine.arguments
+        if args.contains("--demo") || args.contains("--tricks") {
             let v = view!
-            demoQueue = [
-                { v.setMode(.typing, for: 6) },
-                { v.setMode(.sweeping, for: 6); v.targetX = v.randomTarget(near: v.petX, within: 50) },
-                { v.setMode(.reading, for: 6) },
-                { v.remind(.water) },
-                { v.remind(.lunch) },
-                { v.remind(.stretch) },
-            ]
+            if args.contains("--demo") {
+                demoQueue = [
+                    (7, { v.setMode(.typing, for: 6) }),
+                    (7, { v.setMode(.sweeping, for: 6); v.targetX = v.randomTarget(near: v.petX, within: 50) }),
+                    (7, { v.setMode(.reading, for: 6) }),
+                    (7, { v.remind(.water) }),
+                    (7, { v.remind(.lunch) }),
+                    (7, { v.remind(.stretch) }),
+                ]
+            }
+            for trick in v.pet.tricks { demoQueue.append((trick.duration + 0.5, { v.startTrick(trick) })) }
             nextDemo = ProcessInfo.processInfo.systemUptime + 2
         }
 
@@ -718,8 +1300,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         guard visible else { return }
         if !demoQueue.isEmpty && now >= nextDemo {
-            demoQueue.removeFirst()()
-            nextDemo = now + 7
+            let next = demoQueue.removeFirst()
+            next.run()
+            nextDemo = now + next.seconds
         }
 
         let mouse = NSEvent.mouseLocation
@@ -819,6 +1402,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         petItem.submenu = petMenu
         menu.addItem(petItem)
+
+        if !view.pet.tricks.isEmpty {
+            let trickItem = NSMenuItem(title: "Tricks", action: nil, keyEquivalent: "")
+            let trickMenu = NSMenu()
+            let random = NSMenuItem(title: "Surprise Me", action: #selector(randomTrick), keyEquivalent: "")
+            random.target = self
+            trickMenu.addItem(random)
+            trickMenu.addItem(.separator())
+            for trick in view.pet.tricks {
+                let item = NSMenuItem(title: trick.title, action: #selector(pickTrick(_:)), keyEquivalent: "")
+                item.tag = Trick.allCases.firstIndex(of: trick)!
+                item.target = self
+                trickMenu.addItem(item)
+            }
+            trickItem.submenu = trickMenu
+            menu.addItem(trickItem)
+        }
         menu.addItem(.separator())
 
         let rangeItem = NSMenuItem(title: "Roam Range", action: nil, keyEquivalent: "")
@@ -950,6 +1550,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.set(waterOn, forKey: "water")
         activeSinceWater = 0
         rebuildMenu()
+    }
+
+    @objc func pickTrick(_ sender: NSMenuItem) {
+        view.bubbleText = nil
+        view.startTrick(Trick.allCases[sender.tag])
+    }
+
+    @objc func randomTrick() {
+        view.bubbleText = nil
+        if let trick = view.pet.tricks.randomElement() { view.startTrick(trick) }
     }
 
     @objc func pickPet(_ sender: NSMenuItem) {
