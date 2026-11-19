@@ -502,7 +502,7 @@ impl App {
         let size = sys::small_icon_size(self.last_dpi);
         let old = self.tray_icon;
         self.tray_icon = pet_icon(self.view.pet, size);
-        let tip = format!("DeskPet · {}", self.view.pet.first_name());
+        let tip = format!("DeskPet · {}", self.view.pet.short_name());
         if !sys::tray(self.owner, sys::TRAY_MODIFY, self.tray_icon, &tip) {
             sys::tray(self.owner, sys::TRAY_ADD, self.tray_icon, &tip);
         }
@@ -659,7 +659,7 @@ impl App {
         settings::set_string("pet", p.id);
         self.update_tray_icon();
         self.view.petted();
-        self.view.say(&format!("hi, I'm {}!", p.first_name()), 2.5);
+        self.view.say(&format!("hi, I'm {}!", p.short_name()), 2.5);
     }
 
     fn quit(&mut self) {
@@ -725,13 +725,13 @@ fn show_menu() {
 /// Shows the code dialog until the code works or the person cancels. Returns true once unlocked.
 fn ask_for_code(wanting: Option<usize>) -> bool {
     let Some((intro, dpi, big, small)) = with_app(|a| {
-        let names: Vec<&str> = a.pets.iter().filter(|p| p.premium).map(|p| p.first_name()).collect();
+        let names: Vec<&str> = a.pets.iter().filter(|p| p.premium).map(|p| p.short_name()).collect();
         let list = match names.split_last() {
             Some((last, rest)) if !rest.is_empty() => format!("{} and {}", rest.join(", "), last),
             _ => names.join(""),
         };
         let pet = wanting.map(|i| &a.pets[i]).unwrap_or(a.view.pet);
-        let lead = wanting.map(|_| format!("{} is a premium pet. ", pet.first_name())).unwrap_or_default();
+        let lead = wanting.map(|_| format!("{} is a premium pet. ", pet.short_name())).unwrap_or_default();
         let dpi = a.last_dpi;
         let big = pet_icon(pet, (32.0 * dpi as f64 / 96.0).round() as i32);
         let small = pet_icon(pet, sys::small_icon_size(dpi));
@@ -828,7 +828,7 @@ unsafe extern "system" fn owner_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARA
         _ if msg != 0 && msg == TASKBAR_CREATED.with(|t| t.get()) => {
             // Explorer restarted: the tray icon has to be added again.
             with_app(|a| {
-                let tip = format!("DeskPet · {}", a.view.pet.first_name());
+                let tip = format!("DeskPet · {}", a.view.pet.short_name());
                 sys::tray(a.owner, sys::TRAY_ADD, a.tray_icon, &tip);
             });
             return 0;
@@ -870,13 +870,22 @@ fn main() {
 
     let pets: &'static [Pet] = Box::leak(art::pets().into_boxed_slice());
     let mut app = App::new(pets, pet_hwnd, owner);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    // `--pet <id>` starts with that pet for this run (premium pets still need a code).
+    if let Some(id) = args.iter().position(|a| a == "--pet").and_then(|i| args.get(i + 1)) {
+        if let Some(p) = pets.iter().find(|p| p.id.eq_ignore_ascii_case(id)) {
+            if !p.premium || app.unlocked {
+                app.view.pet = p;
+            }
+        }
+    }
     app.layout();
     app.view.pet_x = (app.view.min_pet_x() + app.view.max_pet_x()) / 2.0;
     app.view.say("hi!", 2.0);
     app.update_tray_icon();
 
     // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks.
-    let args: Vec<String> = std::env::args().skip(1).collect();
     let has = |f: &str| args.iter().any(|a| a == f);
     let (demo, tricks, typing) = (has("--demo"), has("--tricks"), has("--typing"));
     if demo || tricks || typing {

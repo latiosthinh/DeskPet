@@ -1,7 +1,7 @@
 //! Each pet's own tricks and typing activities, ported from main.swift.
 
-use crate::art::{bubble_icons, hue_shifted, props, rows, sys_color, trick_art, Eyes, Pose, Trick, TypingStyle, PET_SIZE, PIXEL};
-use crate::pet::{free, prop, pt, rand, rand_index, Look, Mode, Particle, PetView, Pt, TRICK_GAP};
+use crate::art::{bubble_icons, hex, hue_shifted, props, rotated, rows, sys_color, trick_art, Eyes, Pose, Trick, TypingStyle, PET_SIZE, PIXEL};
+use crate::pet::{free, prop, pt, rand, rand_index, FreeSprite, Look, Mode, Particle, PetView, Pt, TRICK_GAP};
 use std::f64::consts::PI;
 
 fn lerp(a: f64, b: f64, t: f64) -> f64 {
@@ -303,7 +303,120 @@ impl PetView {
                     self.say("!", 0.6);
                 }
             }
+
+            Trick::GrumboSpin => {
+                if t > 3.0 && self.once(1) {
+                    self.say("whoa…", 1.5);
+                }
+            }
+            Trick::GrumboHelmet => {
+                if t > 1.0 && self.once(1) {
+                    self.say("who turned off the lights?", 2.5);
+                }
+            }
+            Trick::GrumboChop => {
+                if t > 4.0 && self.once(1) {
+                    self.say("boing!", 1.0);
+                }
+            }
+
+            Trick::WispThread => {
+                let target = self.thread_target(t);
+                if (target.x - self.pet_center_x()).abs() > 6.0 {
+                    self.facing_left = target.x < self.pet_center_x();
+                }
+            }
+            Trick::WispKnot => {
+                if t > 3.0 && self.once(1) {
+                    self.say("oops, knotted", 1.8);
+                }
+            }
+            Trick::WispMoth => {
+                if t > 7.0 && self.once(1) {
+                    self.say("!", 0.8);
+                }
+            }
+
+            Trick::HexFrog => {
+                if t > 3.0 && self.once(1) {
+                    self.say("ribbit?!", 1.5);
+                }
+            }
+            Trick::HexSheep => {
+                if t > 3.0 && self.once(1) {
+                    self.say("baa…", 1.5);
+                }
+            }
+            Trick::HexBook => {
+                if t > 3.0 && self.once(1) {
+                    self.say("ow!", 1.0);
+                }
+            }
+
+            Trick::MossToss | Trick::MossBloom => {}
+            Trick::MossRain => {
+                if t > 6.0 && self.every(1, 1.2) {
+                    self.spawn_above_head("♥", pink, 1, 1.4);
+                }
+            }
+
+            Trick::ClankWind => {
+                // Slows to a stop, waits for his key to turn, then hurries off happily.
+                let dir = if self.facing_left { -1.0 } else { 1.0 };
+                if t < 3.0 {
+                    self.pet_x += dir * 30.0 * (-t).exp() * dt;
+                }
+                if t > 7.0 {
+                    self.pet_x += dir * 36.0 * dt;
+                }
+                if t > 5.0 && self.once(1) {
+                    self.say("click… click…", 1.8);
+                }
+            }
+            Trick::ClankSpring => {
+                if t > 2.0 && self.once(1) {
+                    self.say("achoo!", 1.2);
+                }
+            }
+            Trick::ClankBell => {
+                if t > 3.0 && self.once(1) {
+                    self.say("tea time!", 2.2);
+                }
+            }
+
+            Trick::LunetteRice => {
+                if t > 5.0 && self.once(1) {
+                    self.say("ta-da!", 1.8);
+                }
+            }
+            Trick::LunetteWish => {
+                if t > 4.0 && self.once(1) {
+                    self.say("a little wish…", 2.0);
+                }
+            }
+            Trick::LunetteNap => {}
         }
+    }
+
+    /// A grid placed like in prototypes/hero-pets.html: its left edge `dx` art pixels from the sprite's
+    /// left edge (mirrored when the pet faces left) and its bottom `up` art pixels above the ground.
+    /// It is kept inside the pen.
+    pub fn placed(&self, grid: &[&str], dx: f64, up: f64) -> FreeSprite {
+        let width = grid.first().map_or(0, |r| r.len()) as f64 * PIXEL;
+        let x = if self.facing_left { self.pet_x + PET_SIZE - dx * PIXEL - width } else { self.pet_x + dx * PIXEL };
+        let x = x.max(0.0).min((self.width - width).max(0.0));
+        let grid = if self.facing_left { grid.iter().map(|r| r.chars().rev().collect()).collect() } else { rows(grid) };
+        free(grid, x, up * PIXEL, PIXEL)
+    }
+
+    /// Where Wisp-a-ling's glowing thread reaches: the pointer when it is near, otherwise a spot up ahead.
+    fn thread_target(&self, t: f64) -> Pt {
+        let edge = 8.0;
+        let mut p = pt(self.center_x(24.0) + 5.0 * PIXEL * t.sin(), (24.0 + 5.0 * t.cos()) * PIXEL);
+        if self.mouse.y < self.height + 160.0 && (self.mouse.x - self.pet_center_x()).abs() < 320.0 {
+            p = self.mouse;
+        }
+        pt(p.x.max(edge).min(self.width - edge), p.y.max(edge).min(self.height - edge))
     }
 
     // MARK: Typing activities
@@ -353,7 +466,14 @@ impl PetView {
                     }
                 }
             }
-            TypingStyle::Laptop | TypingStyle::ReadingGlasses => {}
+            TypingStyle::Laptop
+            | TypingStyle::ReadingGlasses
+            | TypingStyle::Stamping
+            | TypingStyle::Spool
+            | TypingStyle::SpellNotes
+            | TypingStyle::Pebbles
+            | TypingStyle::Checklist
+            | TypingStyle::Mortar => {}
         }
     }
 
@@ -415,6 +535,45 @@ impl PetView {
                 look.frame = p.frame(eyes, Pose::Stand(if down { 1 } else { 0 }));
                 look.props.push(prop(rows(&trick_art::PILE[trick_art::PILE.len() - level..]), 15.0, 0.0));
                 look.props.push(prop(rows(trick_art::SHOVEL), 13.0, if down { 1.0 } else { 3.0 }));
+            }
+            TypingStyle::Stamping => {
+                // Grumbo stamps a tally sheet, one thump per beat.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::HERO_PAD), 14.0, 0.0));
+                look.props.push(prop(rows(trick_art::HERO_STAMP), 15.0, 4.0 + beat * 3.0));
+            }
+            TypingStyle::Spool => {
+                // Wisp-a-ling winds glowing keystrokes onto a spool.
+                look.props.push(prop(rows(trick_art::HERO_THREAD_SPOOL), 15.0, 0.0));
+                for i in 0..6 {
+                    let lift = 3.0 - (2.0 * (t * 7.0 + i as f64).sin()).round();
+                    look.props.push(prop(rows(trick_art::HERO_SPARK), 12.0 + i as f64, lift));
+                }
+            }
+            TypingStyle::SpellNotes => {
+                // Hexley copies spell notes; the writing floats off the page.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::HERO_BOOK), 14.0, 0.0));
+                look.props.push(prop(rows(trick_art::HERO_WAND), 14.0, 5.0 + beat));
+                look.props.push(prop(rows(trick_art::HERO_SPARK), 18.0, (7.0 + 5.0 * (t % 2.0)).round()));
+            }
+            TypingStyle::Pebbles => {
+                // Mossback sorts pebbles into a little row.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::HERO_PEBBLES), 14.0, 0.0));
+                look.props.push(prop(rows(trick_art::HERO_ROCK), 14.0 + 5.0 * beat, 3.0 + 2.0 * beat));
+            }
+            TypingStyle::Checklist => {
+                // Sir Clank punches holes in a checklist.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::HERO_PAD), 14.0, 0.0));
+                look.props.push(prop(rows(trick_art::HERO_PAW), 15.0, 6.0 - 2.0 * beat));
+            }
+            TypingStyle::Mortar => {
+                // Lunette pounds rice cakes in time with the keys.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::LUNETTE_MORTAR), 14.0, 0.0));
+                look.props.push(prop(rows(trick_art::LUNETTE_MALLET), 14.0, 3.0 + beat * 4.0));
             }
         }
         look
@@ -640,6 +799,259 @@ impl PetView {
                     look.props.push(prop(rows(trick_art::FISH), 18.0, 3.0 + 9.0 * (PI * q).sin()));
                 }
             }
+
+            // Hero pets. Timings follow prototypes/hero-pets.html; every trick lasts 8 s.
+            _ => return self.hero_trick_look(tr, look),
+        }
+        look
+    }
+
+    fn hero_trick_look(&self, tr: Trick, mut look: Look) -> Look {
+        use trick_art::*;
+        let t = self.now - self.mode_start;
+        let d = self.mode_until - self.mode_start;
+        let eyes = self.blink_eyes();
+        let p = self.pet;
+        let beat = if (t * 5.0) as i64 % 2 == 1 { 1.0 } else { 0.0 }; // flips every 0.2 s
+
+        match tr {
+            Trick::GrumboSpin => {
+                // Spins through four facings, topples over with stars circling, then gets up.
+                if t < 3.0 {
+                    look.frame = rotated(p.frame(eyes, Pose::Stand(0)), (t * 5.0) as usize % 4);
+                    look.props = vec![prop(rows(HERO_AXE), 15.0, 2.0)];
+                } else if t < 6.0 {
+                    look.frame = rotated(p.frame(Eyes::Closed, Pose::Stand(0)), 1);
+                    look.y_offset = 2.0;
+                    look.free = vec![self.placed(HERO_STAR, 6.0 + (6.0 * (t * 5.0).sin()).round(), 16.0)];
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Stand(0));
+                }
+            }
+            Trick::GrumboHelmet => {
+                // The helmet drops over his eyes, he shuffles about blind, then pushes it back up.
+                look.frame = p.frame(if t >= 6.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                if t > 1.0 && t < 6.0 {
+                    look.x_offset = beat;
+                    look.props = vec![prop(rows(HERO_HELMET), 1.0, 3.0), prop(rows(HERO_AXE), 15.0, 0.0)];
+                }
+            }
+            Trick::GrumboChop => {
+                // Lifts the axe, strikes the log, and the axe bounces straight back up. The log is fine.
+                look.frame = p.frame(eyes, Pose::Stand(0));
+                let lift = if t < 2.0 {
+                    10.0
+                } else if t < 4.0 {
+                    2.0
+                } else if t < 6.0 {
+                    (2.0 + 10.0 * ((t - 4.0) / 2.0 * PI).sin()).round()
+                } else {
+                    3.0
+                };
+                look.props = vec![prop(rows(HERO_LOG), 17.0, 0.0), prop(rows(HERO_AXE), 15.0, lift)];
+                if t > 4.0 && t < 6.0 {
+                    look.y_offset = -beat;
+                }
+            }
+
+            Trick::WispThread => {
+                // A glowing thread stretches out to the pointer while the wisp's glow pulses.
+                look.frame = p.frame(eyes, Pose::Stand(0));
+                look.palette.set('w', Some(if beat > 0.0 { hex(0xfff7d8) } else { hex(0xe9b878) }));
+                let reach = if t < 2.0 { t / 2.0 } else if t > d - 2.0 { (d - t).max(0.0) / 2.0 } else { 1.0 };
+                let target = self.thread_target(t);
+                let from = pt(self.center_x(14.0), 5.0 * PIXEL);
+                let end = pt(from.x + (target.x - from.x) * reach, from.y + (target.y - from.y) * reach);
+                let steps = 2.max(((end.x - from.x).hypot(end.y - from.y) / 5.0) as usize);
+                look.free = (0..=steps)
+                    .map(|i| {
+                        let q = i as f64 / steps as f64;
+                        free(rows(HERO_SPARK), from.x + (end.x - from.x) * q - 3.0, from.y + (end.y - from.y) * q - 3.0, 2.0)
+                    })
+                    .collect();
+                look.free.push(free(rows(HERO_STAR), end.x - 5.0, end.y - 5.0, 2.0));
+            }
+            Trick::WispKnot => {
+                // Winds a glowing loop, ends up with it knotted on its face, then shakes free.
+                if t < 3.0 {
+                    look.frame = p.frame(eyes, Pose::Stand(0));
+                    look.free = vec![self.placed(HERO_KNOT, 16.0 - (t * 3.0).round(), 5.0)];
+                } else if t < 6.0 {
+                    look.frame = p.frame(Eyes::Closed, Pose::Stand(0));
+                    look.x_offset = beat;
+                    look.props = vec![prop(rows(HERO_KNOT), 7.0, 5.0)];
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Stand(0));
+                }
+            }
+            Trick::WispMoth => {
+                // A moth circles the glow, lands on its head, and the wisp hops in surprise.
+                look.frame = p.frame(if t > 7.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                if t < 5.0 {
+                    let dx = 8.0 + (14.0 * (t * 3.0).cos()).round();
+                    let up = 16.0 - (4.0 * (t * 3.0).sin()).round();
+                    look.free = vec![self.placed(HERO_MOTH, dx, up)];
+                } else {
+                    look.free = vec![self.placed(HERO_MOTH, 7.0, if t > 7.0 { 17.0 } else { 14.0 })];
+                }
+                if t > 7.0 {
+                    look.y_offset = 3.0;
+                }
+            }
+
+            Trick::HexFrog | Trick::HexSheep => {
+                // Waves the wand, vanishes in a puff, bounces about as a frog or sheep, then puffs back.
+                look.frame = p.frame(if t >= 7.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                let hidden = [[b'.'; 16]; 16];
+                if t < 2.0 {
+                    look.props = vec![prop(rows(HERO_WAND), 14.0, 4.0 + beat)];
+                } else if t < 3.0 || (6.0..7.0).contains(&t) {
+                    look.frame = hidden;
+                    look.free = vec![self.placed(HERO_PUFF, 4.0, 5.0)];
+                } else if t < 6.0 {
+                    look.frame = hidden;
+                    let critter = if tr == Trick::HexFrog { HERO_FROG } else { HERO_SHEEP };
+                    look.free = vec![self.placed(critter, 4.0, (3.0 * (t * 5.0).sin().abs()).round())];
+                }
+            }
+            Trick::HexBook => {
+                // A book floats up, snaps shut on his nose, then drops while he recoils.
+                let biting = t > 3.0 && t < 5.0;
+                look.frame = p.frame(if biting { Eyes::Closed } else { eyes }, Pose::Stand(0));
+                let col = if t < 3.0 { 16.0 } else if biting { 14.0 } else { 17.0 }; // 14 while he recoils 2 px, so the book stays put
+                let lift = if t < 3.0 {
+                    (4.0 + t).round()
+                } else if t < 5.0 {
+                    6.0
+                } else {
+                    (6.0 - (t - 5.0) * 3.0).max(0.0).round()
+                };
+                look.props = vec![prop(rows(HERO_BOOK), col, lift)];
+                if biting {
+                    look.x_offset = -2.0;
+                }
+            }
+
+            Trick::MossToss => {
+                // Tosses a pebble in an arc, then naps standing up.
+                if t < 3.0 {
+                    look.frame = p.frame(eyes, Pose::Stand(0));
+                    look.free = vec![self.placed(HERO_ROCK, 14.0 + t * 5.0, (16.0 * (t / 3.0 * PI).sin()).round())];
+                } else {
+                    look.frame = p.frame(Eyes::Closed, Pose::Stand(0));
+                    look.free = vec![
+                        self.placed(HERO_ROCK, 29.0, 0.0),
+                        self.placed(HERO_Z, 10.0, 17.0 + (2.0 * (t % 2.0)).round()),
+                    ];
+                }
+            }
+            Trick::MossBloom => {
+                // A flower pushes up through the moss while he sleeps, then folds away again.
+                look.frame = p.frame(if t > 3.0 { Eyes::Happy } else { Eyes::Closed }, Pose::Stand(0));
+                if t > 1.0 && t < 7.0 {
+                    look.props = vec![prop(rows(HERO_FLOWER), 7.0, (14.0 + (t - 1.0).min(3.0)).round())];
+                }
+            }
+            Trick::MossRain => {
+                // A little drizzle of his own; the moss drinks it up and brightens, then a happy shake.
+                if t < 6.0 {
+                    look.frame = p.frame(eyes, Pose::Stand(0));
+                    let fall1 = ((t * 9.0) % 8.0).round();
+                    let fall2 = ((t * 9.0 + 3.0) % 8.0).round();
+                    look.free = vec![self.placed(HERO_RAIN, 4.0, 19.0 - fall1), self.placed(HERO_RAIN, 10.0, 19.0 - fall2)];
+                    if beat > 0.0 {
+                        look.palette.set('m', Some(hex(0xa8bc77)));
+                    }
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Stand(0));
+                    look.x_offset = beat;
+                }
+            }
+
+            Trick::ClankWind => {
+                // Steps slow to a stop (step_trick moves him), the key on his back turns, then off he goes.
+                if t < 3.0 {
+                    look.frame = p.frame(eyes, Pose::Stand((8.0 * (1.0 - (-t).exp())) as usize % 2));
+                } else if t < 7.0 {
+                    look.frame = p.frame(Eyes::Closed, Pose::Stand(0));
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Stand((self.clock / 0.15) as usize % 2));
+                }
+                let turning = t > 5.0 && t < 7.0 && beat > 0.0;
+                look.back = vec![self.placed(if turning { HERO_KEY_B } else { HERO_KEY_A }, -4.0, 4.0)];
+            }
+            Trick::ClankSpring => {
+                // A spring pops out of his hatch, wobbles, and gets reeled back in.
+                look.frame = p.frame(eyes, Pose::Stand(0));
+                if t > 2.0 && t < 7.0 {
+                    let out = ((if t < 5.0 { t - 2.0 } else { 7.0 - t }) * 2.0).round();
+                    look.props = vec![prop(rows(HERO_SPRING), 12.0 + out + if t < 3.0 { 2.0 } else { 0.0 }, 3.0)];
+                }
+                if t > 2.0 && t < 3.0 {
+                    look.x_offset = -2.0;
+                }
+            }
+            Trick::ClankBell => {
+                // An alarm bell rises out of his helmet and rattles; he jumps.
+                let rattling = t > 3.0 && t < 6.0;
+                look.frame = p.frame(eyes, Pose::Stand(0));
+                if t < 7.0 {
+                    let col = 7.0 + if rattling { beat } else { 0.0 };
+                    look.props = vec![prop(rows(HERO_BELL), col, (14.0 + t.min(3.0)).round())];
+                }
+                if rattling {
+                    look.y_offset = beat * 2.0;
+                }
+            }
+
+            Trick::LunetteRice => {
+                // Pounds rice in the mortar, then proudly holds up a rice cake.
+                look.frame = p.frame(if t < 5.0 { eyes } else { Eyes::Happy }, Pose::Stand(0));
+                look.props = vec![prop(rows(LUNETTE_MORTAR), 14.0, 0.0)];
+                if t < 5.0 {
+                    look.props.push(prop(rows(LUNETTE_MALLET), 14.0, 3.0 + ((t * 2.0) as i64 % 2) as f64 * 4.0));
+                } else {
+                    look.props.push(prop(rows(LUNETTE_CAKE), 14.0, 5.0));
+                    if beat > 0.0 {
+                        look.free = vec![self.placed(HERO_SPARK, 21.0, 10.0)];
+                    }
+                }
+            }
+            Trick::LunetteWish => {
+                // Gazes at the stars, a shooting star crosses, she closes her eyes and wishes.
+                let wish_eyes = if t >= 6.0 { Eyes::Happy } else if t >= 4.0 { Eyes::Closed } else { Eyes::Open };
+                look.frame = p.frame(wish_eyes, Pose::Sit);
+                look.free = vec![self.placed(HERO_STAR, -3.0, 23.0), self.placed(HERO_STAR, 22.0, 26.0)];
+                if (2.0..4.0).contains(&t) {
+                    look.free.push(self.placed(LUNETTE_COMET, -8.0 + (t - 2.0) * 22.0, (27.0 - (t - 2.0) * 4.5).round()));
+                }
+                if t >= 4.0 && beat > 0.0 {
+                    look.free.push(self.placed(HERO_SPARK, 17.0, 17.0));
+                    look.free.push(self.placed(HERO_SPARK, 5.0, 22.0));
+                }
+            }
+            Trick::LunetteNap => {
+                // Tucks her ears down and naps on a crescent-moon cushion.
+                let napping = (1.0..7.0).contains(&t);
+                let nap_eyes = if t < 1.0 { Eyes::Open } else if napping { Eyes::Closed } else { Eyes::Happy };
+                let mut frame = p.frame(nap_eyes, Pose::Sit);
+                if napping {
+                    for (row, ears) in frame.iter_mut().zip(LUNETTE_TUCKED_EARS) {
+                        row.copy_from_slice(ears.as_bytes());
+                    }
+                }
+                look.frame = frame;
+                look.y_offset = if napping { 1.0 } else { 2.0 }; // resting on the cushion
+                look.back = vec![self.placed(LUNETTE_CUSHION, -3.0, 0.0)];
+                if napping {
+                    let drift = (2.0 * (t % 2.0)).round();
+                    look.free = vec![self.placed(HERO_Z, 17.0, 18.0 + drift)];
+                    if t > 3.0 {
+                        look.free.push(self.placed(HERO_Z, 23.0, 22.0 + drift));
+                    }
+                }
+            }
+            _ => {}
         }
         look
     }

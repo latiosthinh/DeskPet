@@ -108,6 +108,13 @@ pub enum TypingStyle {
     Swimming,
     ReadingGlasses,
     Digging,
+    // hero pets
+    Stamping,
+    Spool,
+    SpellNotes,
+    Pebbles,
+    Checklist,
+    Mortar,
 }
 
 pub type Frame = [[u8; 16]; 16];
@@ -128,11 +135,14 @@ pub struct Pet {
     pub sweeps: bool,
     pub reads_with_glasses: bool,
     pub premium: bool, // needs an unlock code
+    pub wind_key: bool, // Sir Clank's wind-up key, always drawn behind him
+    pub floats: bool,   // bobs up and down while walking instead of stepping (Wisp-a-ling)
 }
 
 impl Pet {
-    pub fn first_name(&self) -> &'static str {
-        self.name.split(' ').next().unwrap_or(self.name)
+    /// "Ember the fox" → "Ember"; "Sir Clank" stays whole.
+    pub fn short_name(&self) -> &'static str {
+        self.name.split(" the ").next().unwrap_or(self.name)
     }
 
     pub fn rows(&self, eyes: Eyes) -> [[u8; 16]; 13] {
@@ -213,6 +223,8 @@ pub fn pets() -> Vec<Pet> {
             sweeps: true,
             reads_with_glasses: false,
             premium: false,
+            wind_key: false,
+            floats: false,
         },
         Pet {
             id: "ember",
@@ -238,6 +250,8 @@ pub fn pets() -> Vec<Pet> {
             sweeps: false,
             reads_with_glasses: false,
             premium: true,
+            wind_key: false,
+            floats: false,
         },
         Pet {
             id: "pip",
@@ -264,6 +278,8 @@ pub fn pets() -> Vec<Pet> {
             sweeps: false,
             reads_with_glasses: false,
             premium: true,
+            wind_key: false,
+            floats: false,
         },
         Pet {
             id: "puddle",
@@ -290,6 +306,8 @@ pub fn pets() -> Vec<Pet> {
             sweeps: false,
             reads_with_glasses: true,
             premium: true,
+            wind_key: false,
+            floats: false,
         },
         Pet {
             id: "sprout",
@@ -317,8 +335,143 @@ pub fn pets() -> Vec<Pet> {
             sweeps: false,
             reads_with_glasses: false,
             premium: true,
+            wind_key: false,
+            floats: false,
         },
+        // Tiny heroes (designed in prototypes/hero-pets.html)
+        hero(
+            "grumbo",
+            "Grumbo the warrior",
+            &[('k', hex(0x33293d)), ('w', hex(0xe9bd8e)), ('s', hex(0xba886c)), ('h', hex(0x96909e)), ('H', hex(0xc4bfca)), ('v', hex(0x827565))],
+            [
+                "................", "....kkkkkkkk....", "...khhhhhhhhkk..", "..khhHhhhhhhhhk.",
+                "..khhhhhhhhhhhk.", ".kkkkkkkkkkkkkk.", ".kswwwwwwwwwwwk.", ".kswwwwwwwwwwwk.",
+                ".kswwwwwwswwwsk.", ".kvvwwwwwwwwvvk.", ".kvvvvvvvvvvvvk.", "..kvvvvHHvvvvk..",
+                "...kkkkkkkkkk...",
+            ],
+            ["...kvk....kvk...", ".....kvkkvk....."],
+            None,
+            &[Trick::GrumboSpin, Trick::GrumboHelmet, Trick::GrumboChop],
+            TypingStyle::Stamping,
+        ),
+        Pet {
+            floats: true,
+            ..hero(
+                "wispaling",
+                "Wisp-a-ling the spirit",
+                &[('k', hex(0x33293d)), ('w', hex(0xf7edb0)), ('s', hex(0xe9b878)), ('h', hex(0xfff7d8)), ('p', hex(0xe7a98d))],
+                [
+                    ".....kk.........", "....kwhk........", "...kwwk.........", "...kwwkkkkkk....",
+                    "..kwwwwwwwhhkk..", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kswwwwwwwwwwwk.",
+                    "..kswwwwpwwwwpk.", "...kswwwwwwwwwk.", "..kwswwwwwwwwk..", ".kwkkswwwwwwk...",
+                    "..k..kkkkkkk....",
+                ],
+                ["......kk..kk....", ".....kk..kk....."],
+                Some("......kk..kk...."),
+                &[Trick::WispThread, Trick::WispKnot, Trick::WispMoth],
+                TypingStyle::Spool,
+            )
+        },
+        hero(
+            "hexley",
+            "Hexley the apprentice",
+            &[('k', hex(0x33293d)), ('w', hex(0xedc6a7)), ('s', hex(0xbc947e)), ('h', hex(0x729d98)), ('H', hex(0xa8c5b5)), ('p', hex(0xdba4a7))],
+            [
+                "...kk...........", "..kHHk..........", "...khkkkkkk.....", "..khhhhhhhhkk...",
+                ".khhHhhhhhhhhhk.", ".khhhwwwwwwwwwk.", ".khhhwwwwwwwwwk.", ".khhhwwwwwwwwwk.",
+                ".khhhwwwpwwwwpk.", ".khhhhhwwwwhhhk.", ".khhhhhHHhhhhhk.", "..khhhhHHhhhhk..",
+                "...kkkkkkkkkk...",
+            ],
+            ["...khk....khk...", ".....khkkhk....."],
+            None,
+            &[Trick::HexFrog, Trick::HexSheep, Trick::HexBook],
+            TypingStyle::SpellNotes,
+        ),
+        hero(
+            "mossback",
+            "Mossback the pebble giant",
+            &[('k', hex(0x33293d)), ('w', hex(0xc0b7a3)), ('s', hex(0x938b7f)), ('m', hex(0x82965c)), ('M', hex(0xb8c68a)), ('b', hex(0x796b57))],
+            [
+                "................", "......kkk.......", "...kkkMmMkkk....", "..kmMmmmMmmmk...",
+                ".kmmmmmMmmmmmk..", ".kwwwwwwwwwwwwk.", ".kswwwwwwwwwwwk.", ".kswwwwwwwwwwwk.",
+                ".kswwwwwswwwwsk.", ".kswbwwwwwwwwwk.", ".kssbwwwbwwwwwk.", "..ksswwwbwwwwk..",
+                "...kkkkkkkkkk...",
+            ],
+            ["..kbk.....kbk...", "....kbk.kbk....."],
+            None,
+            &[Trick::MossToss, Trick::MossBloom, Trick::MossRain],
+            TypingStyle::Pebbles,
+        ),
+        Pet {
+            wind_key: true,
+            ..hero(
+                "sirclank",
+                "Sir Clank",
+                &[('k', hex(0x33293d)), ('w', hex(0xe2dbbf)), ('s', hex(0xb5ab96)), ('h', hex(0xbc8270)), ('H', hex(0xf7efd8)), ('y', hex(0xd7b365))],
+                [
+                    "................", ".....kkkkkk.....", "....kwHwwwwk....", "...kwwwwwwwwk...",
+                    "..kwwwwwwwwwwk..", ".kwwkkkkkkkkwwk.", ".kwkwHHHHHHHHwk.", ".kwkwHHHHHHHHwk.",
+                    ".kwwkkkkkkkkwwk.", ".kswwwhhhwwwwwk.", ".ksswwhHhwwwwwk.", "..kssswwwsswwk..",
+                    "...kkkkkkkkkk...",
+                ],
+                ["...khk....khk...", ".....khkkhk....."],
+                None,
+                &[Trick::ClankWind, Trick::ClankSpring, Trick::ClankBell],
+                TypingStyle::Checklist,
+            )
+        },
+        hero(
+            "lunette",
+            "Lunette the moon rabbit",
+            &[('k', hex(0x33293d)), ('w', hex(0xfff3df)), ('s', hex(0xd9c9e8)), ('p', hex(0xe8a5b7))],
+            [
+                "....kk...kk.....", "...kwpk.kpwk....", "...kwpk.kpwk....", "...kwpk.kpwk....",
+                "...kwwkkkwwkk...", "..kwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.",
+                "kwwkwwwwwwwwwpk.", "kwwkswwwwwwwwwk.", ".kkkswwwwwwwwwk.", "...ksssswwwwwk..",
+                "....kkkkkkkkk...",
+            ],
+            ["....kwk....kwk..", "......kwkkwk...."],
+            None,
+            &[Trick::LunetteRice, Trick::LunetteWish, Trick::LunetteNap],
+            TypingStyle::Mortar,
+        ),
     ]
+}
+
+/// A premium hero pet with the usual defaults (paw "w", eyes at columns 9 and 12).
+#[allow(clippy::too_many_arguments)]
+fn hero(
+    id: &'static str,
+    name: &'static str,
+    palette: &[(char, Color)],
+    body: [&'static str; 13],
+    feet: [&'static str; 2],
+    sit_base: Option<&'static str>,
+    tricks: &'static [Trick],
+    typing: TypingStyle,
+) -> Pet {
+    Pet {
+        id,
+        name,
+        palette: Palette::new(palette),
+        body,
+        feet,
+        sit_base,
+        paw: b'w',
+        eye_cols: [9, 12],
+        tricks,
+        typing,
+        sweeps: false,
+        reads_with_glasses: false,
+        premium: true,
+        wind_key: false,
+        floats: false,
+    }
+}
+
+/// A colour written as 0xRRGGBB.
+pub const fn hex(v: u32) -> Color {
+    Color::new((v >> 16) as u8, (v >> 8) as u8, v as u8, 255)
 }
 
 /// Grid rows for props and tricks.
@@ -393,6 +546,12 @@ pub enum Trick {
     IceCream, Twin, ColorShift, PopFood,                   // Puddle
     GiveFlower, Shower, PlantSelf, GrowUp, ChaseButterfly, // Sprout
     Yarn, BoxNap, Laser, Fishing,                          // Mochi
+    GrumboSpin, GrumboHelmet, GrumboChop,                  // Grumbo
+    WispThread, WispKnot, WispMoth,                        // Wisp-a-ling
+    HexFrog, HexSheep, HexBook,                            // Hexley
+    MossToss, MossBloom, MossRain,                         // Mossback
+    ClankWind, ClankSpring, ClankBell,                     // Sir Clank
+    LunetteRice, LunetteWish, LunetteNap,                  // Lunette
 }
 
 impl Trick {
@@ -420,6 +579,9 @@ impl Trick {
             BoxNap => 10.0,
             Laser => 10.0,
             Fishing => 11.0,
+            GrumboSpin | GrumboHelmet | GrumboChop | WispThread | WispKnot | WispMoth | HexFrog | HexSheep | HexBook
+            | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
+            | LunetteNap => 8.0,
         }
     }
 
@@ -447,6 +609,24 @@ impl Trick {
             BoxNap => "Nap in a Box",
             Laser => "Chase a Laser Dot",
             Fishing => "Go Fishing",
+            GrumboSpin => "Spin Until Dizzy",
+            GrumboHelmet => "Helmet Slips Down",
+            GrumboChop => "Chop a Log (Try To)",
+            WispThread => "Reach for the Pointer",
+            WispKnot => "Get Tied in a Knot",
+            WispMoth => "Attract a Moth",
+            HexFrog => "Turn into a Frog",
+            HexSheep => "Turn into a Sheep",
+            HexBook => "Read a Biting Book",
+            MossToss => "Toss a Rock, Then Nap",
+            MossBloom => "Sprout a Flower",
+            MossRain => "Enjoy a Little Rain",
+            ClankWind => "Run Down and Wind Up",
+            ClankSpring => "Sneeze a Spring",
+            ClankBell => "Tea-Time Alarm",
+            LunetteRice => "Pound Rice Cakes",
+            LunetteWish => "Wish on a Shooting Star",
+            LunetteNap => "Nap in a Crescent Moon",
         }
     }
 }
@@ -517,6 +697,66 @@ pub mod trick_art {
     pub const LASER_DOT: &[&str] = &["r"];
     pub const ROD: &[&str] = &["......nn", ".....n.k", "....n..k", "...n...k", "..n....k", ".n.....k", "n......k", ".......r"];
     pub const FISH: &[&str] = &[".ooo.o", "oooooo", ".ooo.o"];
+
+    // Hero pets (Grumbo, Wisp-a-ling, Hexley, Mossback, Sir Clank, Lunette)
+    pub const HERO_AXE: &[&str] = &["...kkk", "..kggk", "nnkggk", "..nkk.", "..n...", "..n..."];
+    pub const HERO_HELMET: &[&str] = &["...kkkkkkk...", "..kgggggggk..", ".kgggigggggk.", "kgggggggggggk", "kkkkkkkkkkkkk"];
+    pub const HERO_STAR: &[&str] = &["..y..", ".yyy.", "yyyyy", ".yyy.", "..y.."];
+    pub const HERO_LOG: &[&str] = &[".kkkkkk.", "knnnnNnk", "knNnnnnk", ".kkkkkk."];
+    pub const HERO_THREAD_SPOOL: &[&str] = &["kkkkk", "kCCCk", "kccck", "kCCCk", "kkkkk"];
+    pub const HERO_KNOT: &[&str] = &[".CC.CC.", "C..C..C", ".CCCCC.", "...C...", "..C.C.."];
+    pub const HERO_MOTH: &[&str] = &["i...i", "iikii", ".iki."];
+    pub const HERO_WAND: &[&str] = &["..y", "..n", ".n.", "n.."];
+    pub const HERO_FROG: &[&str] = &["..kk..kk..", ".kGGkkGGk.", ".kGkGGkGk.", "kGGGGGGGGk", "kGGGrrGGGk", ".kkkkkkkk.",
+                                     "kGGk..kGGk"];
+    pub const HERO_SHEEP: &[&str] = &["..kk.kk...", ".kWWkWWkk.", "kWWWWWWWwk", "kWWWWWWkwk", ".kWWWWWkk.", "..kkkkkk..",
+                                      "..nk..nk.."];
+    pub const HERO_PUFF: &[&str] = &["..WW.W..", ".WWWWWW.", "WWWWWWWW", ".WWWWWW.", "..W.WW.."];
+    pub const HERO_BOOK: &[&str] = &[".kk.kk.", "kiikiik", "kiisiik", "kiikiik", "krrrrrk"];
+    pub const HERO_ROCK: &[&str] = &[".kkk.", "kgggk", "kgsgk", ".kkk."];
+    pub const HERO_FLOWER: &[&str] = &["..P..", ".PyP.", "..P..", "..G..", ".GG.."];
+    pub const HERO_RAIN: &[&str] = &["c...c", "..c..", "c...c"];
+    pub const HERO_Z: &[&str] = &["kkkk", "..k.", ".k..", "kkkk"];
+    pub const HERO_KEY_A: &[&str] = &[".kk.kk.", "kyykyyk", ".kkykk.", "...y...", "...y..."];
+    pub const HERO_KEY_B: &[&str] = &["...k...", "..kyk..", "...k...", "...y...", "...y..."];
+    pub const HERO_SPRING: &[&str] = &[".gggg.", "g.....", ".gggg.", ".....g", ".gggg."];
+    pub const HERO_BELL: &[&str] = &["..kk..", ".kyyk.", "kyyyyk", "kkkkkk", "..y..."];
+    pub const HERO_PAD: &[&str] = &["kkkkkkkk", "kiiiiiik", "kikikikk", "kiiiiiik", "kkkkkkkk"];
+    pub const HERO_STAMP: &[&str] = &[".kkk.", ".knk.", "kkkkk", "kgggk"];
+    pub const HERO_PEBBLES: &[&str] = &[".g..g.g.", "gg.ggggg"];
+    pub const HERO_SPARK: &[&str] = &[".C.", "CCC", ".C."];
+    pub const HERO_PAW: &[&str] = &["kwk", "kwk"];
+    pub const LUNETTE_MORTAR: &[&str] = &["kkkkkkkk", "kssiiiik", ".kssssk.", ".kssssk.", "..kkkk.."];
+    pub const LUNETTE_MALLET: &[&str] = &["...kkkkk", "...kTTTk", "...kkkkk", ".....n..", ".....n..", "..kwwn..", "..kkkn.."];
+    pub const LUNETTE_CAKE: &[&str] = &[".kkk.", "kiWik", "kiWik", ".kkk.", "..w.."];
+    pub const LUNETTE_COMET: &[&str] = &["y.........", ".yy.......", "..yyy.....", "....yy....", ".....y...."];
+    pub const LUNETTE_CUSHION: &[&str] = &[
+        ".......kkkkkkk........", ".....kkyyyyyk.........", "....kyyyyyk...........",
+        "...kyyyyyk............", "..kyyyyyk.............", ".kyyyyyk..............",
+        ".kyyyyTk..............", "kyyyyyTk..............", "kyyyyyTk..............",
+        "kyyyyyTk..............", "kyyyyyyTk.............", "kyyyyyyyTk............",
+        ".kyyyyyyyTk...........", ".kyyyyyyyyTkk.........", "..kyyyyyyyyyTkkkkk....",
+        "...kyyyyyyyyyyyyyykk..", "....kkyyyyyyyyyyyyyyk.", "......kkkkkkkkkkkkkk..",
+    ];
+    /// Lunette's ears folded down for her nap; replaces the top six rows of her sitting frame.
+    pub const LUNETTE_TUCKED_EARS: [&str; 6] = ["................", "................", "....kkkkkk......", "...kwwwwwwk.....",
+                                                "..kwwwwwwwwkk...", "..kwwwwwwwwwwwk."];
+}
+
+/// Turns a 16×16 frame a quarter turn clockwise `turns` times.
+pub fn rotated(frame: Frame, turns: usize) -> Frame {
+    let mut g = frame;
+    for _ in 0..(turns % 4) {
+        let mut out = [[b'.'; 16]; 16];
+        for (r, row) in out.iter_mut().enumerate() {
+            for (c, cell) in row.iter_mut().enumerate() {
+                // new[r][c] = old[15 - c][r], as in main.swift
+                *cell = g[15 - c][r];
+            }
+        }
+        g = out;
+    }
+    g
 }
 
 /// Little pictures shown in speech bubbles in place of the Mac version's emoji.

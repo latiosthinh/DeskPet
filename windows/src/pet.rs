@@ -86,13 +86,15 @@ pub struct Look {
     pub scale: f64,
     pub props: Vec<Prop>,
     pub free: Vec<FreeSprite>,
+    pub back: Vec<FreeSprite>, // drawn behind the pet
+    pub x_offset: f64,         // art pixels forward (the way the pet faces), for jitters and recoils
     pub twin: Option<Twin>,
     pub beam: Option<(Pt, f64)>, // flashlight light
 }
 
 impl Look {
     pub fn new(frame: Frame, palette: Palette) -> Look {
-        Look { frame, palette, y_offset: 0.0, scale: 1.0, props: vec![], free: vec![], twin: None, beam: None }
+        Look { frame, palette, y_offset: 0.0, scale: 1.0, props: vec![], free: vec![], back: vec![], x_offset: 0.0, twin: None, beam: None }
     }
 }
 
@@ -170,6 +172,8 @@ pub struct PetView {
 
     pub clock: f64,
     pub now: f64,
+    /// The pointer in pen coordinates, as of the last step.
+    pub mouse: Pt,
     pub last_puff: f64,
     pub particles: Vec<Particle>,
     pub bubble_text: Option<String>,
@@ -210,6 +214,7 @@ impl PetView {
             height: 134.0,
             clock: 0.0,
             now,
+            mouse: pt(-10000.0, -10000.0),
             last_puff: 0.0,
             particles: vec![],
             bubble_text: None,
@@ -366,6 +371,7 @@ impl PetView {
 
     pub fn step(&mut self, dt: f64, now: f64, idle: f64, key_idle: f64, mouse: Pt) {
         self.now = now;
+        self.mouse = mouse;
         self.clock += dt;
 
         for p in &mut self.particles {
@@ -542,20 +548,28 @@ impl PetView {
     }
 
     pub fn current_look(&self) -> Look {
-        if self.mode == Mode::Trick && !self.dragging {
-            if let Some(t) = self.trick {
-                return self.trick_look(t);
+        let trick = if self.mode == Mode::Trick && !self.dragging { self.trick } else { None };
+        let mut look = if let Some(t) = trick {
+            self.trick_look(t)
+        } else if self.mode == Mode::Typing && !self.dragging {
+            self.typing_look()
+        } else {
+            let mut look = Look::new(self.current_frame(), self.pet.palette);
+            if let Some(p) = self.current_prop() {
+                look.props.push(p);
             }
-        }
-        if self.mode == Mode::Typing && !self.dragging {
-            return self.typing_look();
-        }
-        let mut look = Look::new(self.current_frame(), self.pet.palette);
-        if let Some(p) = self.current_prop() {
-            look.props.push(p);
-        }
-        if self.mode == Mode::Reading && self.pet.reads_with_glasses && !self.dragging {
-            look.free.push(self.glasses_sprite());
+            if self.mode == Mode::Reading && self.pet.reads_with_glasses && !self.dragging {
+                look.free.push(self.glasses_sprite());
+            }
+            if self.mode == Mode::Walking && self.pet.floats {
+                look.y_offset = (1.0 + (self.clock * 3.0).sin()).round();
+            }
+            look
+        };
+        // Sir Clank's key sits on his back, and turns during his wind-up trick.
+        if self.pet.wind_key && trick != Some(Trick::ClankWind) {
+            let key = self.placed(art::trick_art::HERO_KEY_A, -4.0 + look.x_offset, 4.0 + look.y_offset);
+            look.back.push(key);
         }
         look
     }
@@ -577,11 +591,16 @@ impl PetView {
         colors.set('w', look.palette.get(self.pet.paw));
         colors.set('k', look.palette.get(b'k'));
 
+        for f in &look.back {
+            let (x, y) = (c.snap(f.x), c.snap(f.y));
+            draw_grid(c, &f.rows, &colors, x, 0.0, y, f.px, false);
+        }
         if let Some(tw) = &look.twin {
             draw_sprite(c, &tw.frame, &look.palette, tw.center_x, tw.scale, tw.y_offset, tw.facing_left);
         }
-        draw_sprite(c, &look.frame, &look.palette, self.pet_center_x(), look.scale, look.y_offset, self.facing_left);
-        let px0 = c.snap(self.pet_x);
+        let shift = look.x_offset * PIXEL * if self.facing_left { -1.0 } else { 1.0 };
+        draw_sprite(c, &look.frame, &look.palette, self.pet_center_x() + shift, look.scale, look.y_offset, self.facing_left);
+        let px0 = c.snap(self.pet_x + shift);
         for p in &look.props {
             draw_grid(c, &p.rows, &colors, px0, p.col, p.lift * PIXEL, PIXEL, self.facing_left);
         }
