@@ -40,6 +40,8 @@ let propPalette: [Character: NSColor] = [
     "G": rgb(0.33, 0.64, 0.30),  // stems
     "N": rgb(0.40, 0.26, 0.15),  // dark soil
     "W": rgb(0.95, 0.96, 0.99),  // cloud
+    "T": rgb(0.82, 0.64, 0.42),  // cardboard
+    "U": rgb(0.66, 0.49, 0.31),  // cardboard tape and flaps
 ]
 
 let emptyRow = "................"
@@ -47,6 +49,8 @@ let emptyRow = "................"
 enum Eyes { case open, closed, happy }
 /// Standing on one of the two walking-feet rows, or sitting down.
 enum Pose { case stand(Int), sit }
+
+enum TypingStyle { case laptop, cooking, swimming, readingGlasses, digging }
 
 /// A pet design on the 16×16 grid, facing right. Sprite column 14 is the front outline,
 /// where props are held; eyes are drawn on rows 6–7 at `eyeCols`.
@@ -60,6 +64,10 @@ struct Pet {
     var paw: Character = "w"
     var eyeCols = [9, 12]
     var tricks: [Trick] = []
+    /// What the pet does while you type.
+    var typing: TypingStyle = .laptop
+    var sweeps = false
+    var readsWithGlasses = false
 
     func rows(eyes: Eyes) -> [String] {
         var grid = body.map { Array($0) }
@@ -95,7 +103,8 @@ let pets: [Pet] = [
                ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.", ".kwwwwwwwwwwwwk.",
                ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
                "...kkkkkkkkkk..."],
-        feet: ["..kwk.....kwk...", "....kwk.kwk....."]),
+        feet: ["..kwk.....kwk...", "....kwk.kwk....."],
+        tricks: [.yarn, .boxNap, .laser, .fishing], sweeps: true),
     Pet(id: "ember", name: "Ember the fox", palette: [
             "k": rgb(0.23, 0.14, 0.13), "w": rgb(0.95, 0.53, 0.23),
             "s": rgb(0.83, 0.42, 0.16), "c": rgb(1.00, 0.95, 0.86)],
@@ -104,7 +113,7 @@ let pets: [Pet] = [
                "kwkkwwwwccccckk.", "kwwkswwwcccccck.", "kwwksswwwccccck.", ".kkkssswwwwwwk..",
                "....kkkkkkkkk..."],
         feet: ["....kwk...kwk...", ".....kwk.kwk...."],
-        tricks: [.firework, .flashlight, .flipEgg, .campfire]),
+        tricks: [.firework, .flashlight, .flipEgg, .campfire], typing: .cooking),
     Pet(id: "pip", name: "Pip the penguin", palette: [
             "k": rgb(0.12, 0.13, 0.20), "b": rgb(0.24, 0.29, 0.43), "w": rgb(1.00, 1.00, 1.00),
             "o": rgb(1.00, 0.65, 0.24), "p": rgb(1.00, 0.62, 0.70)],
@@ -113,7 +122,7 @@ let pets: [Pet] = [
                ".kbbbbbwwwwwwpk.", ".kbbkbbwwwwwwwk.", ".kbbbkbwwwwwwwk.", "..kbbbkwwwwwwk..",
                "...kkkkkkkkkk..."],
         feet: ["...kook..kook...", "....kook.kook..."],
-        tricks: [.hideInWater, .spitWater, .swim, .bubbles]),
+        tricks: [.hideInWater, .spitWater, .swim, .bubbles], typing: .swimming),
     Pet(id: "puddle", name: "Puddle the slime", palette: [
             "k": rgb(0.14, 0.31, 0.42), "c": rgb(0.56, 0.85, 0.95), "H": rgb(1.00, 1.00, 1.00),
             "d": rgb(0.39, 0.71, 0.86), "p": rgb(1.00, 0.62, 0.70)],
@@ -123,7 +132,7 @@ let pets: [Pet] = [
                ".kddddcccccccck."],
         feet: ["..kkkkkkkkkkkk..", ".kkkkkkkkkkkkkk."],
         sitBase: "..kkkkkkkkkkkk..", paw: "c",
-        tricks: [.iceCream, .twin, .colorShift, .popFood]),
+        tricks: [.iceCream, .twin, .colorShift, .popFood], typing: .readingGlasses, readsWithGlasses: true),
     Pet(id: "sprout", name: "Sprout the seedling", palette: [
             "k": rgb(0.14, 0.25, 0.16), "w": rgb(0.71, 0.88, 0.54), "s": rgb(0.55, 0.76, 0.40),
             "L": rgb(0.36, 0.70, 0.32), "S": rgb(0.25, 0.54, 0.23), "p": rgb(1.00, 0.62, 0.70)],
@@ -132,7 +141,7 @@ let pets: [Pet] = [
                ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
                "...kkkkkkkkkk..."],
         feet: ["..kwk.....kwk...", "....kwk.kwk....."],
-        tricks: [.giveFlower, .shower, .plantSelf, .growUp, .chaseButterfly]),
+        tricks: [.giveFlower, .shower, .plantSelf, .growUp, .chaseButterfly], typing: .digging),
 ]
 
 func pet(withID id: String) -> Pet { pets.first { $0.id == id } ?? pets[0] }
@@ -260,6 +269,7 @@ final class PetView: NSView {
     var foodKind = 0
     var chaseMoving = false
     var bubbleScale: CGFloat = 1
+    var dotX: CGFloat = 0
     var range: CGFloat = 80
     var screenFrame: NSRect = .zero
 
@@ -373,7 +383,7 @@ final class PetView: NSView {
         case ..<0.45 where canWalk:
             targetX = randomTarget(near: petX, within: .greatestFiniteMagnitude)
             setMode(.walking)
-        case ..<0.57:
+        case ..<0.57 where pet.sweeps:
             setMode(.sweeping, for: .random(in: 6...10))
             targetX = randomTarget(near: petX, within: 50)
         case ..<0.70:
@@ -408,7 +418,7 @@ final class PetView: NSView {
             setMode(.idle, for: 1.5)
             say("!", for: 1.2)
         } else if mode != .sleeping && !busyWithReminder && keyIdle < 0.6 {
-            if mode != .typing { setMode(.typing) }   // pull the laptop out
+            if mode != .typing { beginTyping() }   // pull out the laptop, pan, shovel…
             modeUntil = now + typingLinger
         }
 
@@ -447,7 +457,11 @@ final class PetView: NSView {
             if let trick { stepTrick(trick, dt: dt) }
             if now >= modeUntil { trick = nil; decideNext() }
 
-        case .idle, .sitting, .typing, .cheering, .reading:
+        case .typing:
+            stepTyping(dt: dt)
+            if now >= modeUntil { decideNext() }
+
+        case .idle, .sitting, .cheering, .reading:
             if now >= modeUntil { decideNext() }
         }
         petX = min(max(petX, minPetX), maxPetX)   // never leave the pen
@@ -510,7 +524,7 @@ final class PetView: NSView {
         case .sweeping:
             return Prop(rows: Props.broom(swish: Int(clock / 0.3) % 2 == 0), col: 14, lift: 0)
         case .reading:
-            return Prop(rows: Props.book(flip: t.truncatingRemainder(dividingBy: 3) < 0.25), col: 13, lift: 3)
+            return Prop(rows: Props.book(flip: t.truncatingRemainder(dividingBy: 3) < 0.25), col: 13, lift: bookLift)
         case .drinking:
             return Prop(rows: Props.cup(left: 1 - progress), col: 14, lift: isSipping(t) ? 5 : 3)
         case .eating:
@@ -691,6 +705,7 @@ enum Trick: CaseIterable {
     case hideInWater, spitWater, swim, bubbles                 // Pip
     case iceCream, twin, colorShift, popFood                   // Puddle
     case giveFlower, shower, plantSelf, growUp, chaseButterfly // Sprout
+    case yarn, boxNap, laser, fishing                          // Mochi
 
     var duration: Double {
         switch self {
@@ -711,6 +726,10 @@ enum Trick: CaseIterable {
         case .plantSelf: 10
         case .growUp: 9
         case .chaseButterfly: 12
+        case .yarn: 10
+        case .boxNap: 10
+        case .laser: 10
+        case .fishing: 11
         }
     }
 
@@ -733,6 +752,10 @@ enum Trick: CaseIterable {
         case .plantSelf: "Plant Itself"
         case .growUp: "Grow Up"
         case .chaseButterfly: "Chase a Butterfly"
+        case .yarn: "Play with Yarn"
+        case .boxNap: "Nap in a Box"
+        case .laser: "Chase a Laser Dot"
+        case .fishing: "Go Fishing"
         }
     }
 }
@@ -772,6 +795,23 @@ enum TrickArt {
     static let butterflyA = ["P...P", "PPkPP", ".PkP."]
     static let butterflyB = ["..k..", "PPkPP", "P.k.P"]
     static let ball = ["rr", "rr"]
+
+    // Typing activities
+    static let pile = ["..nnnn..", ".nnNnnn.", "nnnnnNnn"]
+    static let shovel = ["n....", ".n...", "..n..", "..ggg", "..gg."]
+    /// Red-framed glasses on a half-size grid (2 pt cells), so each thin rim fits around an eye
+    /// (eyes at sprite columns 9 and 12). Starts at half-column 10; the arm runs back toward the ear.
+    static let glasses = [".......rrrr..rrrr", "rrrrrrrr..rrrr..r", ".......r..r..r..r",
+                          ".......r..r..r..r", ".......r..r..r..r", ".......rrrr..rrrr"]
+
+    // Mochi
+    static let yarnA = [".PP.", "PkPP", "PPkP", ".PP."]
+    static let yarnB = [".PP.", "PPkP", "PkPP", ".PP."]
+    static let box = ["Uk..............kU", "kkkkkkkkkkkkkkkkkk", "kTTTTTTTUUTTTTTTTk", "kTTTTTTTUUTTTTTTTk",
+                      "kTTTTTTTUUTTTTTTTk", "kTTTTTTTTTTTTTTTTk", "kkkkkkkkkkkkkkkkkk"]
+    static let laserDot = ["r"]
+    static let rod = ["......nn", ".....n.k", "....n..k", "...n...k", "..n....k", ".n.....k", "n......k", ".......r"]
+    static let fish = [".ooo.o", "oooooo", ".ooo.o"]
 }
 
 let sparkleColors: [NSColor] = [.systemYellow, .systemPink, .systemOrange, .systemTeal, .systemPurple, .systemGreen]
@@ -818,9 +858,9 @@ extension PetView {
         trickStartFacing = facingLeft
         switch t {
         case .swim:
-            poolWidth = 30 * pixel
-            poolLeft = min(max(petCenterX - poolWidth / 2, 0), max(0, bounds.width - poolWidth))
-            targetX = swimRange().upperBound
+            setUpPool()
+        case .laser:
+            dotX = petCenterX
         case .twin:
             let roomRight = bounds.width - (petX + petSize), roomLeft = petX
             let side: CGFloat = roomRight >= roomLeft ? 1 : -1
@@ -915,14 +955,7 @@ extension PetView {
             }
 
         case .swim:
-            let range = swimRange()
-            if moveToward(targetX, speed: 22, dt: dt) {
-                targetX = abs(targetX - range.lowerBound) < 1 ? range.upperBound : range.lowerBound
-            }
-            if every(1, 0.35) {
-                spawn("~", .systemBlue, at: NSPoint(x: petCenterX + (facingLeft ? 22 : -30), y: 6), size: 12,
-                      vx: -4...4, vy: 2...6, life: 0.8)
-            }
+            swimStep(dt: dt)
 
         case .bubbles:
             if every(1, 0.45) {
@@ -990,14 +1023,155 @@ extension PetView {
             chaseMoving = !moveToward(target, speed: 55, dt: dt)
             if !chaseMoving { facingLeft = b.x < petCenterX }
             if t > d - 1.5 && once(1) { say("bye!", for: 1.5) }
+
+        case .yarn:
+            let ball = yarnX(t)
+            let behind: CGFloat = ball > petCenterX ? 22 : -22
+            let target = min(max(ball - petSize / 2 - behind, 0), bounds.width - petSize)
+            chaseMoving = !moveToward(target, speed: 50, dt: dt)
+            if !chaseMoving { facingLeft = ball < petCenterX }
+            if t > 1, every(1, 2.4) { spawnAboveHead("♪", .systemPink, count: 1) }
+
+        case .boxNap:
+            if t > 1.4 && t < d - 1.4, every(1, 1.3) { spawnAboveHead("z", .secondaryLabelColor, count: 1, life: 2.2) }
+            if t > d - 1.2 && once(1) { say("!", for: 1) }
+
+        case .laser:
+            // The dot jumps every 1.6 s; Mochi crouches, wiggles, then pounces on it.
+            let cycle = Int(t / 1.6)
+            if once(200 + cycle) && cycle > 0 {
+                dotX = .random(in: 12...max(13, bounds.width - 12))
+            }
+            if t.truncatingRemainder(dividingBy: 1.6) > 0.55 {
+                let target = min(max(dotX - petSize / 2 - (dotX > petCenterX ? 10 : -10), 0), bounds.width - petSize)
+                chaseMoving = !moveToward(target, speed: 120, dt: dt)
+            } else {
+                chaseMoving = false
+                facingLeft = dotX < petCenterX
+            }
+
+        case .fishing:
+            let p = t.truncatingRemainder(dividingBy: 3.0)
+            if p > 2.0 && once(300 + Int(t / 3.0)) {
+                for _ in 0..<6 {
+                    spawn("•", .systemBlue, at: NSPoint(x: centerX(col: 21) - 4, y: 12), size: 9,
+                          vx: -30...30, vy: 30...55, life: 0.7, ay: -160)
+                }
+            }
+            if p > 2.45 && once(400 + Int(t / 3.0)) { say("!", for: 0.6) }
         }
+    }
+
+    // MARK: Typing activities
+
+    /// Starts the pet's own activity for while you type (laptop, cooking, swimming, reading, digging).
+    func beginTyping(for seconds: Double = 3) {
+        setMode(.typing, for: seconds)
+        trickTimers = [:]
+        trickFlags = []
+        if pet.typing == .swimming { setUpPool() }
+    }
+
+    func setUpPool() {
+        poolWidth = 30 * pixel
+        poolLeft = min(max(petCenterX - poolWidth / 2, 0), max(0, bounds.width - poolWidth))
+        targetX = swimRange().upperBound
+    }
+
+    func swimStep(dt: Double) {
+        let range = swimRange()
+        if moveToward(targetX, speed: 22, dt: dt) {
+            targetX = abs(targetX - range.lowerBound) < 1 ? range.upperBound : range.lowerBound
+        }
+        if every(1, 0.35) {
+            spawn("~", .systemBlue, at: NSPoint(x: petCenterX + (facingLeft ? 22 : -30), y: 6), size: 12,
+                  vx: -4...4, vy: 2...6, life: 0.8)
+        }
+    }
+
+    func stepTyping(dt: Double) {
+        switch pet.typing {
+        case .laptop, .readingGlasses:
+            break
+        case .cooking:
+            if every(1, 0.35) {
+                spawn("~", .secondaryLabelColor, at: NSPoint(x: centerX(col: 20) - 4, y: 8 * pixel), size: 11,
+                      vx: -3...3, vy: 10...16, life: 0.8)
+            }
+        case .swimming:
+            swimStep(dt: dt)
+        case .digging:
+            if Int(clock / 0.3) % 2 == 1, every(1, 0.3) {
+                for _ in 0..<2 {
+                    spawn("·", .brown, at: NSPoint(x: centerX(col: 18) - 3, y: 8), size: 16,
+                          vx: forward(-10, 40), vy: 30...55, life: 0.7, ay: -150)
+                }
+            }
+        }
+    }
+
+    /// A pet that doesn't crouch to sit (Puddle) holds the book lower, below its eyes.
+    var bookLift: CGFloat { pet.sitBase == nil ? 3 : 1 }
+
+    func glasses() -> FreeSprite {
+        let half = pixel / 2, start: CGFloat = 10, width = CGFloat(TrickArt.glasses[0].count)
+        let rows = facingLeft ? TrickArt.glasses.map { String($0.reversed()) } : TrickArt.glasses
+        let x = petX + (facingLeft ? 32 - start - width : start) * half
+        return FreeSprite(rows: rows, x: x, y: 11 * half, px: half)
+    }
+
+    func typingLook() -> Look {
+        let t = now - modeStart
+        let blink = clock.truncatingRemainder(dividingBy: 4.2) < 0.14
+        let eyes: Eyes = blink ? .closed : .open
+        func alt(_ period: Double) -> Bool { Int(clock / period) % 2 == 0 }
+        var look = Look(frame: pet.frame(eyes, .sit), palette: pet.palette)
+        switch pet.typing {
+        case .laptop:
+            look.props = currentProp().map { [$0] } ?? []
+        case .cooking:
+            // An egg in a pan over a little campfire, tossed now and then.
+            let p = t.truncatingRemainder(dividingBy: 2.5)
+            var egg = TrickArt.eggUp
+            var lift: CGFloat = 7
+            if p > 1.6 && p < 2.3 {
+                lift = 7 + 6 * CGFloat(sin(.pi * (p - 1.6) / 0.7))
+                egg = alt(0.1) ? TrickArt.eggUp : TrickArt.eggDown
+            }
+            look.frame = pet.frame(p > 2.3 ? .happy : eyes, .stand(0))
+            look.props = [Prop(rows: alt(0.25) ? TrickArt.fireA : TrickArt.fireB, col: 17, lift: 0),
+                          Prop(rows: TrickArt.pan, col: 13, lift: 5), Prop(rows: egg, col: 18, lift: lift)]
+        case .swimming:
+            look.yOffset = -3
+            look.frame = pet.frame(eyes, .stand(Int(clock / 0.25) % 2))
+            look.free = [FreeSprite(rows: TrickArt.pool(Int(poolWidth / pixel)), x: poolLeft, y: 0)]
+        case .readingGlasses:
+            look.props = [Prop(rows: Props.book(flip: t.truncatingRemainder(dividingBy: 3) < 0.25), col: 13, lift: bookLift)]
+            look.free = [glasses()]
+        case .digging:
+            let down = !alt(0.3)
+            let level = min(3, 1 + Int(t / 2))
+            look.frame = pet.frame(eyes, .stand(down ? 1 : 0))
+            look.props = [Prop(rows: Array(TrickArt.pile.suffix(level)), col: 15, lift: 0),
+                          Prop(rows: TrickArt.shovel, col: 13, lift: down ? 1 : 3)]
+        }
+        return look
+    }
+
+    func yarnX(_ t: Double) -> CGFloat {
+        let lo: CGFloat = 20, hi = max(lo + 1, bounds.width - 20)
+        let mid = (lo + hi) / 2, half = max(0, (hi - lo) / 2 - 6)
+        return mid + half * CGFloat(sin(t * 0.9 + 0.6))
     }
 
     // MARK: Trick looks
 
     func currentLook() -> Look {
         if mode == .trick, let trick, !dragging { return trickLook(trick) }
-        return Look(frame: currentFrame(), palette: pet.palette, props: currentProp().map { [$0] } ?? [])
+        if mode == .typing && !dragging { return typingLook() }
+        var look = Look(frame: currentFrame(), palette: pet.palette, props: currentProp().map { [$0] } ?? [])
+        if mode == .reading && pet.readsWithGlasses && !dragging { look.free.append(glasses()) }
+        return look
     }
 
     private func trickLook(_ tr: Trick) -> Look {
@@ -1151,6 +1325,38 @@ extension PetView {
             let b = butterflyPoint(t, d)
             look.free = [FreeSprite(rows: alt(0.15) ? TrickArt.butterflyA : TrickArt.butterflyB,
                                     x: b.x - 7.5, y: b.y, px: 3)]
+
+        case .yarn:
+            look.frame = pet.frame(.happy, chaseMoving ? .stand(Int(clock / 0.14) % 2) : .stand(0))
+            let x = yarnX(t)
+            let rolling = Int(x / 6) % 2 == 0
+            look.free = [FreeSprite(rows: rolling ? TrickArt.yarnA : TrickArt.yarnB, x: x - 8, y: 0)]
+
+        case .boxNap:
+            // Hop into the box, nap with just the head showing, then pop up.
+            let y: Double = t < 0.8 ? 2 + 8 * sin(.pi * t / 0.8) : (t > d - 1.2 ? 3 : 2)
+            look.yOffset = CGFloat(y)
+            look.frame = pet.frame(t > 1.2 && t < d - 1.2 ? .closed : .happy, .sit)
+            look.props = [Prop(rows: TrickArt.box, col: -1, lift: 0)]
+
+        case .laser:
+            let p = t.truncatingRemainder(dividingBy: 1.6)
+            if chaseMoving {
+                look.frame = pet.frame(.open, .stand(0))
+                look.yOffset = CGFloat(4 * sin(.pi * min(1, (p - 0.55) / 0.5)))
+            } else {
+                look.frame = pet.frame(.open, alt(0.12) ? .sit : .stand(0))   // wiggles before pouncing
+            }
+            look.free = [FreeSprite(rows: TrickArt.laserDot, x: dotX - 2.5, y: 0, px: 5)]
+
+        case .fishing:
+            let p = t.truncatingRemainder(dividingBy: 3.0)
+            look.frame = pet.frame(p > 2.3 ? .happy : eyes, .sit)
+            look.props = [Prop(rows: TrickArt.pool(10), col: 15, lift: 0), Prop(rows: TrickArt.rod, col: 13, lift: 3)]
+            if p > 2.0 && p < 2.9 {
+                let q = (p - 2.0) / 0.9
+                look.props.append(Prop(rows: TrickArt.fish, col: 18, lift: 3 + 9 * CGFloat(sin(.pi * q))))
+            }
         }
         return look
     }
@@ -1231,19 +1437,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks.
         let args = CommandLine.arguments
-        if args.contains("--demo") || args.contains("--tricks") {
+        if args.contains("--demo") || args.contains("--tricks") || args.contains("--typing") {
             let v = view!
             if args.contains("--demo") {
                 demoQueue = [
-                    (7, { v.setMode(.typing, for: 6) }),
-                    (7, { v.setMode(.sweeping, for: 6); v.targetX = v.randomTarget(near: v.petX, within: 50) }),
+                    (7, { v.beginTyping(for: 6) }),
                     (7, { v.setMode(.reading, for: 6) }),
                     (7, { v.remind(.water) }),
                     (7, { v.remind(.lunch) }),
                     (7, { v.remind(.stretch) }),
                 ]
             }
-            for trick in v.pet.tricks { demoQueue.append((trick.duration + 0.5, { v.startTrick(trick) })) }
+            if args.contains("--demo") && v.pet.sweeps {
+                demoQueue.insert((7, { v.setMode(.sweeping, for: 6); v.targetX = v.randomTarget(near: v.petX, within: 50) }), at: 1)
+            }
+            if args.contains("--typing") { demoQueue = [(9, { v.beginTyping(for: 8) })] }
+            for trick in v.pet.tricks where !args.contains("--typing") {
+                demoQueue.append((trick.duration + 0.5, { v.startTrick(trick) }))
+            }
             nextDemo = ProcessInfo.processInfo.systemUptime + 2
         }
 
