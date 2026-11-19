@@ -57,8 +57,8 @@ Ranges larger than Tiny may overlap the right end of the Dock, depending on how 
 Requires the Xcode Command Line Tools. macOS 13 or later.
 
 ```bash
-./build.sh          # build and install to ~/Applications
-./build.sh --dmg    # build a release disk image in build/
+mac/build.sh          # build and install to ~/Applications
+mac/build.sh --dmg    # build a release disk image in build/
 open ~/Applications/DeskPet.app --args --demo     # cycle through every activity, reminder and trick
 open ~/Applications/DeskPet.app --args --tricks   # only the current pet's tricks
 open ~/Applications/DeskPet.app --args --typing   # what the current pet does while you type
@@ -103,13 +103,44 @@ powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10
 
 ## Making unlock codes (developer)
 
-A code is 20 characters: a random serial number plus a check value made with a secret key. The secret is never in the repo; `build.sh` builds it into the app from your Mac.
+A code is 20 characters: a random serial number plus a check value made with a secret key. The secret is never in the repo; `mac/build.sh` and `windows\build.ps1` build it into the app.
 
 ```bash
 swift Scripts/make-codes.swift 10   # print 10 new codes
 ```
 
-- The first run (or the first `./build.sh`) creates the secret at `~/.config/deskpet/code-secret`. **Back it up.** Anyone who has it can make codes, and if it's lost, copies of the app already out there won't accept new codes.
+- The first run (or the first `mac/build.sh`) creates the secret at `~/.config/deskpet/code-secret`. **Back it up.** Anyone who has it can make codes, and if it's lost, copies of the app already out there won't accept new codes.
 - Every code made is also logged in `~/.config/deskpet/codes.txt`.
 - Someone who builds from source without your secret gets their own new secret, so your codes won't work in their build, and theirs won't work in yours.
 - Because the app has to contain the secret to check codes, a determined person could dig it out of the app and make codes. Short codes trade that risk for being easy to type.
+
+## Repository layout
+
+| Folder | What's in it |
+| --- | --- |
+| `mac/` | The Mac app (`main.swift`) and `build.sh` |
+| `windows/` | The Windows app (Rust) and `build.ps1` |
+| `Scripts/` | Code makers for both platforms (`make-codes.swift`, `make-codes.ps1`) |
+| `prototypes/` | HTML mock-ups of the pets and their tricks |
+| `.github/workflows/` | The release build |
+
+Both builds write to `build/` at the top of the repo.
+
+## Releasing
+
+Push a version tag and GitHub Actions builds both apps and attaches them to a draft release:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The release has `DeskPet-<version>.dmg` (Mac, universal) and `DeskPet-<version>-windows.zip`, each with a `.sha256`. Check the draft, then publish it.
+
+The workflow needs your code secret so that your codes work in the released apps. Add it once, from the Mac that has it:
+
+```bash
+base64 -i ~/.config/deskpet/code-secret | gh secret set DESKPET_CODE_SECRET
+```
+
+Without that secret the release build stops instead of making a new one.

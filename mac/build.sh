@@ -1,20 +1,20 @@
 #!/bin/zsh
 # Builds DeskPet.app and installs it to ~/Applications.
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # run from the repo root; output goes to build/
 
 APP="build/DeskPet.app"
 rm -rf build
 mkdir -p "$APP/Contents/MacOS"
 
-VERSION="1.2.0"
+VERSION="${DESKPET_VERSION:-1.2.0}"   # the release workflow passes the tag's version
 
 # The unlock-code secret lives in ~/.config/deskpet (created on first use), never in the repo.
 swift Scripts/make-codes.swift --swift-file build/CodeSecret.swift
 
 # Universal binary: Apple silicon + Intel.
-swiftc -O -target arm64-apple-macos13 main.swift build/CodeSecret.swift -o build/DeskPet-arm64
-swiftc -O -target x86_64-apple-macos13 main.swift build/CodeSecret.swift -o build/DeskPet-x86_64
+swiftc -O -target arm64-apple-macos13 mac/main.swift build/CodeSecret.swift -o build/DeskPet-arm64
+swiftc -O -target x86_64-apple-macos13 mac/main.swift build/CodeSecret.swift -o build/DeskPet-x86_64
 lipo -create build/DeskPet-arm64 build/DeskPet-x86_64 -output "$APP/Contents/MacOS/DeskPet"
 rm build/DeskPet-arm64 build/DeskPet-x86_64
 

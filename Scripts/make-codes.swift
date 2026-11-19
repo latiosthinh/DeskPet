@@ -1,11 +1,12 @@
 // Makes DeskPet unlock codes, like 04HX7-2KQ9M-T8W3E-RZ6PN.
 //
 //   swift Scripts/make-codes.swift 5                       # print 5 new codes
-//   swift Scripts/make-codes.swift --swift-file <path>     # used by build.sh: writes the secret as Swift
+//   swift Scripts/make-codes.swift --swift-file <path>     # used by mac/build.sh: writes the secret as Swift
 //
 // The first run creates a secret at ~/.config/deskpet/code-secret. It never goes into the repo;
-// build.sh puts it into the app when it builds. Keep it safe and private: anyone with it can make
-// codes, and if you lose it, copies of the app already out there won't accept new codes.
+// mac/build.sh and windows/build.ps1 put it into the app when they build. Keep it safe and private:
+// anyone with it can make codes, and if you lose it, copies of the app already out there won't
+// accept new codes.
 // Codes are also appended to ~/.config/deskpet/codes.txt so you have a record.
 //
 // A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256 over it.

@@ -11,7 +11,7 @@ param([switch] $Run, [switch] $Zip, [string[]] $RunArgs = @())
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$version = '1.2.0'
+$version = if ($env:DESKPET_VERSION) { $env:DESKPET_VERSION } else { '1.2.0' }   # the release workflow passes the tag's version
 $build = Join-Path $root 'build'
 New-Item -ItemType Directory -Force $build | Out-Null
 

@@ -1,0 +1,88 @@
+# Builds the Mac and Windows apps when a version tag (v1.2.3) is pushed, and attaches both to a
+# draft GitHub release. Run it by hand (Actions → Release → Run workflow) to build without releasing.
+#
+# Needs the DESKPET_CODE_SECRET repository secret: the 32-byte ~/.config/deskpet/code-secret,
+# base64-encoded (see README → Releasing). Without it the build stops, so a release never ships
+# with a secret your codes don't match.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the code secret
+        env:
+          SECRET: ${{ secrets.DESKPET_CODE_SECRET }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "::error::Add the DESKPET_CODE_SECRET repository secret first (README → Releasing)."
+            exit 1
+          fi
+          mkdir -p ~/.config/deskpet
+          echo "$SECRET" | base64 --decode > ~/.config/deskpet/code-secret
+          test "$(wc -c < ~/.config/deskpet/code-secret | tr -d ' ')" -eq 32
+      - name: Build the disk image
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then export DESKPET_VERSION="${GITHUB_REF_NAME#v}"; fi
+          mac/build.sh --dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: build/DeskPet-*.dmg*
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the code secret
+        shell: pwsh
+        env:
+          SECRET: ${{ secrets.DESKPET_CODE_SECRET }}
+        run: |
+          if (-not $env:SECRET) {
+            Write-Output "::error::Add the DESKPET_CODE_SECRET repository secret first (README → Releasing)."
+            exit 1
+          }
+          $dir = Join-Path $HOME '.config\deskpet'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $bytes = [Convert]::FromBase64String($env:SECRET.Trim())
+          if ($bytes.Length -ne 32) { throw 'DESKPET_CODE_SECRET must be 32 bytes, base64-encoded.' }
+          [IO.File]::WriteAllBytes((Join-Path $dir 'code-secret'), $bytes)
+      - name: Build the zip
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:DESKPET_VERSION = $env:GITHUB_REF_NAME.TrimStart('v') }
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\build.ps1 -Zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/DeskPet-*-windows.zip*
+          if-no-files-found: error
+
+  release:
+    needs: [mac, windows]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --draft \
+            --title "DeskPet ${GITHUB_REF_NAME#v}" --generate-notes
