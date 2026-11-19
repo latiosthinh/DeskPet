@@ -1,4 +1,3 @@
 build/
 .DS_Store
-windows/bin/
-windows/obj/
+windows/target/

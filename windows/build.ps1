@@ -4,7 +4,8 @@
 #   powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run      # build, then start it (stops a running copy first)
 #   powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Zip      # also make build\DeskPet-<version>-windows.zip
 #
-# Needs the .NET SDK (any recent version; it fetches the .NET Framework 4.8 reference assemblies itself).
+# Needs Rust (rustup, stable, the x86_64-pc-windows-msvc toolchain) and the MSVC build tools.
+# The exe links the C runtime statically, so it runs on any Windows 10/11 PC with nothing to install.
 
 param([switch] $Run, [switch] $Zip, [string[]] $RunArgs = @())
 
@@ -15,16 +16,22 @@ $build = Join-Path $root 'build'
 New-Item -ItemType Directory -Force $build | Out-Null
 
 # The unlock-code secret lives in ~/.config/deskpet (created on first use), never in the repo.
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Scripts\make-codes.ps1') -CsFile (Join-Path $build 'CodeSecret.cs')
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Scripts\make-codes.ps1') -RustFile (Join-Path $build 'code_secret.rs')
 if ($LASTEXITCODE -ne 0) { throw 'make-codes.ps1 failed' }
 
 Get-Process DeskPet -ErrorAction SilentlyContinue | Stop-Process -Force
-dotnet build (Join-Path $PSScriptRoot 'DeskPet.csproj') -c Release -nologo -v quiet
-if ($LASTEXITCODE -ne 0) { throw 'dotnet build failed' }
+# cargo reads windows\.cargo\config.toml (static C runtime) only when run from this folder.
+Push-Location $PSScriptRoot
+try {
+    cargo build --release
+    if ($LASTEXITCODE -ne 0) { throw 'cargo build failed' }
+} finally {
+    Pop-Location
+}
 
 $exe = Join-Path $build 'DeskPet.exe'
-Copy-Item (Join-Path $PSScriptRoot 'bin\Release\net48\DeskPet.exe') $exe -Force
-Write-Host "Built $exe"
+Copy-Item (Join-Path $PSScriptRoot 'target\release\DeskPet.exe') $exe -Force
+Write-Host ("Built $exe ({0:N0} KB)" -f ((Get-Item $exe).Length / 1KB))
 
 if ($Zip) {
     $zipPath = Join-Path $build "DeskPet-$version-windows.zip"

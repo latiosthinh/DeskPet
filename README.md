@@ -79,11 +79,11 @@ The Windows version (in `windows/`) has the same pets, tricks, typing activities
 1. Download `DeskPet-<version>-windows.zip` from the latest release and unzip it anywhere, for example into `%LOCALAPPDATA%\Programs\DeskPet`.
 2. Run `DeskPet.exe`. It isn't signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
 
-It needs nothing else: it runs on .NET Framework 4.8, which comes with Windows 10 and 11.
+It needs nothing else: it's a single native exe of about 375 KB, written in Rust. It uses about 2 MB of private memory and around 1–2% of one CPU core while the pet moves, and almost nothing while it sits still.
 
 ### Build from source
 
-Requires the [.NET SDK](https://dotnet.microsoft.com/download) (any recent version).
+Requires [Rust](https://rustup.rs) (stable, with the default `x86_64-pc-windows-msvc` toolchain) and the Visual Studio C++ build tools. The exe links the C runtime statically, so it runs without any redistributable.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File windows\build.ps1                    # build build\DeskPet.exe

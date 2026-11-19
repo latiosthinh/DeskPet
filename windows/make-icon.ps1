@@ -5,7 +5,7 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-# Mochi with open eyes, cropped (same rows as Pets.All[0] in Art.cs).
+# Mochi with open eyes, cropped (same rows as the first pet in src/art.rs).
 $rows = @(
     "..kk......kk..",
     ".kppk....kppk.",
