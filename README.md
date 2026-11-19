@@ -2,7 +2,11 @@
 
 A tiny pixel pet that lives in the bottom-right corner of your Mac, next to the Dock.
 
-Choose from five pets: **Mochi** the cream cat, **Ember** the fox, **Pip** the penguin, **Puddle** the slime and **Sprout** the seedling.
+Choose from five pets: **Mochi** the cream cat comes free, and **Ember** the fox, **Pip** the penguin, **Puddle** the slime and **Sprout** the seedling are premium pets you unlock with a code.
+
+## Premium pets
+
+Pick a locked pet (🔒) in the **Pet** menu, or choose **Unlock All Pets…**, and paste your code. It looks like `PET-040PCF-…`; spaces, dashes and upper or lower case don't matter. The code works offline and is remembered on this Mac.
 
 ## Pet tricks
 
@@ -29,7 +33,7 @@ Besides the shared activities, each pet has its own tricks. It does one on its o
 | Item | What it does |
 | --- | --- |
 | Show Pet | Show or hide the pet |
-| Pet | Switch between Mochi, Ember, Pip, Puddle and Sprout. The menu-bar icon follows your choice |
+| Pet | Switch between Mochi, Ember, Pip, Puddle and Sprout, or unlock the premium pets. The menu-bar icon follows your choice |
 | Tricks | Start one of the current pet's tricks, or **Surprise Me** for a random one |
 | Roam Range | How far it may walk from home: Stay Put, Tiny ±80 pt (default), Small ±160, Medium ±300, Large ±500 |
 | Show Roam Area | Briefly outlines the area it walks in |
@@ -59,3 +63,17 @@ open ~/Applications/DeskPet.app --args --demo     # cycle through every activity
 open ~/Applications/DeskPet.app --args --tricks   # only the current pet's tricks
 open ~/Applications/DeskPet.app --args --typing   # what the current pet does while you type
 ```
+
+## Making unlock codes (developer)
+
+Codes are signed with a private key that never goes into the repo, so the app can check a code but nobody can make one from the app or the source.
+
+```bash
+swift Scripts/make-codes.swift 10        # print 10 new codes
+swift Scripts/make-codes.swift --public  # print the public key that main.swift checks against
+```
+
+- The first run creates the key at `~/.config/deskpet/signing-key`. **Back it up.** Anyone who has it can make codes, and if it's lost, new codes won't work in copies of the app already out there.
+- Every code made is also logged in `~/.config/deskpet/codes.txt`.
+- If you ever replace the key, put the new public key in `License.publicKey` in `main.swift` and release a new build; old codes will stop working.
+

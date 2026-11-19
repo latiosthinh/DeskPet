@@ -10,6 +10,44 @@
 
 import Cocoa
 import ServiceManagement
+import CryptoKit
+
+// MARK: - Unlock codes
+
+/// Ember, Pip, Puddle and Sprout are unlocked with a code. Codes are signed with a private key
+/// that only the developer has (see Scripts/make-codes.swift), so the app can check them offline
+/// but can't make them.
+enum License {
+    static let publicKey = "Mwd3j265dFNTspVBuGUDahG3FPzkTCHyEjfjYihlqUk="
+    private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
+
+    static func isValid(_ code: String) -> Bool {
+        // Ignore dashes and spaces, and accept common misreadings (O for 0, I or L for 1).
+        var chars: [Character] = code.uppercased().compactMap { ch in
+            switch ch {
+            case "O": return "0"
+            case "I", "L": return "1"
+            default: return alphabet.contains(ch) ? ch : nil
+            }
+        }
+        // Every code body starts with "0", so a leading "PET" is always the prefix.
+        if chars.starts(with: ["P", "E", "T"]) { chars.removeFirst(3) }
+        var bytes: [UInt8] = [], buffer = 0, bits = 0
+        for ch in chars {
+            buffer = (buffer << 5) | alphabet.firstIndex(of: ch)!
+            bits += 5
+            if bits >= 8 {
+                bytes.append(UInt8((buffer >> (bits - 8)) & 0xFF))
+                bits -= 8
+            }
+            buffer &= (1 << bits) - 1
+        }
+        guard bytes.count == 72, bytes[0] == 1, bytes[1] == 1,
+              let keyData = Data(base64Encoded: publicKey),
+              let key = try? Curve25519.Signing.PublicKey(rawRepresentation: keyData) else { return false }
+        return key.isValidSignature(Data(bytes[8..<72]), for: Data(bytes[0..<8]))
+    }
+}
 
 // MARK: - Pixel art
 
@@ -68,6 +106,8 @@ struct Pet {
     var typing: TypingStyle = .laptop
     var sweeps = false
     var readsWithGlasses = false
+    /// Needs an unlock code.
+    var premium = false
 
     func rows(eyes: Eyes) -> [String] {
         var grid = body.map { Array($0) }
@@ -113,7 +153,7 @@ let pets: [Pet] = [
                "kwkkwwwwccccckk.", "kwwkswwwcccccck.", "kwwksswwwccccck.", ".kkkssswwwwwwk..",
                "....kkkkkkkkk..."],
         feet: ["....kwk...kwk...", ".....kwk.kwk...."],
-        tricks: [.firework, .flashlight, .flipEgg, .campfire], typing: .cooking),
+        tricks: [.firework, .flashlight, .flipEgg, .campfire], typing: .cooking, premium: true),
     Pet(id: "pip", name: "Pip the penguin", palette: [
             "k": rgb(0.12, 0.13, 0.20), "b": rgb(0.24, 0.29, 0.43), "w": rgb(1.00, 1.00, 1.00),
             "o": rgb(1.00, 0.65, 0.24), "p": rgb(1.00, 0.62, 0.70)],
@@ -122,7 +162,7 @@ let pets: [Pet] = [
                ".kbbbbbwwwwwwpk.", ".kbbkbbwwwwwwwk.", ".kbbbkbwwwwwwwk.", "..kbbbkwwwwwwk..",
                "...kkkkkkkkkk..."],
         feet: ["...kook..kook...", "....kook.kook..."],
-        tricks: [.hideInWater, .spitWater, .swim, .bubbles], typing: .swimming),
+        tricks: [.hideInWater, .spitWater, .swim, .bubbles], typing: .swimming, premium: true),
     Pet(id: "puddle", name: "Puddle the slime", palette: [
             "k": rgb(0.14, 0.31, 0.42), "c": rgb(0.56, 0.85, 0.95), "H": rgb(1.00, 1.00, 1.00),
             "d": rgb(0.39, 0.71, 0.86), "p": rgb(1.00, 0.62, 0.70)],
@@ -132,7 +172,7 @@ let pets: [Pet] = [
                ".kddddcccccccck."],
         feet: ["..kkkkkkkkkkkk..", ".kkkkkkkkkkkkkk."],
         sitBase: "..kkkkkkkkkkkk..", paw: "c",
-        tricks: [.iceCream, .twin, .colorShift, .popFood], typing: .readingGlasses, readsWithGlasses: true),
+        tricks: [.iceCream, .twin, .colorShift, .popFood], typing: .readingGlasses, readsWithGlasses: true, premium: true),
     Pet(id: "sprout", name: "Sprout the seedling", palette: [
             "k": rgb(0.14, 0.25, 0.16), "w": rgb(0.71, 0.88, 0.54), "s": rgb(0.55, 0.76, 0.40),
             "L": rgb(0.36, 0.70, 0.32), "S": rgb(0.25, 0.54, 0.23), "p": rgb(1.00, 0.62, 0.70)],
@@ -141,7 +181,7 @@ let pets: [Pet] = [
                ".kwwwwwwpwwwwpk.", ".kswwwwwwwwwwwk.", ".ksswwwwwwwwwwk.", "..ksssswwwwwwk..",
                "...kkkkkkkkkk..."],
         feet: ["..kwk.....kwk...", "....kwk.kwk....."],
-        tricks: [.giveFlower, .shower, .plantSelf, .growUp, .chaseButterfly], typing: .digging),
+        tricks: [.giveFlower, .shower, .plantSelf, .growUp, .chaseButterfly], typing: .digging, premium: true),
 ]
 
 func pet(withID id: String) -> Pet { pets.first { $0.id == id } ?? pets[0] }
@@ -1387,6 +1427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var breaksOn = true
     var waterOn = true
     var mealsOn = true
+    var unlocked = false
     var visible = true
 
     var lastTick = ProcessInfo.processInfo.systemUptime
@@ -1428,7 +1469,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
 
         view = PetView()
-        view.pet = pet(withID: defaults.string(forKey: "pet") ?? "mochi")
+        unlocked = License.isValid(defaults.string(forKey: "license") ?? "")
+        let saved = pet(withID: defaults.string(forKey: "pet") ?? "mochi")
+        view.pet = saved.premium && !unlocked ? pets[0] : saved
         view.onHomeMoved = { [weak self] in self?.homeMoved() }
         window.contentView = view
         layout()
@@ -1609,12 +1652,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let petItem = NSMenuItem(title: "Pet", action: nil, keyEquivalent: "")
         let petMenu = NSMenu()
         for (i, p) in pets.enumerated() {
-            let item = NSMenuItem(title: p.name, action: #selector(pickPet(_:)), keyEquivalent: "")
+            let locked = p.premium && !unlocked
+            let item = NSMenuItem(title: locked ? "\(p.name)  🔒" : p.name, action: #selector(pickPet(_:)), keyEquivalent: "")
             item.tag = i
             item.image = Self.menuBarIcon(for: p)
             item.state = p.id == view.pet.id ? .on : .off
             item.target = self
             petMenu.addItem(item)
+        }
+        petMenu.addItem(.separator())
+        if unlocked {
+            let done = NSMenuItem(title: "All Pets Unlocked", action: nil, keyEquivalent: "")
+            done.isEnabled = false
+            petMenu.addItem(done)
+        } else {
+            let unlock = NSMenuItem(title: "Unlock All Pets…", action: #selector(unlockFromMenu), keyEquivalent: "")
+            unlock.target = self
+            petMenu.addItem(unlock)
         }
         petItem.submenu = petMenu
         menu.addItem(petItem)
@@ -1780,6 +1834,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func pickPet(_ sender: NSMenuItem) {
         let chosen = pets[sender.tag]
+        if chosen.premium && !unlocked {
+            if askForCode(wanting: chosen) { switchTo(chosen) }
+            return
+        }
+        switchTo(chosen)
+    }
+
+    @objc func unlockFromMenu() {
+        if askForCode(wanting: nil) {
+            view.petted()
+            view.say("thank you! ♥", for: 2.5)
+            rebuildMenu()
+        }
+    }
+
+    /// Shows the code dialog until the code works or the person cancels. Returns true once unlocked.
+    func askForCode(wanting pet: Pet?) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        var problem: String?
+        while true {
+            let alert = NSAlert()
+            alert.messageText = problem == nil ? "Unlock All Pets" : "That code didn't work"
+            let names = pets.filter(\.premium).map { $0.name.components(separatedBy: " ").first! }
+            let lead = pet.map { "\($0.name.components(separatedBy: " ").first!) is a premium pet. " } ?? ""
+            alert.informativeText = problem ?? "\(lead)Enter your DeskPet code to unlock \(ListFormatter.localizedString(byJoining: names))."
+            alert.addButton(withTitle: "Unlock")
+            alert.addButton(withTitle: "Cancel")
+            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 340, height: 24))
+            field.placeholderString = "PET-XXXXXX-XXXXXX-…"
+            field.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+            alert.accessoryView = field
+            alert.window.initialFirstResponder = field
+            guard alert.runModal() == .alertFirstButtonReturn else { return false }
+            let code = field.stringValue
+            if License.isValid(code) {
+                defaults.set(code.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "license")
+                unlocked = true
+                rebuildMenu()
+                return true
+            }
+            problem = "Check that you pasted the whole code, starting with PET-. Spaces and dashes don't matter."
+        }
+    }
+
+    func switchTo(_ chosen: Pet) {
         view.pet = chosen
         defaults.set(chosen.id, forKey: "pet")
         statusItem.button?.image = Self.menuBarIcon(for: chosen)
