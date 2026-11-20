@@ -358,7 +358,14 @@ impl PetView {
         }
         if !self.pet.tricks.is_empty() && self.now >= self.next_trick_at.unwrap() {
             let choices: Vec<Trick> = self.pet.tricks.iter().copied().filter(|t| Some(*t) != self.last_trick).collect();
-            let t = if choices.is_empty() { self.pet.tricks[0] } else { choices[rand_index(choices.len())] };
+            let favorite = self.pet.favorite_trick.filter(|_| rand01() < 0.5);
+            let t = if let Some(f) = favorite {
+                f
+            } else if choices.is_empty() {
+                self.pet.tricks[0]
+            } else {
+                choices[rand_index(choices.len())]
+            };
             self.start_trick(t);
             return;
         }

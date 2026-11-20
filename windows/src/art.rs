@@ -141,6 +141,7 @@ pub struct Pet {
     pub picture: Option<Picture>, // drawn from a detailed picture instead of `body` (Moona)
     pub reads: bool,  // sits with a book now and then
     pub trick_gap: (f64, f64), // seconds between the tricks it does on its own
+    pub favorite_trick: Option<Trick>, // picked for about half the tricks it does on its own
     pub drinks: bool, // drinks when reminded about water (otherwise just waits with you)
     pub click_trick: Option<Trick>,       // what a click does instead of petting
     pub right_click_trick: Option<Trick>, // what a right-click does instead of opening the menu
@@ -254,6 +255,7 @@ pub fn pets() -> Vec<Pet> {
             picture: None,
             reads: true,
             trick_gap: crate::pet::TRICK_GAP,
+            favorite_trick: None,
             drinks: true,
             click_trick: None,
             right_click_trick: None,
@@ -287,6 +289,7 @@ pub fn pets() -> Vec<Pet> {
             picture: None,
             reads: true,
             trick_gap: crate::pet::TRICK_GAP,
+            favorite_trick: None,
             drinks: true,
             click_trick: None,
             right_click_trick: None,
@@ -321,6 +324,7 @@ pub fn pets() -> Vec<Pet> {
             picture: None,
             reads: true,
             trick_gap: crate::pet::TRICK_GAP,
+            favorite_trick: None,
             drinks: true,
             click_trick: None,
             right_click_trick: None,
@@ -355,6 +359,7 @@ pub fn pets() -> Vec<Pet> {
             picture: None,
             reads: true,
             trick_gap: crate::pet::TRICK_GAP,
+            favorite_trick: None,
             drinks: true,
             click_trick: None,
             right_click_trick: None,
@@ -390,6 +395,7 @@ pub fn pets() -> Vec<Pet> {
             picture: None,
             reads: true,
             trick_gap: crate::pet::TRICK_GAP,
+            favorite_trick: None,
             drinks: true,
             click_trick: None,
             right_click_trick: None,
@@ -498,6 +504,7 @@ pub fn pets() -> Vec<Pet> {
             picture: Some(pictures::moona()),
             reads: false,
             trick_gap: (30.0, 40.0), // she shows off often
+            favorite_trick: Some(Trick::MoonaGlaive), // about half her tricks
             drinks: false,
             click_trick: Some(Trick::MoonaGlaive),
             right_click_trick: Some(Trick::MoonaMoonlight),
@@ -1173,6 +1180,7 @@ fn hero(
         picture: None,
         reads: true,
         trick_gap: crate::pet::TRICK_GAP,
+        favorite_trick: None,
         drinks: true,
         click_trick: None,
         right_click_trick: None,
