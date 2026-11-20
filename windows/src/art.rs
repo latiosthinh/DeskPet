@@ -140,6 +140,8 @@ pub struct Pet {
     pub wind_key: bool, // Sir Clank's wind-up key, always drawn behind him
     pub floats: bool,   // bobs up and down while walking instead of stepping (Wisp-a-ling)
     pub picture: Option<Picture>, // drawn from a detailed picture instead of `body` (Cowy)
+    pub reads: bool,  // sits with a book now and then
+    pub drinks: bool, // drinks when reminded about water (otherwise just waits with you)
     pub click_trick: Option<Trick>,       // what a click does instead of petting
     pub right_click_trick: Option<Trick>, // what a right-click does instead of opening the menu
 }
@@ -250,6 +252,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            reads: true,
+            drinks: true,
             click_trick: None,
             right_click_trick: None,
         },
@@ -280,6 +284,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            reads: true,
+            drinks: true,
             click_trick: None,
             right_click_trick: None,
         },
@@ -311,6 +317,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            reads: true,
+            drinks: true,
             click_trick: None,
             right_click_trick: None,
         },
@@ -342,6 +350,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            reads: true,
+            drinks: true,
             click_trick: None,
             right_click_trick: None,
         },
@@ -374,6 +384,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            reads: true,
+            drinks: true,
             click_trick: None,
             right_click_trick: None,
         },
@@ -487,10 +499,12 @@ pub fn pets() -> Vec<Pet> {
             palette: Palette::new(&pictures::moona_palette()),
             paw: b'f',
             picture: Some(pictures::moona()),
+            reads: false,
+            drinks: false,
             click_trick: Some(Trick::MoonaGlaive),
             right_click_trick: Some(Trick::MoonaMoonlight),
             ..hero("moona", "Moona the moon knight", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
-                   &[Trick::MoonaPounce, Trick::MoonaGlaive, Trick::MoonaSplit, Trick::MoonaMoonlight], TypingStyle::Moonlight)
+                   &[Trick::MoonaPounce, Trick::MoonaGlaive, Trick::MoonaTriplicate, Trick::MoonaMoonlight], TypingStyle::Moonlight)
         },
     ]
 }
@@ -686,14 +700,13 @@ pub mod pictures {
     /// Moona's extra poses, after the nine standard frames.
     pub const MOONA_JUMP: usize = 9;
     pub const MOONA_WEAPON: usize = 10;
-    pub const MOONA_SPLIT: usize = 11;
-    pub const MOONA_STORM: usize = 12;
-    pub const MOONA_SLEEP: usize = 13;
-    pub const MOONA_EAT: usize = 14;
-    const MOONA_STEP_B: usize = 15;
-    const MOONA_STEP_D: usize = 16;
+    pub const MOONA_STORM: usize = 11;
+    pub const MOONA_SLEEP: usize = 12;
+    pub const MOONA_EAT: usize = 13;
+    const MOONA_STEP_B: usize = 14;
+    const MOONA_STEP_D: usize = 15;
     /// Empty-handed, while her glaive is in the air.
-    pub const MOONA_BARE: usize = 17;
+    pub const MOONA_BARE: usize = 16;
     /// Where she holds her glaive in the walking and empty-handed pictures: cells from the
     /// left, and up from the bottom.
     pub const MOONA_HAND: (f64, f64) = (27.0, 35.0);
@@ -718,7 +731,7 @@ pub mod pictures {
             frames.push((steps[2].clone(), anchor));
             frames.push((face, anchor));
         }
-        for (rows, anchor) in [(MOONA_JUMP_ROWS, 32.5), (MOONA_WEAPON_ROWS, 34.5), (MOONA_SPLIT_ROWS, 41.5),
+        for (rows, anchor) in [(MOONA_JUMP_ROWS, 32.5), (MOONA_WEAPON_ROWS, 34.5),
                                (MOONA_STORM_ROWS, 36.5), (MOONA_SLEEP_ROWS, 28.0), (MOONA_EAT_ROWS, 27.5)] {
             frames.push((grid(rows), anchor));
         }
@@ -943,72 +956,6 @@ pub mod pictures {
         "........afffcb.............abbbba...........affbhcfa..........aacffccda",
         ".........dfbcda.............................acfchcfda...........abbabaa",
         ".........aaaaaa..............................acdbbdba..................",
-    ];
-    const MOONA_SPLIT_ROWS: &[&str] = &[
-        "......................................lkkkk....................................",
-        "....................................ghqqCCCxvh.................................",
-        "...................................pouKLNNNNLLx................................",
-        "...................................hkLNNKFFFNLLJl..............................",
-        ".................................guzCNLuFvjhhixLMp.............................",
-        "................................gxiuINuKg......gBM.............................",
-        "............................j......iFMFp.........pl............................",
-        ".........................pg.jj....hCKkF...........l............................",
-        "........................lp...j...puIuou........................................",
-        "........................phlhgg..gnhiCns........................................",
-        ".......................jphlhll.....fkoqs.......................................",
-        "........................pplppph...arfckF........b.a............................",
-        "........................llllpp....yyjdhs.......ld.b............................",
-        "..................jBJ..jhplBlyl..bjjljkk......Bg..bb...........................",
-        ".................BBvBBBBBhllwwg.bpbbaj.......ppbebcj..................log......",
-        ".................lBBBBBBlphlwv..aibehj.......vlhhebj...................kMp.....",
-        ".................vBBBBpvpplhllhpljbehb..jJ...chehped....................pMJj...",
-        ".................Bpplpvvplhlhhhppg.effjrJJM.Bbhbceeb.....................hMJh..",
-        ".................pljlplllhlllvlhll.chcarbbMMMhcfrr.......................hMMuh.",
-        ".................ghlhhlhhlhllhBlgg.acbcbgvxscpecHDw.......................FMLp.",
-        "................jphlhg.gggpkplppgg..abcccesnhcacDrj.......................FNNqg",
-        "................pllg....glhplhllhh.gjwabbgelbacabacb......................JNNCh",
-        "......ll...lj..llll......lhhhlphhllplgggaabhagbbabixb.....................NLNIo",
-        "......p...pl..lll.........pllppgglpplghhlaaadbypbhehhb.......hxFFg.......iJNNCk",
-        ".....ph..vpg.wvl..........ghlllhggpphlllhjabnilbbaabbccbdd..jhhpqCg......NFNNqo",
-        "..j..ppl.ppgjpvg..........ghhllhggplhllllgabcsewpiaabbccilbdggggougg...lNsNNNko",
-        ".lp..lvpppppplj...........pllllllgplghhlllbiceehip.ddabbghileljgouxzFxJJsFNNzkl",
-        "l.phlvBBvpvvplgglj.......llhlppphhpgglplhjbebbhceb.....bccffbrwbhqonnkkoLNLzuk.",
-        "..plBBBvvplgvlppj........lllhhhhlhpglllphjgccelgbgg.......albwjjhuFuJJNNNLCinp.",
-        "p.pvBvvvg...glg.........gvllhlhllhphllllphacbefgjggaa......abajjkCnhuKLKzzFgsg.",
-        "phpBBovr...............phplllllllhhllllllhehbeebhhchhc...daaggdhquggFGnghqn.p..",
-        "lvvBBvv................plllhllllhhglllllcaaffhsbbhhecb.aabccaffcbbajizgggv.....",
-        "llBBBvg................lllhhhllllgghllllneecffFbbbfcbaffccfccffbfffclxgghh.....",
-        "llvBBv.................llhhhhhlllhghlcpaieecachblhcaafffbfcdffbffcfbcaaafh.....",
-        ".lpBBBl..............gplpllllhhhllglhhbieeeeebebbhabcbfcffacfdcffcafbfffbfba...",
-        "..lvBBB.............ppllppllllhllllhllbeehbeeegcljadcfbafffffbffccafbcfffbfb...",
-        "...lvBBBvggg........plllllvplfllllllglggabbeeebbpdacffcaffffdfffaaaaffffffaa...",
-        "....lppBBBvvj......gpllllllhlhlhhaahglbbbbbceecalacffffaffbfbfffabbcffffflfa...",
-        "......llplgd.......lhlllllllllbaahieelbfcbbbeecaadffffffaffbaccbaffffffepfhe...",
-        ".........dffa.....gphppllllpbbffbheeechffcbbcebaafffffffaaaaacccbffffccefieg...",
-        "........bffd......gllhhhhlbbffffbheeeeghfccbeeeaafffffffabacffffffheicpBbffb...",
-        "........affa.......lllllbbbcffffcleeeeeelaeeeeegafffffffafbffffaffffxfcccffB...",
-        "........afc........hlllhfcaffffffblheeeebcefcehgbfffffffaffbffbafffffffffffc...",
-        "........aff........ellbffbffffffffahheeebecfbelacbfffffbafffbffbbffffffffcffa..",
-        ".........bfcd......ghcffbbffffffffcbablheecchlbdgacffbacfaffbaabaaffffffffbda..",
-        ".........affca....aaffcbjfffffffffcfcaacecahhaacacafbcfffafffabbaaaffaafffcba..",
-        "..........bffffcccffccbjlffffffffbacffacbbaaaccaffffffffbabfffdcdc.dbbabccad...",
-        "...........acccfffcbabllbfffffffccabcbbcbabfbfcafffffffcaabffeeffb...dajaga....",
-        ".............aaabbd.glphffffffffaccbaceeabbfbfbcfffccbbbabbffxzffcd..daaad.....",
-        "....................hlllfffffffcafffbceeabbfbbbcfffffbaaaabffiFfaca..dcccd.....",
-        "....................ghlcfffffffbddaaabeeaaabfaacbfbffccbaabfffcaafa...da.......",
-        "......................afffffffcaaaaaaaecaaaafbafbffffffffacffbaaaffd...........",
-        "....................dcffffffffbgaaaaaaaaaaaaffbaacffffffffcaaaaaccff...........",
-        "...................bfffffffffbajaaaaaaaa..aaaffaaabffffffcccdaaabcffa..........",
-        "..................dfffffffffbagabbaaaaa.......bbaa.abbffbffffggbcdffcd.........",
-        "..................affaabbbaaddabbbbaba................bcbffffbddabcffcd........",
-        "..................bffbgl.....dbbbbbb...................dafffffdgbabcffb........",
-        ".................affballg....dbbbba......................cfffffaddabfffd.......",
-        ".................affbjllhg....abbba......................afcffffb..accffa......",
-        ".................dfcaglllh.....bbbba.....................acfcccbb..abcfffb.....",
-        "................affcagllllg....abbbbaa....................aaabaab...bbbfffd.d..",
-        "................afffbaglllj.....abbbbba....................baba.......acfbcbd..",
-        "................affccbaggg.......aaabaa...............................bbbbbab..",
-        "................ac.ccba........................................................",
     ];
     const MOONA_STORM_ROWS: &[&str] = &[
         "......................................eI....................................",
@@ -1349,6 +1296,8 @@ fn hero(
         wind_key: false,
         floats: false,
         picture: None,
+        reads: true,
+        drinks: true,
         click_trick: None,
         right_click_trick: None,
     }
@@ -1438,7 +1387,7 @@ pub enum Trick {
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
     CowyStomp, CowyGraze, CowyBell,                        // Cowy
-    MoonaPounce, MoonaGlaive, MoonaSplit, MoonaMoonlight,  // Moona
+    MoonaPounce, MoonaGlaive, MoonaTriplicate, MoonaMoonlight, // Moona
 }
 
 /// One throw of Moona's glaive, out and back; clicks during a throw add more throws.
@@ -1474,7 +1423,7 @@ impl Trick {
             | LunetteNap | CowyStomp | CowyGraze | CowyBell => 8.0,
             MoonaPounce => 2.6,
             MoonaGlaive => GLAIVE_THROW,
-            MoonaSplit => 3.4,
+            MoonaTriplicate => 5.0,
             MoonaMoonlight => 4.4,
         }
     }
@@ -1526,7 +1475,7 @@ impl Trick {
             CowyBell => "Ring the Cowbell",
             MoonaPounce => "Pounce",
             MoonaGlaive => "Throw the Glaive",
-            MoonaSplit => "Split into Three",
+            MoonaTriplicate => "Triplicate",
             MoonaMoonlight => "Call the Moonlight",
         }
     }

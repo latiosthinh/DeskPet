@@ -425,9 +425,9 @@ impl PetView {
                     self.start_trick(Trick::MoonaGlaive);
                 }
             }
-            Trick::MoonaSplit => {
-                if t > 0.5 && self.once(1) {
-                    self.say("times three!", 1.6);
+            Trick::MoonaTriplicate => {
+                if t > 0.4 && self.once(1) {
+                    self.say("triplicate!", 1.4);
                 }
             }
             Trick::MoonaMoonlight => {
@@ -1185,12 +1185,42 @@ impl PetView {
                     }
                 }
             }
-            Trick::MoonaSplit => {
-                // Two shadows of her step out of her, flicker, and fold back in.
-                let split = (0.3..2.9).contains(&t);
-                look.frame = if split { Picture::marker_index(pictures::MOONA_SPLIT) } else { p.frame(eyes, Pose::Sit) };
-                if split && (t - 0.3) < 0.3 && beat > 0.0 {
-                    look.frame = p.frame(eyes, Pose::Sit);
+            Trick::MoonaTriplicate => {
+                // Two exact copies of her pop up on either side. All three send their glaives
+                // whirling round themselves for a while, catch them, and the copies vanish.
+                let spinning = (TRI_SPIN..TRI_CATCH).contains(&t);
+                let frame = if spinning { pictures::MOONA_BARE } else { 2 }; // 2: standing still, glaive in hand
+                look.frame = if spinning {
+                    Picture::marker_index(pictures::MOONA_BARE)
+                } else {
+                    p.frame(if t >= TRI_CATCH { Eyes::Happy } else { eyes }, Pose::Sit)
+                };
+                let copies = self.copy_centers();
+                if (TRI_APPEAR..TRI_VANISH).contains(&t) {
+                    for (k, &x) in copies.iter().enumerate() {
+                        let orbit = spinning.then(|| self.whirl(x, t, k as f64 + 1.0));
+                        if let Some((behind, _)) = &orbit {
+                            look.back.extend(behind.iter().map(|g| self.glaive_copy(g)));
+                        }
+                        look.back.push(self.picture_copy(frame, x));
+                        if let Some((_, front)) = &orbit {
+                            look.back.extend(front.iter().map(|g| self.glaive_copy(g)));
+                        }
+                    }
+                }
+                if spinning {
+                    let (behind, front) = self.whirl(self.pet_center_x(), t, 0.0);
+                    look.back.extend(behind.iter().map(|g| self.glaive_copy(g)));
+                    look.free.extend(front.iter().map(|g| self.glaive_copy(g)));
+                }
+                // A puff where each copy appears and where it goes.
+                for at in [TRI_APPEAR - 0.1, TRI_VANISH - 0.1] {
+                    if (at..at + 0.4).contains(&t) {
+                        for &x in &copies {
+                            look.free.push(free(rows(HERO_PUFF), x - 16.0, 8.0, PIXEL));
+                            look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, 46.0 + 20.0 * (t - at), PIXEL));
+                        }
+                    }
                 }
             }
             Trick::MoonaMoonlight => {
@@ -1274,6 +1304,48 @@ impl PetView {
         FreeSprite { own_colors: true, ..free(grid, left, self.height - rows_n as f64 * px, px) }
     }
 
+    /// Where Moona's two copies stand when she triplicates: either side of her, inside the pen.
+    fn copy_centers(&self) -> [f64; 2] {
+        let c = self.pet_center_x();
+        let w = self.pet.size().0;
+        let (lo, hi) = (w * 0.45, (self.width - w * 0.45).max(w * 0.45));
+        [(c - w * 0.8).clamp(lo, hi), (c + w * 0.8).clamp(lo, hi)]
+    }
+
+    /// One of her picture frames drawn as a separate figure centred on x (a copy of her).
+    fn picture_copy(&self, frame: usize, center_x: f64) -> FreeSprite {
+        let Some(pic) = self.pet.picture.as_ref() else { return free(vec![], 0.0, 0.0, PIXEL) };
+        let grid = &pic.frames[frame];
+        let w = grid[0].len() as f64;
+        let anchor = if self.facing_left { w - pic.anchors[frame] } else { pic.anchors[frame] };
+        let rows: Rows = grid
+            .iter()
+            .map(|r| {
+                let s: String = r.iter().map(|&b| b as char).collect();
+                if self.facing_left { s.chars().rev().collect() } else { s }
+            })
+            .collect();
+        FreeSprite { own_colors: true, ..free(rows, center_x - anchor * pic.px, 0.0, pic.px) }
+    }
+
+    /// A glaive whirling round a figure centred on x, on a flat ring at chest height: its trail and
+    /// itself, split into the parts behind the figure and in front. `phase` keeps the three apart.
+    fn whirl(&self, x: f64, t: f64, phase: f64) -> (Vec<(f64, f64, f64, bool)>, Vec<(f64, f64, f64, bool)>) {
+        let rx = self.pet.size().0 * 0.55;
+        let (mut behind, mut front) = (vec![], vec![]);
+        for (lag, faint) in [(0.06, true), (0.03, true), (0.0, false)] {
+            let tt = t - lag - TRI_SPIN;
+            let a = phase * 2.1 + tt * 7.0 + 2.0 * tt * tt.min(1.0); // speeds up as it gets going
+            let g = (x + rx * a.cos(), 50.0 + 12.0 * a.sin(), (t - lag) * 17.0, faint);
+            if a.sin() > 0.0 { behind.push(g) } else { front.push(g) }
+        }
+        (behind, front)
+    }
+
+    fn glaive_copy(&self, &(x, y, angle, faint): &(f64, f64, f64, bool)) -> FreeSprite {
+        self.glaive_sprite(x, y, angle, faint)
+    }
+
     /// Where the i-th narrow moonbeam strikes: spread over the pen, clear of Moona herself.
     fn moonbeam_x(&self, i: usize) -> f64 {
         let (lo, hi) = (10.0, (self.width - 10.0).max(11.0));
@@ -1294,6 +1366,11 @@ impl PetView {
 /// Moona's glaive leaves her hand, and is back.
 const THROW_OUT: f64 = 0.22;
 const THROW_BACK: f64 = 1.75;
+/// Triplicate: the copies appear, the glaives start whirling, are caught, and the copies go.
+const TRI_APPEAR: f64 = 0.45;
+const TRI_SPIN: f64 = 0.8;
+const TRI_CATCH: f64 = 4.0;
+const TRI_VANISH: f64 = 4.55;
 /// She raises her glaive to the moon, and lowers it; how many beams strike the ground.
 const MOON_UP: f64 = 0.3;
 const MOON_DOWN: f64 = 3.8;

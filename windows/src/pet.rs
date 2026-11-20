@@ -314,7 +314,8 @@ impl PetView {
     pub fn remind(&mut self, reminder: Reminder) {
         match reminder {
             Reminder::Water => {
-                self.set_mode(Mode::Drinking, 7.0);
+                // A pet that doesn't drink (Moona) just waits with you while you do.
+                self.set_mode(if self.pet.drinks { Mode::Drinking } else { Mode::Sitting }, 7.0);
                 self.say_with("Time for some water", 9.0, Some(bubble_icons::DROP));
             }
             Reminder::Lunch => {
@@ -367,7 +368,7 @@ impl PetView {
         } else if r < 0.57 && self.pet.sweeps {
             self.set_mode(Mode::Sweeping, rand(6.0, 10.0));
             self.target_x = self.random_target(self.pet_x, 50.0);
-        } else if r < 0.70 {
+        } else if r < 0.70 && self.pet.reads {
             self.set_mode(Mode::Reading, rand(8.0, 14.0));
         } else if r < 0.90 {
             self.set_mode(Mode::Sitting, rand(3.0, 8.0));

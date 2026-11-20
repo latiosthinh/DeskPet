@@ -939,7 +939,9 @@ fn main() {
             if app.view.pet.sweeps {
                 q.push_back((7.0, DemoStep::Sweep(6.0)));
             }
-            q.push_back((7.0, DemoStep::Reading(6.0)));
+            if app.view.pet.reads {
+                q.push_back((7.0, DemoStep::Reading(6.0)));
+            }
             q.push_back((7.0, DemoStep::Remind(Reminder::Water)));
             q.push_back((7.0, DemoStep::Remind(Reminder::Lunch)));
             q.push_back((7.0, DemoStep::Remind(Reminder::Stretch)));
