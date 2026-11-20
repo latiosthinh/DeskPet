@@ -17,9 +17,9 @@ permissions:
 
 jobs:
   mac:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install the code secret
         env:
           SECRET: ${{ secrets.DESKPET_CODE_SECRET }}
@@ -44,7 +44,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install the code secret
         shell: pwsh
         env:
