@@ -140,6 +140,8 @@ pub struct Pet {
     pub wind_key: bool, // Sir Clank's wind-up key, always drawn behind him
     pub floats: bool,   // bobs up and down while walking instead of stepping (Wisp-a-ling)
     pub picture: Option<Picture>, // drawn from a detailed picture instead of `body` (Cowy)
+    pub click_trick: Option<Trick>,       // what a click does instead of petting
+    pub right_click_trick: Option<Trick>, // what a right-click does instead of opening the menu
 }
 
 impl Pet {
@@ -248,6 +250,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            click_trick: None,
+            right_click_trick: None,
         },
         Pet {
             id: "ember",
@@ -276,6 +280,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            click_trick: None,
+            right_click_trick: None,
         },
         Pet {
             id: "pip",
@@ -305,6 +311,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            click_trick: None,
+            right_click_trick: None,
         },
         Pet {
             id: "puddle",
@@ -334,6 +342,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            click_trick: None,
+            right_click_trick: None,
         },
         Pet {
             id: "sprout",
@@ -364,6 +374,8 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
+            click_trick: None,
+            right_click_trick: None,
         },
         // Tiny heroes (designed in prototypes/hero-pets.html)
         hero(
@@ -472,11 +484,13 @@ pub fn pets() -> Vec<Pet> {
         },
         // A moon knight riding a black panther, drawn from prototypes/moona.jpg.
         Pet {
-            palette: Palette::new(&pictures::MOONA_COLORS.iter().map(|&(k, v)| (k, hex(v))).collect::<Vec<_>>()),
+            palette: Palette::new(&pictures::moona_palette()),
             paw: b'f',
             picture: Some(pictures::moona()),
+            click_trick: Some(Trick::MoonaGlaive),
+            right_click_trick: Some(Trick::MoonaMoonlight),
             ..hero("moona", "Moona the moon knight", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
-                   &[Trick::MoonaPounce, Trick::MoonaGlaive, Trick::MoonaSplit, Trick::MoonaStorm], TypingStyle::Moonlight)
+                   &[Trick::MoonaPounce, Trick::MoonaGlaive, Trick::MoonaSplit, Trick::MoonaMoonlight], TypingStyle::Moonlight)
         },
     ]
 }
@@ -678,6 +692,11 @@ pub mod pictures {
     pub const MOONA_EAT: usize = 14;
     const MOONA_STEP_B: usize = 15;
     const MOONA_STEP_D: usize = 16;
+    /// Empty-handed, while her glaive is in the air.
+    pub const MOONA_BARE: usize = 17;
+    /// Where she holds her glaive in the walking and empty-handed pictures: cells from the
+    /// left, and up from the bottom.
+    pub const MOONA_HAND: (f64, f64) = (27.0, 35.0);
 
     /// Moona riding her panther, from the poses in prototypes/moona.jpg (one art pixel ≈ 4.3 pixels
     /// there). Each pose has its own picture; walking lifts the legs of the walking picture.
@@ -707,7 +726,8 @@ pub mod pictures {
         let steps = super::gait(&walk, 46, 4.0, 2);
         frames.push((steps[1].clone(), anchor)); // MOONA_STEP_B
         frames.push((steps[3].clone(), anchor)); // MOONA_STEP_D
-        assert_eq!(frames.len(), MOONA_STEP_D + 1, "Moona frame indices out of step");
+        frames.push((grid(MOONA_BARE_ROWS), anchor));
+        assert_eq!(frames.len(), MOONA_BARE + 1, "Moona frame indices out of step");
         let mut pic = Picture::from_frames(frames, 1.6);
         pic.idle_sits = true;
         pic.walk = vec![0, MOONA_STEP_B, 1, MOONA_STEP_D];
@@ -716,6 +736,19 @@ pub mod pictures {
         pic.eat = Some(MOONA_EAT);
         pic
     }
+
+    /// Her colours, plus see-through ones for glows, trails and moonbeams.
+    pub fn moona_palette() -> Vec<(char, super::Color)> {
+        let mut p: Vec<(char, super::Color)> = MOONA_COLORS.iter().map(|&(k, v)| (k, super::hex(v))).collect();
+        for &(k, v, a) in MOONA_LIGHTS {
+            p.push((k, super::hex(v).with_alpha(a)));
+        }
+        p
+    }
+
+    /// O glow round the glaive, P its fading trail; R, S, T, U moonlight from faintest to brightest.
+    pub const MOONA_LIGHTS: &[(char, u32, f64)] = &[('O', 0x8ef6fd, 0.45), ('P', 0x6ee5f8, 0.3), ('R', 0x9fe3ff, 0.1),
+                                                     ('S', 0xb8f0ff, 0.2), ('T', 0xd8faff, 0.36), ('U', 0xffffff, 0.62)];
 
     pub const MOONA_COLORS: &[(char, u32)] = &[
         ('a', 0x070417), ('b', 0x130d31), ('c', 0x241b48), ('d', 0x242235), ('e', 0x1f2c60), ('f', 0x35225c),
@@ -1100,6 +1133,68 @@ pub mod pictures {
         ".....aababbbd...................bbcbbcbaaaaaaceeegaadd........",
         "......abaaa......................baaaa......abbchgca..........",
     ];
+    const MOONA_BARE_ROWS: &[&str] = &[
+        "......................................d.dd...............................",
+        "......................................p..b...............................",
+        ".....................................pb..dd..............................",
+        "....................................inab.ac..............................",
+        "....................................phecedf..............................",
+        "....................................phehpee..............................",
+        "................................j...ehcaiib..............................",
+        "..............................jrBJwJgedwphb..............................",
+        ".............................rjlNNNNrclywya..............................",
+        "..............................MMNNJJvheyyya..............................",
+        ".............................MBvBJhbbaahyw...............................",
+        ".............................Mvvvcehcccbbaa..............................",
+        ".............................MrgesCeabcbbbeb.............................",
+        "...............................dxneeajceiheh.............................",
+        "...............................bcefajilpbwahc............................",
+        "...............................eefaaesnhpkpba............................",
+        "...............................bcbagbeihekkb.............................",
+        ".............................dbicb.aeeechbcbd............................",
+        ".............................lbecd.dcccfhcabcdd..........................",
+        "............................biebg...ccehhcabgfwb.........................",
+        "............................gihc...accbehbdaacyw....bb..bad..............",
+        "............................ghfa..dghhaecadgbaja..aaffcacfbacba..........",
+        "...........................behcd..dcfffenbdggcbabccbffafffbffccaa........",
+        ".........................hhchb...bjecbflxbbcfbacffcffbfffbffbcaccfcd.....",
+        "..........................hbdbjdgeeefbabgbclcacfffbfcaffcfffcafacfffbdca.",
+        "..........................cyywbpbneecbeccbahaaccbdffccffbfffcacfbffffbda.",
+        "..........................hffbeeiiehceecfclcabcfcacfdffbfffaadbfffpffgba.",
+        "...........................kkhkkhebbeeeebcpcaffffbgfcbfbfffaccfffffffffb.",
+        ".............................kkbbaabbeeeebjacfffffaffcccdfaafffffffBepBb.",
+        ".............................eebbcbbbceeeagaffffffbabbaaaabafffffbbefxec.",
+        "..........................iiieelfffbbbeecaaffffffffabaaffffffhexkcCFaffi.",
+        ".........................aleeeefhffcbabeebaffffffffafaffffbffefepfccfff..",
+        ".........................aleeeeellfbcaceebaffffffffafccfffacffvffffffffb.",
+        "........................ffjeeeeeecjacfeeccacfffffffaffadbcbafffffffffdfcd",
+        ".bcd....................hfblheeeeebcefaahgcbfffffffafffabcaaaffffcffffacd",
+        ".ffc....................khfagheeeeceefchhacccfffffbafffcaabbaadffaaffffc.",
+        "dffa...........af........hfcaabdeececchhbaacbffffbbbfffffaaaa..adaaabbab.",
+        "cffa..........affbbbbbbbbfhbffbfbaebahhabacbcffcabffffffffffb....caBara..",
+        "ffc..........bcfbafffffffffffffhcccbababfbabfbbfffffffffefffa....dffga...",
+        "ffc.........dffcaaffffffffffffhfbcbabfbcfbacfffffffbfffiFefbd.....aba....",
+        "dffd......dacfcadafffffffffffcabegabbffbcaacffffffcafffexcbfd............",
+        ".bffa...baffffa.dbfffffffcccccaaeebbbcfbbaaccfffffbafffffafc.............",
+        ".afffcccfffcaa..dcfffffffcdcaabaeeaabaffbacfcbcffbabffffaafa.............",
+        "..abfffffbbad...acfffffffaaaaaaaeeaaaacfaacffffcbaabcbaaaaba.............",
+        "....aabbba......bbffffffcaaaaaaaceabaaaffabbffffaaabaaaaabfcd............",
+        "...............abcffffffa..aaaaaaaaaadabfbafffffaaaaaaaaabff.............",
+        ".............ddbcffffffbb..aaaaaaab...dabacfffffadd..aaccbffb............",
+        "............daffffffffba..dabbaabdd.......afffffd.....aabbfffa...........",
+        "............dffcffffcba...dbbbbbcb........dffcffd......abcbffd...........",
+        "............dffcbbbaaa....abbbbca.........dbfcffd.......babffcd..........",
+        "............cffaad........bbbba............affccd........aabbcb..........",
+        "............cffba.........bbbba............acbffb.........aacffa.........",
+        "............cffbd.........bbbbb............abfffb.........dafffa.........",
+        "............fffbd..........abbba...........acfffd..........bfffa.........",
+        "...........afffa............abbc............bfffc..........abcfa.........",
+        "...........afffa............abbbda..........bcfffc........babcfd.........",
+        "...........afffcda...........abbbbba........bffffbbd......abcda..........",
+        "...........affffb............aabbbba.........cffbcca......bbbd...........",
+        "............bbbbad...........................bcfacab......dddd...........",
+        "..............................................aaaaaa.....................",
+    ];
     const MOONA_EAT_ROWS: &[&str] = &[
         ".................................g..bg.....................................",
         "................................da...a.....................................",
@@ -1254,6 +1349,8 @@ fn hero(
         wind_key: false,
         floats: false,
         picture: None,
+        click_trick: None,
+        right_click_trick: None,
     }
 }
 
@@ -1341,8 +1438,11 @@ pub enum Trick {
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
     CowyStomp, CowyGraze, CowyBell,                        // Cowy
-    MoonaPounce, MoonaGlaive, MoonaSplit, MoonaStorm,      // Moona
+    MoonaPounce, MoonaGlaive, MoonaSplit, MoonaMoonlight,  // Moona
 }
+
+/// One throw of Moona's glaive, out and back; clicks during a throw add more throws.
+pub const GLAIVE_THROW: f64 = 2.0;
 
 impl Trick {
     pub fn duration(self) -> f64 {
@@ -1373,9 +1473,9 @@ impl Trick {
             | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
             | LunetteNap | CowyStomp | CowyGraze | CowyBell => 8.0,
             MoonaPounce => 2.6,
-            MoonaGlaive => 2.8,
+            MoonaGlaive => GLAIVE_THROW,
             MoonaSplit => 3.4,
-            MoonaStorm => 4.0,
+            MoonaMoonlight => 4.4,
         }
     }
 
@@ -1425,9 +1525,9 @@ impl Trick {
             CowyGraze => "Munch Some Grass",
             CowyBell => "Ring the Cowbell",
             MoonaPounce => "Pounce",
-            MoonaGlaive => "Sweep the Glaive",
+            MoonaGlaive => "Throw the Glaive",
             MoonaSplit => "Split into Three",
-            MoonaStorm => "Moon Storm",
+            MoonaMoonlight => "Call the Moonlight",
         }
     }
 }

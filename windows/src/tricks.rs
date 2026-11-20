@@ -1,6 +1,6 @@
 //! Each pet's own tricks and typing activities, ported from main.swift.
 
-use crate::art::{bubble_icons, hex, hue_shifted, pictures, props, rotated, rows, sys_color, trick_art, Eyes, Picture, Pose, Trick, TypingStyle, PET_SIZE, PIXEL};
+use crate::art::{bubble_icons, hex, hue_shifted, pictures, props, rotated, rows, sys_color, trick_art, Eyes, Picture, Pose, Rows, Trick, TypingStyle, GLAIVE_THROW, PET_SIZE, PIXEL};
 use crate::pet::{free, prop, pt, rand, rand_index, FreeSprite, Look, Mode, Particle, PetView, Pt, TRICK_GAP};
 use std::f64::consts::PI;
 
@@ -419,8 +419,10 @@ impl PetView {
                 }
             }
             Trick::MoonaGlaive => {
-                if t > 0.4 && self.once(1) {
-                    self.say("hyah!", 1.2);
+                // Another click came in while the glaive was out: throw it again once it's back.
+                if t >= GLAIVE_THROW - 0.05 && self.trick_again > 0 {
+                    self.trick_again -= 1;
+                    self.start_trick(Trick::MoonaGlaive);
                 }
             }
             Trick::MoonaSplit => {
@@ -428,9 +430,9 @@ impl PetView {
                     self.say("times three!", 1.6);
                 }
             }
-            Trick::MoonaStorm => {
+            Trick::MoonaMoonlight => {
                 if t > 0.4 && self.once(1) {
-                    self.say("moon storm!", 1.8);
+                    self.say("moonlight!", 1.6);
                 }
             }
         }
@@ -1163,14 +1165,24 @@ impl PetView {
                 }
             }
             Trick::MoonaGlaive => {
-                // Sweeps her glaive in a glowing arc, twice.
-                let swinging = (0.25..2.2).contains(&t);
-                look.frame = if swinging { Picture::marker_index(pictures::MOONA_WEAPON) } else { p.frame(eyes, Pose::Sit) };
-                if swinging && (t * 5.0) as i64 % 5 == 0 {
-                    look.x_offset = 0.5;
-                }
-                if swinging && beat > 0.0 {
-                    look.free = vec![self.placed(MOONA_TWINKLE, 26.0, 15.0), self.placed(MOONA_TWINKLE, -2.0, 11.0)];
+                // Throws her glaive like a boomerang: it spins out ahead of her, loops round and comes
+                // back to her hand.
+                if t < THROW_OUT {
+                    look.frame = Picture::marker_index(pictures::MOONA_WEAPON);
+                } else if t < THROW_BACK {
+                    look.frame = Picture::marker_index(pictures::MOONA_BARE);
+                    // A fading trail, then the glaive itself.
+                    for (lag, faint) in [(0.07, true), (0.035, true), (0.0, false)] {
+                        let q = ((t - lag - THROW_OUT) / (THROW_BACK - THROW_OUT)).max(0.0);
+                        let (x, y) = self.glaive_at(q);
+                        look.free.push(self.glaive_sprite(x, y, (t - lag) * 17.0, faint));
+                    }
+                } else {
+                    look.frame = p.frame(if t > THROW_BACK + 0.15 { Eyes::Happy } else { eyes }, Pose::Sit);
+                    if t < THROW_BACK + 0.25 {
+                        let (x, y) = self.glaive_at(0.0);
+                        look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, y - 6.0, PIXEL));
+                    }
                 }
             }
             Trick::MoonaSplit => {
@@ -1181,16 +1193,30 @@ impl PetView {
                     look.frame = p.frame(eyes, Pose::Sit);
                 }
             }
-            Trick::MoonaStorm => {
-                // Raises her glaive: a storm of moonlight swirls round her, sparks raining down.
-                let storm = (0.25..3.3).contains(&t);
-                look.frame = if storm { Picture::marker_index(pictures::MOONA_STORM) } else { p.frame(if t > 3.3 { Eyes::Happy } else { eyes }, Pose::Sit) };
-                if storm {
-                    look.x_offset = if beat > 0.0 { 0.5 } else { 0.0 };
-                    for k in 0..5 {
-                        let fall = ((t * 7.0 + k as f64 * 5.3) % 26.0).round();
-                        let col = [-8.0, 2.0, 12.0, 20.0, 28.0][k];
-                        look.free.push(self.placed(MOONA_TWINKLE, col, 30.0 - fall));
+            Trick::MoonaMoonlight => {
+                // Raises her glaive and calls down the moon: a broad beam of light falls on her, and
+                // narrow beams strike the ground all round, one after another.
+                let raised = (MOON_UP..MOON_DOWN).contains(&t);
+                look.frame = if raised {
+                    Picture::marker_index(pictures::MOONA_STORM)
+                } else {
+                    p.frame(if t >= MOON_DOWN { Eyes::Happy } else { eyes }, Pose::Sit)
+                };
+                if (MOON_UP..MOON_DOWN + 0.2).contains(&t) {
+                    let reach = ((t - MOON_UP) / 0.3).min(1.0);
+                    let width = 28 + 2 * beat as usize;
+                    look.back.push(self.moonbeam(self.pet_center_x(), width, reach, t > MOON_DOWN));
+                }
+                for i in 0..MOONBEAMS {
+                    let age = t - (MOON_UP + 0.3 + i as f64 * 0.25);
+                    if !(0.0..0.55).contains(&age) {
+                        continue;
+                    }
+                    let x = self.moonbeam_x(i);
+                    look.free.push(self.moonbeam(x, 6, (age / 0.12).min(1.0), age > 0.4));
+                    if (0.12..0.4).contains(&age) {
+                        look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, 0.0, PIXEL));
+                        look.free.push(free(rows(HERO_PUFF), x - 8.0, 0.0, PIXEL / 2.0));
                     }
                 }
             }
@@ -1198,7 +1224,110 @@ impl PetView {
         }
         look
     }
+
+    // MARK: Moona's glaive and moonbeams
+
+    /// Where Moona's thrown glaive is (pen points, its centre), `q` of the way round its loop: out
+    /// ahead of her, high on the way out and lower on the way back, then into her hand.
+    fn glaive_at(&self, q: f64) -> (f64, f64) {
+        let (anchor, px) = self.pet.picture.as_ref().map_or((0.0, 1.0), |p| (p.anchors[0], p.px));
+        let dir = if self.facing_left { -1.0 } else { 1.0 };
+        let hand_x = self.pet_center_x() + dir * (pictures::MOONA_HAND.0 - anchor) * px;
+        let hand_y = pictures::MOONA_HAND.1 * px;
+        let room = if self.facing_left { hand_x - 14.0 } else { self.width - 14.0 - hand_x };
+        let rx = (room / 2.0).clamp(18.0, 70.0);
+        let th = q.clamp(0.0, 1.0) * 2.0 * PI;
+        let rise = if th < PI { 30.0 } else { 12.0 };
+        (hand_x + dir * rx * (1.0 - th.cos()), hand_y + rise * th.sin())
+    }
+
+    /// The spinning glaive centred at (x, y), turned `angle` radians; a faint one for its trail.
+    fn glaive_sprite(&self, x: f64, y: f64, angle: f64, faint: bool) -> FreeSprite {
+        let px = self.pet.picture.as_ref().map_or(PIXEL / 2.0, |p| p.px);
+        let grid = crescent(angle, 7.0, faint);
+        let half = grid.len() as f64 * px / 2.0;
+        FreeSprite { own_colors: true, ..free(grid, x - half, y - half, px) }
+    }
+
+    /// A shaft of moonlight `width` cells wide centred on x, reaching `reach` of the way down from
+    /// the top of the pen; faint as it fades.
+    fn moonbeam(&self, x: f64, width: usize, reach: f64, faint: bool) -> FreeSprite {
+        let px = PIXEL / 2.0;
+        let rows_n = ((self.height / px).ceil() * reach).round().max(1.0) as usize;
+        // Brightest down the middle, softer to the sides, and fading out toward the top.
+        let levels = ['.', 'R', 'S', 'T', 'U'];
+        let mid = (width as f64 - 1.0) / 2.0;
+        let across: Vec<usize> = (0..width)
+            .map(|c| {
+                let d = (c as f64 - mid).abs() / (width as f64 / 2.0);
+                let level = if d > 0.75 { 1 } else if d > 0.5 { 2 } else if d > 0.2 { 3 } else { 4 };
+                if faint { level - 1 } else { level }
+            })
+            .collect();
+        let grid: Rows = (0..rows_n)
+            .map(|r| {
+                let dim = if r * 10 < rows_n * 3 { 1 } else { 0 };
+                across.iter().map(|&l| levels[l.saturating_sub(dim)]).collect()
+            })
+            .collect();
+        let left = x - width as f64 * px / 2.0;
+        FreeSprite { own_colors: true, ..free(grid, left, self.height - rows_n as f64 * px, px) }
+    }
+
+    /// Where the i-th narrow moonbeam strikes: spread over the pen, clear of Moona herself.
+    fn moonbeam_x(&self, i: usize) -> f64 {
+        let (lo, hi) = (10.0, (self.width - 10.0).max(11.0));
+        let f = (0.37 + i as f64 * 0.618_034) % 1.0;
+        let mut x = lo + f * (hi - lo);
+        let c = self.pet_center_x();
+        if (x - c).abs() < 48.0 {
+            let side = if i % 2 == 0 { 1.0 } else { -1.0 };
+            x = c + side * (52.0 + 9.0 * (i % 3) as f64);
+            if x < lo || x > hi {
+                x = c - side * (52.0 + 9.0 * (i % 3) as f64);
+            }
+        }
+        x.clamp(lo, hi)
+    }
 }
+
+/// Moona's glaive leaves her hand, and is back.
+const THROW_OUT: f64 = 0.22;
+const THROW_BACK: f64 = 1.75;
+/// She raises her glaive to the moon, and lowers it; how many beams strike the ground.
+const MOON_UP: f64 = 0.3;
+const MOON_DOWN: f64 = 3.8;
+const MOONBEAMS: usize = 11;
+
+/// A crescent blade of radius `r` cells, its hollow facing `angle` radians (counter-clockwise from
+/// the right): a bright core inside a glowing edge, with a soft halo. Faint: all trail colour.
+fn crescent(angle: f64, r: f64, faint: bool) -> Rows {
+    let n = (2.0 * r).ceil() as usize + 3;
+    let c = (n as f64 - 1.0) / 2.0;
+    let (s, co) = angle.sin_cos();
+    let off = (0.6 * r * co, 0.6 * r * s);
+    let inner = 0.82 * r;
+    (0..n)
+        .map(|row| {
+            (0..n)
+                .map(|col| {
+                    let (x, y) = (col as f64 - c, c - row as f64);
+                    let d1 = r - (x * x + y * y).sqrt();
+                    let d2 = ((x - off.0).powi(2) + (y - off.1).powi(2)).sqrt() - inner;
+                    let edge = d1.min(d2);
+                    if edge >= 0.0 {
+                        if faint { 'P' } else if edge >= 1.0 { 'N' } else { 'G' }
+                    } else if edge > -1.0 && !faint {
+                        'O'
+                    } else {
+                        '.'
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
 
 /// When Moona leaves the ground in her pounce, and when she lands.
 const POUNCE_UP: f64 = 0.3;

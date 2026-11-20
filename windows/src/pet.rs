@@ -63,10 +63,11 @@ pub struct FreeSprite {
     pub x: f64,
     pub y: f64,
     pub px: f64,
+    pub own_colors: bool, // drawn in the pet's colours rather than the prop colours (Moona's glaive and moonbeams)
 }
 
 pub fn free(rows: Rows, x: f64, y: f64, px: f64) -> FreeSprite {
-    FreeSprite { rows, x, y, px }
+    FreeSprite { rows, x, y, px, own_colors: false }
 }
 
 /// A second copy of the pet (Puddle's twin), centred at `center_x`.
@@ -155,6 +156,7 @@ pub struct PetView {
     pub trick_flags: HashSet<i32>,
     pub trick_timers: HashMap<i32, f64>,
     pub trick_start_facing: bool,
+    pub trick_again: u8, // clicks waiting to throw Moona's glaive again
     pub burst_cycle: i32,
     pub pool_left: f64,
     pub pool_width: f64,
@@ -200,6 +202,7 @@ impl PetView {
             trick_flags: HashSet::new(),
             trick_timers: HashMap::new(),
             trick_start_facing: false,
+            trick_again: 0,
             burst_cycle: -1,
             pool_left: 0.0,
             pool_width: 0.0,
@@ -607,7 +610,7 @@ impl PetView {
 
         for f in &look.back {
             let (x, y) = (c.snap(f.x), c.snap(f.y));
-            draw_grid(c, &f.rows, &colors, x, 0.0, y, f.px, false);
+            draw_grid(c, &f.rows, if f.own_colors { &look.palette } else { &colors }, x, 0.0, y, f.px, false);
         }
         if let Some(tw) = &look.twin {
             draw_sprite(c, &tw.frame, &look.palette, tw.center_x, tw.scale, tw.y_offset, tw.facing_left);
@@ -624,7 +627,7 @@ impl PetView {
         }
         for f in &look.free {
             let (x, y) = (c.snap(f.x), c.snap(f.y));
-            draw_grid(c, &f.rows, &colors, x, 0.0, y, f.px, false);
+            draw_grid(c, &f.rows, if f.own_colors { &look.palette } else { &colors }, x, 0.0, y, f.px, false);
         }
 
         for p in &self.particles {
@@ -699,9 +702,28 @@ impl PetView {
             self.show_pen(1.5);
             self.say("new home!", 1.5);
             self.home_moved = true;
+        } else if let Some(t) = self.pet.click_trick {
+            self.bubble_text = None; // still dismisses a reminder
+            if self.mode == Mode::Trick && self.trick == Some(t) {
+                self.trick_again = (self.trick_again + 1).min(3); // keeps going, one more each click
+            } else {
+                self.trick_again = 0;
+                self.start_trick(t);
+            }
         } else {
             self.petted();
         }
+    }
+
+    /// A right-click on the pet: true if the pet has its own right-click trick (Moona's moonlight);
+    /// otherwise the menu opens.
+    pub fn right_clicked(&mut self) -> bool {
+        let Some(t) = self.pet.right_click_trick else { return false };
+        self.bubble_text = None;
+        if !(self.mode == Mode::Trick && self.trick == Some(t)) {
+            self.start_trick(t);
+        }
+        true
     }
 }
 

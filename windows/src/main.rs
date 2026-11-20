@@ -582,7 +582,15 @@ impl App {
         }
         menu.separator();
 
-        menu.add(MenuItem { enabled: false, ..MenuItem::new("Drag the pet to move its home · click to pet", 0) });
+        let pet = self.view.pet;
+        if let (Some(click), Some(right)) = (pet.click_trick, pet.right_click_trick) {
+            // A pet whose clicks do tricks (Moona) says what they do, and how to reach this menu.
+            let hint = format!("Click: {} · right-click: {}", click.title(), right.title());
+            menu.add(MenuItem { enabled: false, ..MenuItem::new(&hint, 0) });
+            menu.add(MenuItem { enabled: false, ..MenuItem::new("Drag to move its home · Shift+right-click: this menu", 0) });
+        } else {
+            menu.add(MenuItem { enabled: false, ..MenuItem::new("Drag the pet to move its home · click to pet", 0) });
+        }
         menu.add(MenuItem::new("Quit DeskPet", CMD_QUIT));
         (menu, bitmaps)
     }
@@ -825,7 +833,13 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
             return 0;
         }
         WM_RBUTTONUP => {
-            show_menu();
+            // Shift+right-click always opens the menu, for pets whose right-click does a trick.
+            let shift = windows_sys::Win32::UI::Input::KeyboardAndMouse::GetKeyState(
+                windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_SHIFT as i32,
+            ) < 0;
+            if shift || with_app(|a| a.view.right_clicked()) != Some(true) {
+                show_menu();
+            }
             return 0;
         }
         WM_DPICHANGED => {
