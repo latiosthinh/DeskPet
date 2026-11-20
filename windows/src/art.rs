@@ -249,7 +249,7 @@ pub fn pets() -> Vec<Pet> {
             typing: TypingStyle::Cooking,
             sweeps: false,
             reads_with_glasses: false,
-            premium: true,
+            premium: false,
             wind_key: false,
             floats: false,
         },

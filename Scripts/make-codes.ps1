@@ -1,6 +1,7 @@
 # Makes DeskPet unlock codes, like 04HX7-2KQ9M-T8W3E-RZ6PN. The Windows twin of make-codes.swift.
 #
-#   powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 5                 # print 5 new codes
+#   powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 5                 # print 5 new All Pets codes
+#   powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 5 -Pet lunette    # 5 codes that unlock only Lunette
 #   powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 -RustFile <path>  # used by windows\build.ps1
 #
 # The first run creates a secret at ~/.config/deskpet/code-secret (the same file make-codes.swift
@@ -9,11 +10,15 @@
 # Keep it safe and private: anyone with it can make codes, and if you lose it, copies of the app
 # already out there won't accept new codes. Codes are also appended to ~/.config/deskpet/codes.txt.
 #
-# A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256 over it.
+# A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256. An All Pets code
+# signs [1] + serial; a single-pet code signs [2] + serial + the pet's id (mochi, ember, pip, puddle,
+# sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette). An All Pets code also unlocks
+# pets added in later versions.
 # DESKPET_SECRET_DIR, if set, is used instead of ~/.config/deskpet (handy for test builds).
 
 param(
     [Parameter(Position = 0)] [int] $Count = 1,
+    [string] $Pet,
     [string] $RustFile
 )
 
@@ -50,10 +55,11 @@ function Get-Bits([byte[]] $bytes, [int] $count) {
     return ,$bits
 }
 
-function New-Code([byte[]] $secret) {
+function New-Code([byte[]] $secret, [string] $petId) {
     $serial = Get-RandomBytes 5
+    $message = if ($petId) { [byte[]](@(2) + $serial + [System.Text.Encoding]::UTF8.GetBytes($petId)) } else { [byte[]](@(1) + $serial) }
     $hmac = New-Object System.Security.Cryptography.HMACSHA256 (,$secret)
-    $mac = $hmac.ComputeHash([byte[]](@(1) + $serial))
+    $mac = $hmac.ComputeHash($message)
     $hmac.Dispose()
     $all = (Get-Bits $serial 40) + (Get-Bits $mac 60)   # 100 bits = 20 characters
     $chars = for ($i = 0; $i -lt 100; $i += 5) {
@@ -83,8 +89,11 @@ const MASK: [u8; 32] = [$(& $list $mask)];
     exit 0
 }
 
-$codes = for ($i = 0; $i -lt $Count; $i++) { New-Code $secret }
+$Pet = $Pet.Trim().ToLower()
+if ($Pet -and $Pet -notmatch '^[a-z0-9]+$') { throw "Pet ids are lowercase letters and digits, like lunette or sirclank." }
+$what = if ($Pet) { $Pet } else { 'all pets' }
+$codes = for ($i = 0; $i -lt $Count; $i++) { New-Code $secret $Pet }
 $codes | ForEach-Object { Write-Output $_ }
 $stamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
-$record = ($codes | ForEach-Object { "$stamp  $_`n" }) -join ''
+$record = ($codes | ForEach-Object { "$stamp  $_  $what`n" }) -join ''
 [System.IO.File]::AppendAllText($logFile, $record)

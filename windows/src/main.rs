@@ -81,7 +81,7 @@ enum DemoStep {
 /// What a menu command needs done after the app is no longer borrowed (anything with its own message loop).
 enum After {
     Nothing,
-    Unlock(Option<usize>),
+    Unlock(Option<usize>), // the pet that was picked, if any
     LoginFailed,
     Quit,
 }
@@ -106,7 +106,7 @@ struct App {
     breaks_on: bool,
     water_on: bool,
     meals_on: bool,
-    unlocked: bool,
+    owned: license::Owned,
     visible: bool,
     fullscreen: bool,
     shown: bool,
@@ -195,10 +195,10 @@ fn pet_icon(pet: &Pet, size: i32) -> HICON {
 impl App {
     fn new(pets: &'static [Pet], pet_hwnd: HWND, owner: HWND) -> App {
         let now = uptime();
-        let unlocked = license::is_valid(&settings::get_string("license").unwrap_or_default());
+        let owned = license::Owned::from_codes(&settings::codes(), &premium_ids(pets));
         let saved_id = settings::get_string("pet").unwrap_or_else(|| "mochi".into());
         let saved = pets.iter().find(|p| p.id == saved_id).unwrap_or(&pets[0]);
-        let pet = if saved.premium && !unlocked { &pets[0] } else { saved };
+        let pet = if saved.premium && !owned.has(saved.id) { &pets[0] } else { saved };
         settings::refresh_login_path();
 
         App {
@@ -218,7 +218,7 @@ impl App {
             breaks_on: settings::get_bool("breaks", true),
             water_on: settings::get_bool("water", true),
             meals_on: settings::get_bool("meals", true),
-            unlocked,
+            owned,
             visible: settings::get_bool("visible", true),
             fullscreen: false,
             shown: false,
@@ -520,7 +520,7 @@ impl App {
 
         let mut pets = Menu::new();
         for (i, p) in self.pets.iter().enumerate() {
-            let locked = p.premium && !self.unlocked;
+            let locked = !self.has(p);
             let current = p.id == self.view.pet.id;
             let label = if locked { format!("{}  🔒", p.name) } else { p.name.to_string() };
             let bmp = sys::bitmap_from_pixels(&pet_pixels(p, icon), icon);
@@ -528,10 +528,10 @@ impl App {
             pets.add(MenuItem { checked: current, bold: current, bitmap: bmp, ..MenuItem::new(&label, CMD_PET + i as u32) });
         }
         pets.separator();
-        if self.unlocked {
+        if self.owned.all {
             pets.add(MenuItem { enabled: false, ..MenuItem::new("All Pets Unlocked", 0) });
         } else {
-            pets.add(MenuItem::new("Unlock All Pets…", CMD_UNLOCK));
+            pets.add(MenuItem::new("Enter Unlock Code…", CMD_UNLOCK));
         }
         menu.submenu("Pet", pets);
 
@@ -627,7 +627,7 @@ impl App {
             CMD_QUIT => return After::Quit,
             _ if (CMD_PET..CMD_PET + self.pets.len() as u32).contains(&id) => {
                 let i = (id - CMD_PET) as usize;
-                if self.pets[i].premium && !self.unlocked {
+                if !self.has(&self.pets[i]) {
                     return After::Unlock(Some(i));
                 }
                 self.switch_to(i);
@@ -651,6 +651,11 @@ impl App {
             _ => {}
         }
         After::Nothing
+    }
+
+    /// Whether this pet is free or unlocked by one of the saved codes.
+    fn has(&self, p: &Pet) -> bool {
+        !p.premium || self.owned.has(p.id)
     }
 
     fn switch_to(&mut self, i: usize) {
@@ -702,12 +707,19 @@ fn show_menu() {
     });
     match after {
         Some(After::Unlock(wanting)) => {
-            if ask_for_code(wanting) {
-                with_app(|a| match wanting {
-                    Some(i) => a.switch_to(i),
-                    None => {
-                        a.view.petted();
-                        a.view.say_with("thank you!", 2.5, Some(bubble_icons::HEART));
+            if let Some(grant) = ask_for_code(wanting) {
+                with_app(|a| {
+                    // Show the pet the code unlocked; an All Pets code goes to the pet that was picked.
+                    let show = match grant {
+                        license::Grant::Pet(id) => a.pets.iter().position(|p| p.id == id),
+                        license::Grant::All => wanting,
+                    };
+                    match show {
+                        Some(i) => a.switch_to(i),
+                        None => {
+                            a.view.petted();
+                            a.view.say_with("thank you!", 2.5, Some(bubble_icons::HEART));
+                        }
                     }
                 });
             }
@@ -722,30 +734,34 @@ fn show_menu() {
     }
 }
 
-/// Shows the code dialog until the code works or the person cancels. Returns true once unlocked.
-fn ask_for_code(wanting: Option<usize>) -> bool {
-    let Some((intro, dpi, big, small)) = with_app(|a| {
-        let names: Vec<&str> = a.pets.iter().filter(|p| p.premium).map(|p| p.short_name()).collect();
-        let list = match names.split_last() {
-            Some((last, rest)) if !rest.is_empty() => format!("{} and {}", rest.join(", "), last),
-            _ => names.join(""),
-        };
+/// Shows the code dialog until a code works or the person cancels. Saves the code and returns what it unlocks.
+fn ask_for_code(wanting: Option<usize>) -> Option<license::Grant> {
+    let (heading, intro, ids, dpi, big, small) = with_app(|a| {
         let pet = wanting.map(|i| &a.pets[i]).unwrap_or(a.view.pet);
-        let lead = wanting.map(|_| format!("{} is a premium pet. ", pet.short_name())).unwrap_or_default();
+        let (heading, intro) = match wanting {
+            Some(_) => (
+                format!("Unlock {}", pet.short_name()),
+                format!("{} is a premium pet. Enter a code for {0}, or an All Pets code.", pet.short_name()),
+            ),
+            None => ("Enter Unlock Code".to_string(), "Enter your DeskPet code. A code unlocks one pet, or all of them.".to_string()),
+        };
         let dpi = a.last_dpi;
         let big = pet_icon(pet, (32.0 * dpi as f64 / 96.0).round() as i32);
         let small = pet_icon(pet, sys::small_icon_size(dpi));
-        (format!("{lead}Enter your DeskPet code to unlock {list}."), dpi, big, small)
-    }) else {
-        return false;
-    };
-    let code = dialog::ask_for_code(&intro, dpi, big, small);
+        (heading, intro, premium_ids(a.pets), dpi, big, small)
+    })?;
+    let result = dialog::ask_for_code(&heading, &intro, &ids, dpi, big, small);
     sys::destroy_icon(big);
     sys::destroy_icon(small);
-    let Some(code) = code else { return false };
-    settings::set_string("license", &code);
-    with_app(|a| a.unlocked = true);
-    true
+    let (code, grant) = result?;
+    settings::add_code(&code);
+    with_app(|a| a.owned.add(grant));
+    Some(grant)
+}
+
+/// The ids of the pets that need a code.
+fn premium_ids(pets: &[Pet]) -> Vec<&'static str> {
+    pets.iter().filter(|p| p.premium).map(|p| p.id).collect()
 }
 
 // MARK: Window procedures
@@ -875,7 +891,7 @@ fn main() {
     // `--pet <id>` starts with that pet for this run (premium pets still need a code).
     if let Some(id) = args.iter().position(|a| a == "--pet").and_then(|i| args.get(i + 1)) {
         if let Some(p) = pets.iter().find(|p| p.id.eq_ignore_ascii_case(id)) {
-            if !p.premium || app.unlocked {
+            if app.has(p) {
                 app.view.pet = p;
             }
         }

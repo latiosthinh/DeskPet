@@ -1,6 +1,7 @@
 // Makes DeskPet unlock codes, like 04HX7-2KQ9M-T8W3E-RZ6PN.
 //
-//   swift Scripts/make-codes.swift 5                       # print 5 new codes
+//   swift Scripts/make-codes.swift 5                       # print 5 new All Pets codes
+//   swift Scripts/make-codes.swift 5 --pet lunette         # 5 codes that unlock only Lunette
 //   swift Scripts/make-codes.swift --swift-file <path>     # used by mac/build.sh: writes the secret as Swift
 //
 // The first run creates a secret at ~/.config/deskpet/code-secret. It never goes into the repo;
@@ -9,7 +10,10 @@
 // accept new codes.
 // Codes are also appended to ~/.config/deskpet/codes.txt so you have a record.
 //
-// A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256 over it.
+// A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256. An All Pets code
+// signs [1] + serial; a single-pet code signs [2] + serial + the pet's id (mochi, ember, pip, puddle,
+// sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette). An All Pets code also unlocks
+// pets added in later versions.
 
 import CryptoKit
 import Foundation
@@ -36,9 +40,11 @@ func bits(_ bytes: [UInt8], count: Int) -> [Bool] {
     (0..<count).map { i in bytes[i / 8] & (0x80 >> UInt8(i % 8)) != 0 }
 }
 
-func makeCode(secret: Data) -> String {
+/// `pet` nil makes an All Pets code.
+func makeCode(secret: Data, pet: String?) -> String {
     let serial = (0..<5).map { _ in UInt8.random(in: 0...255) }
-    let mac = Array(HMAC<SHA256>.authenticationCode(for: Data([1] + serial), using: SymmetricKey(data: secret)))
+    let message: [UInt8] = pet.map { [2] + serial + Array($0.utf8) } ?? [1] + serial
+    let mac = Array(HMAC<SHA256>.authenticationCode(for: Data(message), using: SymmetricKey(data: secret)))
     let all = bits(serial, count: 40) + bits(mac, count: 60)   // 100 bits = 20 characters
     let chars = stride(from: 0, to: 100, by: 5).map { i -> Character in
         alphabet[(0..<5).reduce(0) { ($0 << 1) | (all[i + $1] ? 1 : 0) }]
@@ -67,11 +73,21 @@ do {
         exit(0)
     }
 
-    let count = Int(args.first ?? "1") ?? 1
-    let codes = (0..<count).map { _ in makeCode(secret: secret) }
+    var rest = args
+    var pet: String?
+    if let i = rest.firstIndex(of: "--pet"), i + 1 < rest.count {
+        pet = rest[i + 1].lowercased()
+        rest.removeSubrange(i...i + 1)
+    }
+    if let pet, pet.isEmpty || !pet.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) {
+        FileHandle.standardError.write("Pet ids are lowercase letters and digits, like lunette or sirclank.\n".data(using: .utf8)!)
+        exit(1)
+    }
+    let count = Int(rest.first ?? "1") ?? 1
+    let codes = (0..<count).map { _ in makeCode(secret: secret, pet: pet) }
     codes.forEach { print($0) }
     let stamp = ISO8601DateFormatter().string(from: Date())
-    let record = codes.map { "\(stamp)  \($0)\n" }.joined()
+    let record = codes.map { "\(stamp)  \($0)  \(pet ?? "all pets")\n" }.joined()
     if let handle = try? FileHandle(forWritingTo: logFile) {
         handle.seekToEndOfFile()
         handle.write(record.data(using: .utf8)!)

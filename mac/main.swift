@@ -14,14 +14,23 @@ import CryptoKit
 
 // MARK: - Unlock codes
 
-/// Ember, Pip, Puddle and Sprout are unlocked with a 20-character code (XXXXX-XXXXX-XXXXX-XXXXX):
-/// a 40-bit serial plus 60 bits of HMAC-SHA256 over it, made by Scripts/make-codes.swift.
+/// Premium pets are unlocked with 20-character codes (XXXXX-XXXXX-XXXXX-XXXXX): a 40-bit serial plus
+/// 60 bits of HMAC-SHA256, made by Scripts/make-codes.swift. Same check as windows/src/license.rs.
+///
+/// - An All Pets code signs `[1] + serial`. It unlocks every premium pet, including ones added later.
+///   (Every code made before per-pet codes existed is one of these.)
+/// - A single-pet code signs `[2] + serial + pet id` (for example "lunette").
+///
 /// The secret comes from `codeSecretParts`, which build.sh generates outside the repo.
 enum License {
+    /// What a code unlocks.
+    enum Grant: Equatable { case all, pet(String) }
+
     private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
-    static func isValid(_ code: String) -> Bool {
-        // Ignore dashes and spaces, and accept common misreadings (O for 0, I or L for 1).
+    /// The 20 characters of a code, ignoring dashes and spaces and accepting common misreadings
+    /// (O for 0, I or L for 1). Nil unless there are exactly 20.
+    private static func characters(_ code: String) -> [Character]? {
         let chars: [Character] = code.uppercased().compactMap { ch in
             switch ch {
             case "O": return "0"
@@ -29,7 +38,19 @@ enum License {
             default: return alphabet.contains(ch) ? ch : nil
             }
         }
-        guard chars.count == 20 else { return false }
+        return chars.count == 20 ? chars : nil
+    }
+
+    /// The code written the standard way (XXXXX-XXXXX-XXXXX-XXXXX), for storing and comparing.
+    static func normalized(_ code: String) -> String? {
+        guard let chars = characters(code) else { return nil }
+        return stride(from: 0, to: 20, by: 5).map { String(chars[$0..<$0 + 5]) }.joined(separator: "-")
+    }
+
+    /// What the code unlocks, or nil if it isn't a real code. `petIDs` are the premium pets in this
+    /// version of the app; a code for a pet it doesn't have yet unlocks nothing.
+    static func check(_ code: String, petIDs: [String]) -> Grant? {
+        guard let chars = characters(code) else { return nil }
         let bits: [Bool] = chars.flatMap { ch -> [Bool] in
             let v = alphabet.firstIndex(of: ch)!
             return (0..<5).map { v & (16 >> $0) != 0 }
@@ -37,9 +58,13 @@ enum License {
         let serial: [UInt8] = (0..<5).map { byte in
             (0..<8).reduce(UInt8(0)) { ($0 << 1) | (bits[byte * 8 + $1] ? 1 : 0) }
         }
-        let secret = zip(codeSecretParts.0, codeSecretParts.1).map { $0 ^ $1 }
-        let mac = Array(HMAC<SHA256>.authenticationCode(for: Data([1] + serial), using: SymmetricKey(data: Data(secret))))
-        return (0..<60).allSatisfy { i in bits[40 + i] == (mac[i / 8] & (0x80 >> UInt8(i % 8)) != 0) }
+        let key = SymmetricKey(data: Data(zip(codeSecretParts.0, codeSecretParts.1).map { $0 ^ $1 }))
+        func signs(_ message: [UInt8]) -> Bool {
+            let mac = Array(HMAC<SHA256>.authenticationCode(for: Data(message), using: key))
+            return (0..<60).allSatisfy { i in bits[40 + i] == (mac[i / 8] & (0x80 >> UInt8(i % 8)) != 0) }
+        }
+        if signs([1] + serial) { return .all }
+        return petIDs.first { signs([2] + serial + Array($0.utf8)) }.map { Grant.pet($0) }
     }
 }
 
@@ -147,7 +172,7 @@ let pets: [Pet] = [
                "kwkkwwwwccccckk.", "kwwkswwwcccccck.", "kwwksswwwccccck.", ".kkkssswwwwwwk..",
                "....kkkkkkkkk..."],
         feet: ["....kwk...kwk...", ".....kwk.kwk...."],
-        tricks: [.firework, .flashlight, .flipEgg, .campfire], typing: .cooking, premium: true),
+        tricks: [.firework, .flashlight, .flipEgg, .campfire], typing: .cooking),
     Pet(id: "pip", name: "Pip the penguin", palette: [
             "k": rgb(0.12, 0.13, 0.20), "b": rgb(0.24, 0.29, 0.43), "w": rgb(1.00, 1.00, 1.00),
             "o": rgb(1.00, 0.65, 0.24), "p": rgb(1.00, 0.62, 0.70)],
@@ -1421,7 +1446,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var breaksOn = true
     var waterOn = true
     var mealsOn = true
-    var unlocked = false
+    /// What the saved unlock codes cover: every premium pet, or just these.
+    var ownsAll = false
+    var ownedPets: Set<String> = []
     var visible = true
 
     var lastTick = ProcessInfo.processInfo.systemUptime
@@ -1463,9 +1490,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
 
         view = PetView()
-        unlocked = License.isValid(defaults.string(forKey: "license") ?? "")
+        savedCodes().compactMap { License.check($0, petIDs: premiumIDs) }.forEach(own)
         let saved = pet(withID: defaults.string(forKey: "pet") ?? "mochi")
-        view.pet = saved.premium && !unlocked ? pets[0] : saved
+        view.pet = has(saved) ? saved : pets[0]
         view.onHomeMoved = { [weak self] in self?.homeMoved() }
         window.contentView = view
         layout()
@@ -1647,7 +1674,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let petItem = NSMenuItem(title: "Pet", action: nil, keyEquivalent: "")
         let petMenu = NSMenu()
         for (i, p) in pets.enumerated() {
-            let locked = p.premium && !unlocked
+            let locked = !has(p)
             let item = NSMenuItem(title: locked ? "\(p.name)  🔒" : p.name, action: #selector(pickPet(_:)), keyEquivalent: "")
             item.tag = i
             item.image = Self.menuBarIcon(for: p)
@@ -1656,12 +1683,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             petMenu.addItem(item)
         }
         petMenu.addItem(.separator())
-        if unlocked {
+        if ownsAll {
             let done = NSMenuItem(title: "All Pets Unlocked", action: nil, keyEquivalent: "")
             done.isEnabled = false
             petMenu.addItem(done)
         } else {
-            let unlock = NSMenuItem(title: "Unlock All Pets…", action: #selector(unlockFromMenu), keyEquivalent: "")
+            let unlock = NSMenuItem(title: "Enter Unlock Code…", action: #selector(unlockFromMenu), keyEquivalent: "")
             unlock.target = self
             petMenu.addItem(unlock)
         }
@@ -1848,31 +1875,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func pickPet(_ sender: NSMenuItem) {
         let chosen = pets[sender.tag]
-        if chosen.premium && !unlocked {
-            if askForCode(wanting: chosen) { switchTo(chosen) }
+        if !has(chosen) {
+            if let grant = askForCode(wanting: chosen) { showUnlocked(grant, wanting: chosen) }
             return
         }
         switchTo(chosen)
     }
 
     @objc func unlockFromMenu() {
-        if askForCode(wanting: nil) {
+        if let grant = askForCode(wanting: nil) { showUnlocked(grant, wanting: nil) }
+    }
+
+    /// The ids of the pets that need a code.
+    var premiumIDs: [String] { pets.filter(\.premium).map(\.id) }
+
+    /// Whether this pet is free or unlocked by one of the saved codes.
+    func has(_ p: Pet) -> Bool { !p.premium || ownsAll || ownedPets.contains(p.id) }
+
+    func own(_ grant: License.Grant) {
+        switch grant {
+        case .all: ownsAll = true
+        case .pet(let id): ownedPets.insert(id)
+        }
+    }
+
+    /// Every unlock code entered on this Mac: "codes", plus "license", the single code earlier versions kept.
+    func savedCodes() -> [String] {
+        (defaults.stringArray(forKey: "codes") ?? []) + [defaults.string(forKey: "license")].compactMap { $0 }
+    }
+
+    /// Shows the pet a code just unlocked; an All Pets code goes to the pet that was picked, if any.
+    func showUnlocked(_ grant: License.Grant, wanting: Pet?) {
+        let target: Pet?
+        switch grant {
+        case .pet(let id): target = pets.first { $0.id == id }
+        case .all: target = wanting
+        }
+        if let target {
+            switchTo(target)
+        } else {
             view.petted()
             view.say("thank you! ♥", for: 2.5)
             rebuildMenu()
         }
     }
 
-    /// Shows the code dialog until the code works or the person cancels. Returns true once unlocked.
-    func askForCode(wanting pet: Pet?) -> Bool {
+    /// Shows the code dialog until a code works or the person cancels. Saves the code and returns what it unlocks.
+    func askForCode(wanting pet: Pet?) -> License.Grant? {
         NSApp.activate(ignoringOtherApps: true)
+        let name = pet.map { $0.name.components(separatedBy: " the ").first ?? $0.name }
         var problem: String?
         while true {
             let alert = NSAlert()
-            alert.messageText = problem == nil ? "Unlock All Pets" : "That code didn't work"
-            let names = pets.filter(\.premium).map { $0.name.components(separatedBy: " ").first! }
-            let lead = pet.map { "\($0.name.components(separatedBy: " ").first!) is a premium pet. " } ?? ""
-            alert.informativeText = problem ?? "\(lead)Enter your DeskPet code to unlock \(ListFormatter.localizedString(byJoining: names))."
+            alert.messageText = problem == nil ? name.map { "Unlock \($0)" } ?? "Enter Unlock Code" : "That code didn't work"
+            alert.informativeText = problem
+                ?? name.map { "\($0) is a premium pet. Enter a code for \($0), or an All Pets code." }
+                ?? "Enter your DeskPet code. A code unlocks one pet, or all of them."
             alert.addButton(withTitle: "Unlock")
             alert.addButton(withTitle: "Cancel")
             let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
@@ -1880,13 +1938,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             field.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             alert.accessoryView = field
             alert.window.initialFirstResponder = field
-            guard alert.runModal() == .alertFirstButtonReturn else { return false }
+            guard alert.runModal() == .alertFirstButtonReturn else { return nil }
             let code = field.stringValue
-            if License.isValid(code) {
-                defaults.set(code.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "license")
-                unlocked = true
+            if let grant = License.check(code, petIDs: premiumIDs), let standard = License.normalized(code) {
+                var codes = defaults.stringArray(forKey: "codes") ?? []
+                if !codes.contains(standard) { codes.append(standard) }
+                defaults.set(codes, forKey: "codes")
+                own(grant)
                 rebuildMenu()
-                return true
+                return grant
             }
             problem = "Check the code and try again. It has 20 letters and numbers; dashes, spaces and capitals don't matter."
         }

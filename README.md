@@ -6,7 +6,9 @@ Choose from five pets: **Mochi** the cream cat comes free, and **Ember** the fox
 
 ## Premium pets
 
-Pick a locked pet (🔒) in the **Pet** menu, or choose **Unlock All Pets…**, and paste your code. It looks like `FNPW2-A4V00-T2WYH-026P8`; spaces, dashes and upper or lower case don't matter. The code works offline and is remembered on this Mac.
+Mochi and Ember come free. Every other pet needs a code, sold one pet at a time or as **All Pets**, which also covers pets added in later versions.
+
+Pick a locked pet (🔒) in the **Pet** menu, or choose **Enter Unlock Code…**, and paste your code. It looks like `FNPW2-A4V00-T2WYH-026P8`; spaces, dashes and upper or lower case don't matter. Codes work offline and are remembered on this Mac, so you can add pets one by one and they all stay unlocked. A code bought before single-pet codes existed is an All Pets code.
 
 ## Pet tricks
 
@@ -96,21 +98,25 @@ powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run -RunArgs --demo
 To make codes on Windows, use `Scripts\make-codes.ps1` (same codes, same secret file):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10
+powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10                # All Pets codes
+powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10 -Pet lunette   # codes for Lunette only
 ```
 
 **Copy your secret first.** The Windows build reads the same `~/.config/deskpet/code-secret` as the Mac build (`C:\Users\<you>\.config\deskpet\code-secret` on Windows). Copy that file over from your Mac before the first Windows build, or the build makes a new secret and your existing codes won't work in it.
 
 ## Making unlock codes (developer)
 
-A code is 20 characters: a random serial number plus a check value made with a secret key. The secret is never in the repo; `mac/build.sh` and `windows\build.ps1` build it into the app.
+A code is 20 characters: a random serial number plus a check value made with a secret key. The check value also says what the code unlocks: all pets, or one pet by its id. The secret is never in the repo; `mac/build.sh` and `windows\build.ps1` build it into the app.
 
 ```bash
-swift Scripts/make-codes.swift 10   # print 10 new codes
+swift Scripts/make-codes.swift 10                 # 10 All Pets codes
+swift Scripts/make-codes.swift 10 --pet lunette   # 10 codes that unlock only Lunette
 ```
 
+Pet ids: `pip`, `puddle`, `sprout`, `grumbo`, `wispaling`, `hexley`, `mossback`, `sirclank`, `lunette` (Mochi and Ember are free). A code for a pet that a copy of the app doesn't have yet is rejected there, so add a pet to the app before selling codes for it.
+
 - The first run (or the first `mac/build.sh`) creates the secret at `~/.config/deskpet/code-secret`. **Back it up.** Anyone who has it can make codes, and if it's lost, copies of the app already out there won't accept new codes.
-- Every code made is also logged in `~/.config/deskpet/codes.txt`.
+- Every code made is also logged in `~/.config/deskpet/codes.txt`, with the pet it unlocks.
 - Someone who builds from source without your secret gets their own new secret, so your codes won't work in their build, and theirs won't work in yours.
 - Because the app has to contain the secret to check codes, a determined person could dig it out of the app and make codes. Short codes trade that risk for being easy to type.
 

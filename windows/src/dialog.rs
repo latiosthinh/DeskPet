@@ -37,7 +37,8 @@ struct State {
     error: Cell<bool>,
     footer_top: Cell<i32>,
     done: Cell<bool>,
-    result: RefCell<Option<String>>,
+    pet_ids: Vec<&'static str>,
+    result: RefCell<Option<(String, license::Grant)>>,
 }
 
 impl Drop for State {
@@ -136,8 +137,8 @@ fn paint_background(hwnd: HWND, dc: HDC, st: &State) {
 
 fn try_unlock(hwnd: HWND, st: &State) {
     let code = get_text(st.edit);
-    if license::is_valid(&code) {
-        *st.result.borrow_mut() = Some(code.trim().to_string());
+    if let (Some(grant), Some(code)) = (license::check(&code, &st.pet_ids), license::normalized(&code)) {
+        *st.result.borrow_mut() = Some((code, grant));
         st.done.set(true);
         unsafe { DestroyWindow(hwnd) };
         return;
@@ -206,8 +207,9 @@ fn child(parent: HWND, class: &str, text: &str, style: u32, ex: u32, id: i32, fo
     }
 }
 
-/// Shows the dialog until the code works or the person cancels. Returns the code once it works.
-pub fn ask_for_code(intro: &str, dpi: u32, big_icon: HICON, small_icon: HICON) -> Option<String> {
+/// Shows the dialog until the code works or the person cancels. Returns the code, written the
+/// standard way, and what it unlocks.
+pub fn ask_for_code(heading: &str, intro: &str, pet_ids: &[&'static str], dpi: u32, big_icon: HICON, small_icon: HICON) -> Option<(String, license::Grant)> {
     let class = wide("DeskPetUnlock");
     thread_local!(static REGISTERED: Cell<bool> = const { Cell::new(false) });
     if !REGISTERED.with(|r| r.replace(true)) {
@@ -227,7 +229,7 @@ pub fn ask_for_code(intro: &str, dpi: u32, big_icon: HICON, small_icon: HICON) -
         let heading_font = sys::Font::new("Segoe UI", p(20.0), 600);
         let body_font = sys::Font::new("Segoe UI", p(12.0), 400);
         let edit_font = sys::Font::new("Consolas", p(15.0), 400);
-        let heading = child(hwnd, "STATIC", "Unlock All Pets", SS_NOPREFIX, 0, 100, heading_font.handle());
+        let heading = child(hwnd, "STATIC", heading, SS_NOPREFIX, 0, 100, heading_font.handle());
         let body = child(hwnd, "STATIC", intro, SS_NOPREFIX, 0, 101, body_font.handle());
         let edit = child(hwnd, "EDIT", "", WS_TABSTOP | ES_AUTOHSCROLL as u32 | ES_UPPERCASE as u32, WS_EX_CLIENTEDGE, 102, edit_font.handle());
         let ok = child(hwnd, "BUTTON", "Unlock", WS_TABSTOP | BS_DEFPUSHBUTTON as u32, 0, IDOK, body_font.handle());
@@ -252,6 +254,7 @@ pub fn ask_for_code(intro: &str, dpi: u32, big_icon: HICON, small_icon: HICON) -
             error: Cell::new(false),
             footer_top: Cell::new(0),
             done: Cell::new(false),
+            pet_ids: pet_ids.to_vec(),
             result: RefCell::new(None),
         });
         DIALOG.with(|d| *d.borrow_mut() = Some(st.clone()));

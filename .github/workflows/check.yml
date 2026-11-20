@@ -1,0 +1,38 @@
+# Builds both apps on every push that changes them, to catch compile errors early (the Mac app
+# can't be built on Windows, and the other way round). Uses a throwaway code secret, so these
+# builds aren't for release; the Release workflow makes those.
+
+name: Build check
+
+on:
+  push:
+    paths: ["mac/**", "windows/**", "Scripts/**", ".github/workflows/check.yml"]
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: mac/build.sh
+      - name: Make codes
+        run: |
+          swift Scripts/make-codes.swift 1
+          swift Scripts/make-codes.swift 1 --pet lunette
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\build.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Make codes
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 1 -Pet lunette
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
