@@ -350,9 +350,11 @@ impl PetView {
     }
 
     fn decide_next(&mut self) {
-        // A trick now and then: the first 1–3 minutes after launch, then 4–8 minutes apart.
+        // A trick now and then: the first 1–3 minutes after launch (sooner if the pet's gap is shorter),
+        // then the pet's trick_gap apart (4–8 minutes for most).
         if self.next_trick_at.is_none() {
-            self.next_trick_at = Some(self.now + rand(60.0, 180.0));
+            let (lo, hi) = self.pet.trick_gap;
+            self.next_trick_at = Some(self.now + rand(60.0, 180.0).min(rand(lo, hi)));
         }
         if !self.pet.tricks.is_empty() && self.now >= self.next_trick_at.unwrap() {
             let choices: Vec<Trick> = self.pet.tricks.iter().copied().filter(|t| Some(*t) != self.last_trick).collect();

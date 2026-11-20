@@ -681,6 +681,7 @@ impl App {
     fn switch_to(&mut self, i: usize) {
         let p = &self.pets[i];
         self.view.pet = p;
+        self.view.next_trick_at = None; // the new pet's own trick timing
         settings::set_string("pet", p.id);
         self.update_tray_icon();
         self.view.petted();

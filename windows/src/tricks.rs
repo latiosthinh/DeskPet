@@ -1,7 +1,7 @@
 //! Each pet's own tricks and typing activities, ported from main.swift.
 
 use crate::art::{bubble_icons, hex, hue_shifted, pictures, props, rotated, rows, sys_color, trick_art, Eyes, Picture, Pose, Rows, Trick, TypingStyle, GLAIVE_THROW, PET_SIZE, PIXEL};
-use crate::pet::{free, prop, pt, rand, rand_index, FreeSprite, Look, Mode, Particle, PetView, Pt, TRICK_GAP};
+use crate::pet::{free, prop, pt, rand, rand_index, FreeSprite, Look, Mode, Particle, PetView, Pt};
 use std::f64::consts::PI;
 
 fn lerp(a: f64, b: f64, t: f64) -> f64 {
@@ -40,7 +40,7 @@ impl PetView {
         self.trick_flags.clear();
         self.trick_timers.clear();
         self.set_mode(Mode::Trick, t.duration());
-        self.next_trick_at = Some(self.now + t.duration() + rand(TRICK_GAP.0, TRICK_GAP.1));
+        self.next_trick_at = Some(self.now + t.duration() + rand(self.pet.trick_gap.0, self.pet.trick_gap.1));
         self.trick_start_facing = self.facing_left;
         match t {
             Trick::Swim => self.set_up_pool(),
