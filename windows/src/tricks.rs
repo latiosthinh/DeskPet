@@ -412,6 +412,25 @@ impl PetView {
                     self.next_trick_at = keep;
                 }
             }
+            Trick::WitcherWhirl => {
+                if t > ORB_WHIRL_START && self.once(1) {
+                    self.say("orbs, unite!", 1.4);
+                }
+            }
+            Trick::WitcherWeigh => {
+                if t > 0.4 && self.once(1) {
+                    self.say("hmm…", 1.6);
+                }
+            }
+            Trick::WitcherVanish => {
+                // Gone: he turns up somewhere else in the pen.
+                if t > VANISH_MOVE && self.once(1) {
+                    let from = self.pet_x;
+                    self.pet_x = self.random_target(from, f64::MAX);
+                    self.facing_left = self.pet_x > from;
+                }
+            }
+            Trick::WitcherOrb => {}
             Trick::MoonaTriplicate => {
                 if t > 0.4 && self.once(1) {
                     self.say("Manta style!", 1.4);
@@ -501,7 +520,8 @@ impl PetView {
             | TypingStyle::Pebbles
             | TypingStyle::Checklist
             | TypingStyle::Mortar
-            | TypingStyle::Moonlight => {}
+            | TypingStyle::Moonlight
+            | TypingStyle::Orbs => {}
         }
     }
 
@@ -602,6 +622,13 @@ impl PetView {
                 let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
                 look.props.push(prop(rows(trick_art::LUNETTE_MORTAR), 14.0, 0.0));
                 look.props.push(prop(rows(trick_art::LUNETTE_MALLET), 14.0, 3.0 + beat * 4.0));
+            }
+            TypingStyle::Orbs => {
+                // Orbis keeps an orb bobbing in front of him, a different one every so often.
+                let kind = ((self.now - self.mode_start) / 0.9) as usize % 3;
+                let bob = if self.alt(0.2) { 0.0 } else { 2.0 };
+                let (x, y) = self.witcher_hand(0.0);
+                look.free.push(self.orb_sprite(kind, x, y - 8.0 + bob, false));
             }
             TypingStyle::Moonlight => {
                 // Moona waits on her panther while a little moon glows in front of it, twinkling as you type.
@@ -1100,6 +1127,89 @@ impl PetView {
                     look.free = vec![self.placed(HERO_PUFF, -14.0, 0.0), self.placed(HERO_PUFF, 22.0, 0.0)];
                 }
             }
+            Trick::WitcherOrb => {
+                // Holds out an orb, it bursts from his hand and flies off ahead, popping where it lands.
+                let kind = (self.mode_start * 7.0) as usize % 3; // a different orb from throw to throw
+                look.frame = if t < ORB_LAUNCH {
+                    Picture::marker_index(pictures::WITCHER_THROW)
+                } else if t < ORB_LAUNCH + 0.25 {
+                    Picture::marker_index(pictures::WITCHER_BURST)
+                } else if t < ORB_LAND {
+                    Picture::marker_index(pictures::WITCHER_AFTER)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                if (ORB_LAUNCH..ORB_LAND).contains(&t) {
+                    for (lag, faint) in [(0.08, true), (0.04, true), (0.0, false)] {
+                        let q = ((t - lag - ORB_LAUNCH) / (ORB_LAND - ORB_LAUNCH)).max(0.0);
+                        let (x, y) = self.witcher_hand(q);
+                        look.free.push(self.orb_sprite(kind, x, y, faint));
+                    }
+                }
+                if (ORB_LAND..ORB_LAND + 0.4).contains(&t) {
+                    let (x, y) = self.witcher_hand(1.0);
+                    look.free.push(free(rows(HERO_PUFF), x - 16.0, (y - 14.0).max(0.0), PIXEL));
+                    look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, y - 6.0 + 20.0 * (t - ORB_LAND), PIXEL));
+                }
+            }
+            Trick::WitcherWhirl => {
+                // Draws the orbs round him faster and faster, then sets them off in a flash.
+                look.frame = if t < ORB_WHIRL_START {
+                    Picture::marker_index(pictures::WITCHER_CAST)
+                } else if t < ORB_WHIRL_FLASH {
+                    Picture::marker_index(pictures::WITCHER_WHIRL + self.step_of(0.12))
+                } else if t < ORB_WHIRL_FLASH + 0.5 {
+                    Picture::marker_index(pictures::WITCHER_BURST)
+                } else if t < ORB_WHIRL_FLASH + 0.8 {
+                    Picture::marker_index(pictures::WITCHER_AFTER)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                if (ORB_WHIRL_FLASH..ORB_WHIRL_FLASH + 0.6).contains(&t) {
+                    let c = self.pet_center_x();
+                    let up = 20.0 * (t - ORB_WHIRL_FLASH);
+                    for (dx, dy) in [(-44.0, 40.0), (40.0, 52.0), (-30.0, 70.0), (50.0, 24.0)] {
+                        look.free.push(free(rows(MOONA_TWINKLE), c + dx, dy + up, PIXEL));
+                    }
+                }
+            }
+            Trick::WitcherWeigh => {
+                // Turns to each orb in turn, orange, blue, pink, and round again.
+                look.frame = if (0.2..3.4).contains(&t) {
+                    Picture::marker_index(pictures::WITCHER_SIDE + ((t - 0.2) / 0.55) as usize % 3)
+                } else {
+                    p.frame(if t >= 3.4 { Eyes::Happy } else { eyes }, Pose::Sit)
+                };
+            }
+            Trick::WitcherVanish => {
+                // Fades into a ghost and away, then fades back in somewhere else.
+                let fade = if t < 0.4 {
+                    look.frame = Picture::marker_index(pictures::WITCHER_CAST);
+                    1.0
+                } else if t < VANISH_BACK + 0.8 {
+                    look.frame = Picture::marker_index(pictures::WITCHER_GHOST);
+                    if t < VANISH_GONE {
+                        1.0 - ((t - 0.6) / (VANISH_GONE - 0.6)).clamp(0.0, 1.0)
+                    } else if t < VANISH_BACK {
+                        0.0
+                    } else {
+                        (t - VANISH_BACK) / 0.8
+                    }
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Sit);
+                    1.0
+                };
+                if fade < 1.0 {
+                    look.palette = look.palette.faded(fade);
+                }
+                // A wisp where he goes and where he comes back.
+                for at in [VANISH_GONE - 0.3, VANISH_BACK] {
+                    if (at..at + 0.5).contains(&t) {
+                        let c = self.pet_center_x();
+                        look.free.push(free(rows(MOONA_TWINKLE), c - 6.0, 40.0 + 30.0 * (t - at), PIXEL));
+                    }
+                }
+            }
             Trick::MoonaGlaive => {
                 // Throws her glaive like a boomerang: it spins out ahead of her, loops round and comes
                 // back to her hand.
@@ -1189,6 +1299,33 @@ impl PetView {
             _ => {}
         }
         look
+    }
+
+    // MARK: Orbis's orbs
+
+    /// Where a cast orb is (pen points, its centre), `q` of the way along its flight: from his hand,
+    /// straight out ahead, dipping a little as it goes.
+    fn witcher_hand(&self, q: f64) -> (f64, f64) {
+        let px = self.pet.picture.as_ref().map_or(1.0, |p| p.px);
+        let dir = if self.facing_left { -1.0 } else { 1.0 };
+        let hand_x = self.pet_center_x() + dir * pictures::WITCHER_HAND.0 * px;
+        let hand_y = pictures::WITCHER_HAND.1 * px;
+        let room = if self.facing_left { hand_x - 14.0 } else { self.width - 14.0 - hand_x };
+        let reach = room.clamp(30.0, 150.0);
+        let q = q.clamp(0.0, 1.0);
+        (hand_x + dir * reach * q, hand_y - 22.0 * q * q)
+    }
+
+    /// One of his orbs (0 orange, 1 blue, 2 pink) centred at (x, y); a see-through one for its trail.
+    fn orb_sprite(&self, kind: usize, x: f64, y: f64, faint: bool) -> FreeSprite {
+        let px = self.pet.picture.as_ref().map_or(PIXEL / 2.0, |p| p.px);
+        let trail = ['S', 'T', 'U'][kind % 3];
+        let grid: Rows = pictures::WITCHER_ORBS[kind % 3]
+            .iter()
+            .map(|r| r.chars().map(|ch| if faint && ch != '.' { trail } else { ch }).collect())
+            .collect();
+        let (w, h) = (grid[0].len() as f64 * px, grid.len() as f64 * px);
+        FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, y - h / 2.0, px) }
     }
 
     // MARK: Moona's glaive and moonbeams
@@ -1302,6 +1439,15 @@ impl PetView {
 /// Moona's glaive leaves her hand, and is back.
 const THROW_OUT: f64 = 0.22;
 const THROW_BACK: f64 = 1.75;
+/// Orbis: an orb leaves his hand and lands; the whirl starts and flashes; he fades out, moves
+/// while he's gone, and fades back in.
+const ORB_LAUNCH: f64 = 0.35;
+const ORB_LAND: f64 = 1.2;
+const ORB_WHIRL_START: f64 = 0.3;
+const ORB_WHIRL_FLASH: f64 = 2.2;
+const VANISH_GONE: f64 = 1.3;
+const VANISH_MOVE: f64 = 1.7;
+const VANISH_BACK: f64 = 2.3;
 /// Triplicate: the copies appear, the glaives start whirling, are caught, and the copies go.
 const TRI_APPEAR: f64 = 0.45;
 const TRI_SPIN: f64 = 0.8;
