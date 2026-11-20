@@ -425,12 +425,20 @@ impl PetView {
         }
 
         // React to what the human is doing.
-        let busy_with_reminder = matches!(self.mode, Mode::Drinking | Mode::Eating | Mode::Cheering);
+        let busy_with_reminder = matches!(self.mode, Mode::Drinking | Mode::Eating | Mode::Cheering)
+            || (self.mode == Mode::Trick && self.trick.is_some() && self.trick == self.pet.wake_trick); // typing doesn't cut it short
         if self.mode != Mode::Sleeping && idle > SLEEP_AFTER {
             self.set_mode(Mode::Sleeping, 0.0);
         } else if self.mode == Mode::Sleeping && idle < 1.0 {
-            self.set_mode(Mode::Idle, 1.5);
-            self.say("!", 1.2);
+            if let Some(t) = self.pet.wake_trick {
+                // Moona greets you with the moonlight.
+                let keep = self.next_trick_at; // doesn't count as one of its own tricks
+                self.start_trick(t);
+                self.next_trick_at = keep;
+            } else {
+                self.set_mode(Mode::Idle, 1.5);
+                self.say("!", 1.2);
+            }
         } else if self.mode != Mode::Sleeping && !busy_with_reminder && key_idle < 0.6 {
             if self.mode != Mode::Typing {
                 self.begin_typing(3.0); // pull out the laptop, pan, shovel…
