@@ -157,6 +157,7 @@ pub struct PetView {
     pub trick_timers: HashMap<i32, f64>,
     pub trick_start_facing: bool,
     pub trick_again: u8, // clicks waiting to throw Moona's glaive again
+    pub walk_after_trick: bool, // a turn trick interrupted a walk; carry on once it ends
     pub burst_cycle: i32,
     pub pool_left: f64,
     pub pool_width: f64,
@@ -203,6 +204,7 @@ impl PetView {
             trick_timers: HashMap::new(),
             trick_start_facing: false,
             trick_again: 0,
+            walk_after_trick: false,
             burst_cycle: -1,
             pool_left: 0.0,
             pool_width: 0.0,
@@ -254,6 +256,9 @@ impl PetView {
     // MARK: Behaviour
 
     pub fn set_mode(&mut self, m: Mode, seconds: f64) {
+        if m != Mode::Trick {
+            self.walk_after_trick = false;
+        }
         self.mode = m;
         self.mode_start = self.now;
         self.mode_until = self.now + seconds;
@@ -373,6 +378,19 @@ impl PetView {
         let r = rand01();
         if r < 0.45 && can_walk {
             self.target_x = self.random_target(self.pet_x, f64::MAX);
+            // Turning round to walk the other way: some pets do a trick first (Moona throws her glaive,
+            // sometimes two or three times), then set off.
+            let turning = self.target_x != self.pet_x && (self.target_x < self.pet_x) != self.facing_left;
+            if let (true, Some(t)) = (turning, self.pet.turn_trick) {
+                self.facing_left = !self.facing_left;
+                let keep = self.next_trick_at; // doesn't count as one of its own tricks
+                self.start_trick(t);
+                self.next_trick_at = keep;
+                let r = rand01();
+                self.trick_again = if r < 0.15 { 2 } else if r < 0.45 { 1 } else { 0 };
+                self.walk_after_trick = true;
+                return;
+            }
             self.set_mode(Mode::Walking, 0.0);
         } else if r < 0.57 && self.pet.sweeps {
             self.set_mode(Mode::Sweeping, rand(6.0, 10.0));
@@ -466,7 +484,11 @@ impl PetView {
                 }
                 if now >= self.mode_until {
                     self.trick = None;
-                    self.decide_next();
+                    if self.walk_after_trick {
+                        self.set_mode(Mode::Walking, 0.0);
+                    } else {
+                        self.decide_next();
+                    }
                 }
             }
             Mode::Typing => {
@@ -715,6 +737,7 @@ impl PetView {
         } else if let Some(t) = self.pet.click_trick {
             self.bubble_text = None; // still dismisses a reminder
             if self.mode == Mode::Trick && self.trick == Some(t) {
+                self.walk_after_trick = false; // she stays put for throws you ask for
                 self.trick_again = (self.trick_again + 1).min(3); // keeps going, one more each click
             } else {
                 self.trick_again = 0;

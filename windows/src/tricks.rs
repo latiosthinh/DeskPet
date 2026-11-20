@@ -407,12 +407,14 @@ impl PetView {
                 // Another click came in while the glaive was out: throw it again once it's back.
                 if t >= GLAIVE_THROW - 0.05 && self.trick_again > 0 {
                     self.trick_again -= 1;
+                    let keep = self.next_trick_at;
                     self.start_trick(Trick::MoonaGlaive);
+                    self.next_trick_at = keep;
                 }
             }
             Trick::MoonaTriplicate => {
                 if t > 0.4 && self.once(1) {
-                    self.say("triplicate!", 1.4);
+                    self.say("Manta style!", 1.4);
                 }
             }
             Trick::MoonaMoonlight => {
