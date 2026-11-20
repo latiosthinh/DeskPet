@@ -12,8 +12,8 @@
 //
 // A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256. An All Pets code
 // signs [1] + serial; a single-pet code signs [2] + serial + the pet's id (mochi, ember, pip, puddle,
-// sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette, moona, witcher). An All Pets code also unlocks
-// pets added in later versions.
+// sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette, moona, witcher,
+// ninja, samurai). An All Pets code also unlocks pets added in later versions.
 
 import CryptoKit
 import Foundation

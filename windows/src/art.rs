@@ -76,6 +76,7 @@ pub fn prop_palette() -> Palette {
         ('W', rgb(0.95, 0.96, 0.99)), // cloud
         ('T', rgb(0.82, 0.64, 0.42)), // cardboard
         ('U', rgb(0.66, 0.49, 0.31)), // cardboard tape and flaps
+        ('L', rgb(0.50, 0.80, 0.40)), // leaves, bamboo
     ])
 }
 
@@ -125,6 +126,8 @@ pub enum TypingStyle {
     Mortar,
     Moonlight,
     Orbs,
+    Scroll,
+    Polish,
 }
 
 pub type Frame = [[u8; 16]; 16];
@@ -518,6 +521,40 @@ pub fn pets() -> Vec<Pet> {
             &[Trick::LunetteRice, Trick::LunetteWish, Trick::LunetteNap],
             TypingStyle::Mortar,
         ),
+        hero(
+            "ninja",
+            "Kage the ninja",
+            &[('k', hex(0x221d2e)), ('w', hex(0x3d4870)), ('N', hex(0x5a6894)), ('s', hex(0xf2c9a0)), ('r', hex(0xd8414a))],
+            [
+                "................", ".....kkkkkk.....", "....kwwwwwwk....", "rr.kwwwwwwwwk...",
+                ".rrkrrrrrrrrrk..", "..kwwwwwwwwwwwk.", "..kwwwwwssssssk.", "..kwwwwwssssssk.",
+                "..kwwwwwwwwwwwk.", "..kwNwwwwwwwwwk.", "..kwwNwwwwwwwk..", "...kwwwwwwwwk...",
+                "....kkkkkkkk....",
+            ],
+            ["....kwk..kwk....", "......kwkkwk...."],
+            None,
+            &[Trick::NinjaSmoke, Trick::NinjaShuriken, Trick::NinjaHide],
+            TypingStyle::Scroll,
+        ),
+        Pet {
+            paw: b's',
+            ..hero(
+                "samurai",
+                "Ronin the samurai",
+                &[('k', hex(0x2a2230)), ('w', hex(0xc0392b)), ('s', hex(0xf0c8a0)), ('h', hex(0x34343f)), ('H', hex(0x5a5a6a)),
+                  ('R', hex(0xe8b84a)), ('y', hex(0xf5d060))],
+                [
+                    "...y.......y....", "....y.....y.....", ".....yyyyy......", "....kkkkkkkk....",
+                    "...khhhhhhhhk...", "..khhhhhhhhhhk..", ".khhkssssssssk..", ".khhkssssssssk..",
+                    ".kHHkssssssssk..", ".kwwwkkkkkkkwk..", ".kwwwwRRwwwwwk..", ".kwRwwwwwwRwwk..",
+                    "..kkkkkkkkkkkk..",
+                ],
+                ["...khk....khk...", ".....khkkhk....."],
+                None,
+                &[Trick::SamuraiDraw, Trick::SamuraiBow, Trick::SamuraiBamboo],
+                TypingStyle::Polish,
+            )
+        },
         // A moon knight riding a black panther, drawn from prototypes/moona.jpg.
         Pet {
             palette: Palette::new(&pictures::moona_palette()),
@@ -2544,6 +2581,8 @@ pub enum Trick {
     MossToss, MossBloom, MossRain,                         // Mossback
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
+    NinjaSmoke, NinjaShuriken, NinjaHide,                  // Kage
+    SamuraiDraw, SamuraiBow, SamuraiBamboo,                // Ronin
     MoonaPounce, MoonaGlaive, MoonaTriplicate, MoonaMoonlight, // Moona
     WitcherOrb, WitcherWhirl, WitcherWeigh, WitcherVanish,     // Orbis
     WitcherSunStrike, WitcherTornado, WitcherMeteor, WitcherMoonBlast, WitcherSpirits,
@@ -2579,7 +2618,7 @@ impl Trick {
             Fishing => 11.0,
             GrumboSpin | GrumboHelmet | GrumboChop | WispThread | WispKnot | WispMoth | HexFrog | HexSheep | HexBook
             | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
-            | LunetteNap => 8.0,
+            | LunetteNap | NinjaSmoke | NinjaShuriken | NinjaHide | SamuraiDraw | SamuraiBow | SamuraiBamboo => 8.0,
             MoonaPounce => 2.6,
             MoonaGlaive => GLAIVE_THROW,
             MoonaTriplicate => 5.0,
@@ -2638,6 +2677,12 @@ impl Trick {
             LunetteRice => "Pound Rice Cakes",
             LunetteWish => "Wish on a Shooting Star",
             LunetteNap => "Nap in a Crescent Moon",
+            NinjaSmoke => "Smoke Bomb",
+            NinjaShuriken => "Throw Shuriken",
+            NinjaHide => "Hide in a Bush",
+            SamuraiDraw => "Quick Draw",
+            SamuraiBow => "Bow",
+            SamuraiBamboo => "Cut the Bamboo",
             MoonaPounce => "Pounce",
             MoonaGlaive => "Throw the Glaive",
             MoonaTriplicate => "Triplicate",
@@ -2768,6 +2813,33 @@ pub mod trick_art {
     /// Lunette's ears folded down for her nap; replaces the top six rows of her sitting frame.
     pub const LUNETTE_TUCKED_EARS: [&str; 6] = ["................", "................", "....kkkkkk......", "...kwwwwwwk.....",
                                                 "..kwwwwwwwwkk...", "..kwwwwwwwwwwwk."];
+
+    // Kage the ninja: a smoke bomb, shuriken (two turns of the spin), the target he throws at, the
+    // bush he hides in, and the scroll and brush he writes with while you type.
+    pub const NINJA_BOMB: &[&str] = &["..y.", ".k..", "kddk", "kddk", ".kk."];
+    pub const NINJA_SHURIKEN_A: &[&str] = &["..k..", ".kgk.", "kgigk", ".kgk.", "..k.."];
+    pub const NINJA_SHURIKEN_B: &[&str] = &["k...k", ".kgk.", "..i..", ".kgk.", "k...k"];
+    pub const NINJA_TARGET: &[&str] = &[
+        ".kkkkk.", "kiiiiik", "kirrrik", "kiriiik", "kirrrik", "kiiiiik", ".kkkkk.", "...n...", "...n...", "..nnn..",
+    ];
+    pub const NINJA_BUSH: &[&str] = &[
+        "...LLL..LL..", "..LLGLLLLGL.", ".LLLLLGLLLLL", "LLGLLLLLLGLL", "LLLLLGLLLLLL", "LGLLLLLLGLLL", "LLLLGLLLLLGL",
+        ".LLLLLLGLLL.", "..GGGGGGGG..",
+    ];
+    pub const NINJA_SCROLL: &[&str] = &["n......n", "kiiiiiik", "kikkikik", "kiiiiiik", "n......n"];
+    pub const NINJA_BRUSH: &[&str] = &[".n", ".n", ".n", "kk"];
+
+    // Ronin the samurai: his katana, the polishing cloth, a leaf and its two halves, the flash of a
+    // cut, a bamboo stalk in two parts, and a cherry petal.
+    pub const SAMURAI_KATANA: &[&str] = &["...k........", "rrrkiiiiiiii", "...k........"];
+    pub const SAMURAI_CLOTH: &[&str] = &["WW", "WW"];
+    pub const SAMURAI_LEAF: &[&str] = &[".LL.", "LGLL", ".LL."];
+    pub const SAMURAI_LEAF_L: &[&str] = &[".L", "LG", ".L"];
+    pub const SAMURAI_LEAF_R: &[&str] = &["L.", "LL", "L."];
+    pub const SAMURAI_SLASH: &[&str] = &["WWWWWWWWWWWWWW"];
+    pub const SAMURAI_BAMBOO_TOP: &[&str] = &[".L.", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL", "LGL"];
+    pub const SAMURAI_BAMBOO_BOTTOM: &[&str] = &["LGL", "LGL", "GGG", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL"];
+    pub const SAMURAI_PETAL: &[&str] = &["PP", ".P"];
 }
 
 /// Turns a 16×16 frame a quarter turn clockwise `turns` times.

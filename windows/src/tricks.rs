@@ -320,6 +320,49 @@ impl PetView {
                 }
             }
 
+            Trick::NinjaSmoke => {
+                if t > SMOKE_GONE && self.once(1) {
+                    self.say("poof!", 1.0);
+                }
+                // Gone: he turns up somewhere else in the pen.
+                if t > (SMOKE_GONE + SMOKE_BACK) / 2.0 && self.once(2) {
+                    let from = self.pet_x;
+                    self.pet_x = self.random_target(from, f64::MAX);
+                    self.facing_left = self.pet_x > from;
+                }
+            }
+            Trick::NinjaShuriken => {
+                if t > SHURIKEN_THROWS[0] && self.once(1) {
+                    self.say("thwip!", 1.0);
+                }
+            }
+            Trick::NinjaHide => {
+                if t > 1.5 && self.once(1) {
+                    self.say("…", 1.2);
+                }
+                if t > HIDE_POP && self.once(2) {
+                    self.say("surprise!", 1.4);
+                }
+            }
+            Trick::SamuraiDraw => {
+                if t > DRAW_CUT && self.once(1) {
+                    self.say("…", 1.2);
+                }
+                if t > 5.0 && self.once(2) {
+                    self.say("*click*", 1.2);
+                }
+            }
+            Trick::SamuraiBow => {
+                if t > 1.0 && self.once(1) {
+                    self.say("honour.", 1.6);
+                }
+            }
+            Trick::SamuraiBamboo => {
+                if t > BAMBOO_CUT + 0.3 && self.once(1) {
+                    self.say("slice!", 1.2);
+                }
+            }
+
             Trick::WispThread => {
                 let target = self.thread_target(t);
                 if (target.x - self.pet_center_x()).abs() > 6.0 {
@@ -553,7 +596,9 @@ impl PetView {
             | TypingStyle::Checklist
             | TypingStyle::Mortar
             | TypingStyle::Moonlight
-            | TypingStyle::Orbs => {}
+            | TypingStyle::Orbs
+            | TypingStyle::Scroll
+            | TypingStyle::Polish => {}
         }
     }
 
@@ -654,6 +699,18 @@ impl PetView {
                 let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
                 look.props.push(prop(rows(trick_art::LUNETTE_MORTAR), 14.0, 0.0));
                 look.props.push(prop(rows(trick_art::LUNETTE_MALLET), 14.0, 3.0 + beat * 4.0));
+            }
+            TypingStyle::Scroll => {
+                // Kage writes secret notes on a scroll, the brush dabbing in time with the keys.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::NINJA_SCROLL), 13.0, 0.0));
+                look.props.push(prop(rows(trick_art::NINJA_BRUSH), 15.0 + beat, 3.0 + beat));
+            }
+            TypingStyle::Polish => {
+                // Ronin polishes his katana, the cloth sliding up and down the blade.
+                let slide = (2.5 * ((self.now - self.mode_start) * 5.0).sin()).round();
+                look.props.push(prop(rows(trick_art::SAMURAI_KATANA), 12.0, 4.0));
+                look.props.push(prop(rows(trick_art::SAMURAI_CLOTH), 18.0 + slide, 4.0));
             }
             TypingStyle::Orbs => {} // Orbis's orb wheel spins faster while you type (orb_wheel)
             TypingStyle::Moonlight => {
@@ -1138,6 +1195,107 @@ impl PetView {
                     if t > 3.0 {
                         look.free.push(self.placed(HERO_Z, 23.0, 22.0 + drift));
                     }
+                }
+            }
+            Trick::NinjaSmoke => {
+                // Holds up a smoke bomb, vanishes in a cloud of smoke, and pops up somewhere else.
+                let gone = (SMOKE_GONE..SMOKE_BACK).contains(&t);
+                look.frame = if gone { [[b'.'; 16]; 16] } else { p.frame(if t > SMOKE_BACK { Eyes::Happy } else { eyes }, Pose::Stand(0)) };
+                if t < SMOKE_GONE - 0.2 {
+                    look.props = vec![prop(rows(NINJA_BOMB), 14.0, 6.0 + beat)];
+                }
+                for at in [SMOKE_GONE - 0.2, SMOKE_BACK - 0.2] {
+                    if (at..at + 0.9).contains(&t) {
+                        let grow = ((t - at) * 4.0).round();
+                        look.free.push(self.placed(HERO_PUFF, -grow, 0.0));
+                        look.free.push(self.placed(HERO_PUFF, 8.0 + grow, 2.0));
+                        look.free.push(self.placed(HERO_PUFF, 4.0, 6.0 + grow));
+                    }
+                }
+            }
+            Trick::NinjaShuriken => {
+                // Flicks three shuriken one after another; each spins across and thunks into the target.
+                look.frame = p.frame(if t > 4.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                look.free.push(self.placed(NINJA_TARGET, 25.0, 0.0));
+                for (i, &at) in SHURIKEN_THROWS.iter().enumerate() {
+                    if t < at {
+                        continue;
+                    }
+                    let q = ((t - at) / 0.35).min(1.0);
+                    let (dx, up) = ([23.0, 24.0, 22.0][i], [6.0, 3.0, 4.0][i]);
+                    let spinning = q < 1.0;
+                    let star = if spinning && self.alt(0.05) { NINJA_SHURIKEN_B } else { NINJA_SHURIKEN_A };
+                    look.free.push(self.placed(star, 14.0 + (dx - 14.0) * q, (8.0 + (up - 8.0) * q).round()));
+                    if t < at + 0.15 {
+                        look.x_offset = 1.0; // the flick
+                    }
+                }
+            }
+            Trick::NinjaHide => {
+                // Ducks into a bush, peeks out left and right, then jumps out.
+                look.frame = p.frame(if t > HIDE_POP { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                if (0.8..HIDE_POP).contains(&t) {
+                    look.y_offset = -2.0;
+                    if (2.5..3.2).contains(&t) || (4.5..5.2).contains(&t) {
+                        look.x_offset = 1.0; // a peek
+                    }
+                } else if (HIDE_POP..HIDE_POP + 0.5).contains(&t) {
+                    look.y_offset = 4.0;
+                }
+                if t > 0.6 {
+                    look.free.push(self.placed(NINJA_BUSH, 2.0, 0.0));
+                }
+            }
+            Trick::SamuraiDraw => {
+                // Meditates while a leaf drifts down, then one flash of the blade and the leaf falls in two.
+                let cut = DRAW_CUT;
+                look.frame = p.frame(if t < cut { Eyes::Closed } else if t > 5.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                if t < cut {
+                    let q = t / cut;
+                    look.free.push(self.placed(SAMURAI_LEAF, 20.0 + (1.5 * (t * 3.0).sin()).round(), (17.0 - 11.0 * q).round()));
+                } else {
+                    let q = ((t - cut) / 1.2).min(1.0);
+                    let up = (6.0 * (1.0 - q)).round();
+                    look.free.push(self.placed(SAMURAI_LEAF_L, 20.0 - (2.0 * q).round(), up));
+                    look.free.push(self.placed(SAMURAI_LEAF_R, 22.0 + (2.0 * q).round(), up));
+                    if t < cut + 0.25 {
+                        look.free.push(self.placed(SAMURAI_SLASH, 13.0, 7.0));
+                    }
+                    if t < 5.0 {
+                        look.props = vec![prop(rows(SAMURAI_KATANA), 12.0, 5.0)];
+                    }
+                }
+            }
+            Trick::SamuraiBow => {
+                // Bows low while cherry petals drift down round him.
+                let bowing = (0.6..3.6).contains(&t);
+                let f = p.frame(if bowing { Eyes::Closed } else if t > 3.6 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                look.frame = if bowing { lean(f, 2) } else { f };
+                for i in 0..7 {
+                    let start = 0.4 + i as f64 * 0.9;
+                    let up = 18.0 - (t - start) * 5.0;
+                    if t < start || up < 0.0 {
+                        continue;
+                    }
+                    let dx = -6.0 + i as f64 * 4.5 + (1.5 * (t * 2.0 + i as f64).sin()).round();
+                    look.free.push(self.placed(SAMURAI_PETAL, dx, up.round()));
+                }
+            }
+            Trick::SamuraiBamboo => {
+                // Faces a bamboo stalk, one quick slash, and the top slides off and drops.
+                look.frame = p.frame(if t > 5.5 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                let slash = BAMBOO_CUT;
+                if (slash - 0.15..slash + 0.15).contains(&t) {
+                    look.x_offset = 3.0; // the lunge
+                }
+                look.free.push(self.placed(SAMURAI_BAMBOO_BOTTOM, 21.0, 0.0));
+                let q = ((t - slash - 0.4) / 0.7).clamp(0.0, 1.0);
+                look.free.push(self.placed(SAMURAI_BAMBOO_TOP, 21.0 + (4.0 * q).round(), (9.0 * (1.0 - q)).round()));
+                if (slash..slash + 0.25).contains(&t) {
+                    look.free.push(self.placed(SAMURAI_SLASH, 12.0, 9.0));
+                }
+                if (slash..5.5).contains(&t) {
+                    look.props = vec![prop(rows(SAMURAI_KATANA), 12.0, 5.0)];
                 }
             }
             Trick::MoonaPounce => {
@@ -1684,6 +1842,26 @@ impl PetView {
 /// Moona's glaive leaves her hand, and is back.
 const THROW_OUT: f64 = 0.22;
 const THROW_BACK: f64 = 1.75;
+/// Kage: when the smoke hides him and when he reappears; when each shuriken leaves his hand; when
+/// he jumps out of the bush. Ronin: when the blade flashes (Quick Draw, Cut the Bamboo).
+const SMOKE_GONE: f64 = 1.5;
+const SMOKE_BACK: f64 = 4.5;
+const SHURIKEN_THROWS: [f64; 3] = [1.0, 2.0, 3.0];
+const HIDE_POP: f64 = 6.0;
+const DRAW_CUT: f64 = 2.6;
+const BAMBOO_CUT: f64 = 2.0;
+
+/// A bow: the head and shoulders (top nine rows) tip `cols` forward and one row down.
+fn lean(mut f: crate::art::Frame, cols: usize) -> crate::art::Frame {
+    for r in (1..=9).rev() {
+        let mut out = [b'.'; 16];
+        out[cols..].copy_from_slice(&f[r - 1][..16 - cols]);
+        f[r] = out;
+    }
+    f[0] = [b'.'; 16];
+    f
+}
+
 /// Orbis: an orb leaves his hand and lands; the whirl starts and flashes; he fades out, moves
 /// while he's gone, and fades back in.
 const ORB_LAUNCH: f64 = 0.35;
