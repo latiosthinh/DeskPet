@@ -115,6 +115,7 @@ pub enum TypingStyle {
     Pebbles,
     Checklist,
     Mortar,
+    Churn,
 }
 
 pub type Frame = [[u8; 16]; 16];
@@ -137,12 +138,21 @@ pub struct Pet {
     pub premium: bool, // needs an unlock code
     pub wind_key: bool, // Sir Clank's wind-up key, always drawn behind him
     pub floats: bool,   // bobs up and down while walking instead of stepping (Wisp-a-ling)
+    pub picture: Option<Picture>, // drawn from a detailed picture instead of `body` (Cowy)
 }
 
 impl Pet {
     /// "Ember the fox" → "Ember"; "Sir Clank" stays whole.
     pub fn short_name(&self) -> &'static str {
         self.name.split(" the ").next().unwrap_or(self.name)
+    }
+
+    /// Width and height of the drawn pet in points: the 16×16 sprite box, or a picture pet's picture.
+    pub fn size(&self) -> (f64, f64) {
+        match &self.picture {
+            Some(p) => (p.width as f64 * PICTURE_PX, p.height as f64 * PICTURE_PX),
+            None => (PET_SIZE, PET_SIZE),
+        }
     }
 
     pub fn rows(&self, eyes: Eyes) -> [[u8; 16]; 13] {
@@ -171,6 +181,9 @@ impl Pet {
     }
 
     pub fn frame(&self, eyes: Eyes, pose: Pose) -> Frame {
+        if self.picture.is_some() {
+            return Picture::marker(eyes, pose);
+        }
         let rows = self.rows(eyes);
         let mut out = [[b'.'; 16]; 16];
         let mut n = 0;
@@ -225,6 +238,7 @@ pub fn pets() -> Vec<Pet> {
             premium: false,
             wind_key: false,
             floats: false,
+            picture: None,
         },
         Pet {
             id: "ember",
@@ -252,6 +266,7 @@ pub fn pets() -> Vec<Pet> {
             premium: false,
             wind_key: false,
             floats: false,
+            picture: None,
         },
         Pet {
             id: "pip",
@@ -280,6 +295,7 @@ pub fn pets() -> Vec<Pet> {
             premium: true,
             wind_key: false,
             floats: false,
+            picture: None,
         },
         Pet {
             id: "puddle",
@@ -308,6 +324,7 @@ pub fn pets() -> Vec<Pet> {
             premium: true,
             wind_key: false,
             floats: false,
+            picture: None,
         },
         Pet {
             id: "sprout",
@@ -337,6 +354,7 @@ pub fn pets() -> Vec<Pet> {
             premium: true,
             wind_key: false,
             floats: false,
+            picture: None,
         },
         // Tiny heroes (designed in prototypes/hero-pets.html)
         hero(
@@ -435,7 +453,181 @@ pub fn pets() -> Vec<Pet> {
             &[Trick::LunetteRice, Trick::LunetteWish, Trick::LunetteNap],
             TypingStyle::Mortar,
         ),
+        // A hunched bull carrying a carved log on his shoulders, drawn from prototypes/cowy.webp.
+        Pet {
+            palette: Palette::new(&pictures::COWY.palette()),
+            paw: b'u',
+            picture: Some(Picture::new(&pictures::COWY)),
+            ..hero("cowy", "Cowy the bull", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
+                   &[Trick::CowyStomp, Trick::CowyGraze, Trick::CowyBell], TypingStyle::Churn)
+        },
     ]
+}
+
+const EMPTY_ROW: &str = "................";
+
+/// Points per art pixel of a picture pet: half the usual, so a detailed picture stays pet-sized.
+pub const PICTURE_PX: f64 = PIXEL / 2.0;
+
+/// A pet drawn from one detailed standing picture (any size) instead of the 16×16 grid.
+/// Its other poses are made from that picture by `Picture::new`, following a `PictureSpec`.
+pub struct Picture {
+    /// Indexed by `eyes * 3 + pose`: eyes open, closed, happy; poses standing (two walking
+    /// steps) and sitting. Rows top to bottom; the bottom row stands on the ground.
+    pub frames: Vec<Vec<Vec<u8>>>,
+    pub width: usize,
+    pub height: usize,
+}
+
+/// How to make a picture pet's poses from its standing picture.
+pub struct PictureSpec {
+    pub rows: &'static [&'static str],
+    pub colors: &'static [(char, u32)],
+    /// Cells to recolour (row, column, colour) to close the eyes, and to make happy eyes.
+    pub closed: &'static [(usize, usize, char)],
+    pub happy: &'static [(usize, usize, char)],
+    /// Walking lifts parts of the picture one row, from `lift_top` down: in each step, the
+    /// columns in each range (start..end), say one leg and the opposite arm.
+    pub lift_top: usize,
+    pub steps: [[(usize, usize); 2]; 2],
+    /// Sitting leaves out these rows (first..=last), so the body comes down.
+    pub sit_rows: (usize, usize),
+}
+
+impl PictureSpec {
+    pub fn palette(&self) -> Vec<(char, Color)> {
+        self.colors.iter().map(|&(k, v)| (k, hex(v))).collect()
+    }
+}
+
+/// Marker bytes start here; they are past the 128-entry palette, so they never draw.
+const PICTURE_MARK: u8 = 200;
+
+impl Picture {
+    pub fn new(spec: &PictureSpec) -> Picture {
+        let base: Vec<Vec<u8>> = spec.rows.iter().map(|r| r.as_bytes().to_vec()).collect();
+        let (width, height) = (base[0].len(), base.len());
+        let mut frames = Vec::with_capacity(9);
+        for eyes in [Eyes::Open, Eyes::Closed, Eyes::Happy] {
+            let mut face = base.clone();
+            let edits: &[(usize, usize, char)] = match eyes {
+                Eyes::Open => &[],
+                Eyes::Closed => spec.closed,
+                Eyes::Happy => spec.happy,
+            };
+            for &(r, c, k) in edits {
+                face[r][c] = k as u8;
+            }
+            for step in spec.steps {
+                let mut g = face.clone();
+                for (from, to) in step {
+                    for r in spec.lift_top..height {
+                        for c in from..to {
+                            g[r][c] = if r + 1 < height { g[r + 1][c] } else { b'.' };
+                        }
+                    }
+                }
+                frames.push(g);
+            }
+            let (first, last) = spec.sit_rows;
+            frames.push(face.iter().enumerate().filter(|&(r, _)| r < first || r > last).map(|(_, row)| row.clone()).collect());
+        }
+        Picture { frames, width, height }
+    }
+
+    /// What `Pet::frame` returns for a picture pet: an empty 16×16 frame holding one marker byte
+    /// that says which picture frame to draw. Trick code passes frames around without looking
+    /// inside, so picture pets work with every activity and trick.
+    pub fn marker(eyes: Eyes, pose: Pose) -> Frame {
+        let e = match eyes {
+            Eyes::Open => 0,
+            Eyes::Closed => 1,
+            Eyes::Happy => 2,
+        };
+        let p = match pose {
+            Pose::Stand(step) => step % 2,
+            Pose::Sit => 2,
+        };
+        let mut out = [[b'.'; 16]; 16];
+        out[0][0] = PICTURE_MARK + (e * 3 + p) as u8;
+        out
+    }
+
+    /// The picture frame a marker frame asks for (standing, eyes open, if there is no marker).
+    pub fn frame_for(&self, marker: &Frame) -> &Vec<Vec<u8>> {
+        let i = marker.iter().flatten().find(|&&b| b >= PICTURE_MARK).map_or(0, |&b| (b - PICTURE_MARK) as usize);
+        &self.frames[i.min(self.frames.len() - 1)]
+    }
+}
+
+pub mod pictures {
+    use super::PictureSpec;
+
+    /// Cowy, from prototypes/cowy.webp (one art pixel = 4×4 pixels there).
+    pub const COWY: PictureSpec = PictureSpec {
+        rows: &[
+        ".....dd.............................dd.....",
+        "....dakpihhh...................hhhhpkkd....",
+        "...dkpthihhppppp...........pppppiiihtpad...",
+        "..dkpthhhipppppth.........htppppphhhhtpad..",
+        "..ekpthhhhpppppthhphppppphhtppppphhhhtpke..",
+        "..ekpthiihppppthhphppphppphhtppppiihitpke..",
+        "..ekptttttppppthhphhhhpphphhtpppptttttpke..",
+        "..ekpphhhhppppthhpfppfppfphhtpppphhhhppke..",
+        "..ekpphhhhppppthhppppphpfphhtppppiihippke..",
+        "..ekpphiihppppthhppphpppfphhtpppphhhippke..",
+        "..ekptttttppppthhphphpphpphhtpppptttttpke..",
+        "..ekpthhhhppppthhpfhphpppphhtpppphhhhtpke..",
+        "...dkptiihhppppthhpfphppphhtpppphhhitpkd...",
+        "....dkkhhhippppthhppppphphhtpppphhhhkkd....",
+        ".....ddpihihpppukuBBuuuBBukuppphhhhpdd.....",
+        "...........fkffukuBBBuBBBukuffkfk..........",
+        "..........fffkuukukkBuBkkukuukfff..........",
+        "........fffffkffkkuphpxpukkffkfffff........",
+        ".......ffffffkffkuuggggguukffkffffff.......",
+        ".......ffffffkffkuuuggguuukffkffffff.......",
+        "......ffffffffkffkufhhhfukffkffffffff......",
+        "......fffkkfffkffkfuuruufkffkfffkkfff......",
+        ".....mffkuskfkkffkusususukddkkfksukffm.....",
+        ".....jkkuusskskdddksuquskdddkskssuukkj.....",
+        ".....juuuussssskddksuuuskddksssssuuuuj.....",
+        "....muuuuuussffkdddkquskdddkffssuuuuuum....",
+        "....juuuuuuusffkdddksuskdddkffsuuuuuuuu....",
+        "....uuuuuuuuskffkddkquskddkffksuuuuuuuu....",
+        "...vuuuuuuuukmffkdddsusdddkffmkuuuuuuuuv...",
+        "...uuuuuuuusfjmfkdddCCCdddkfjnfsuuuuuuuu...",
+        "..uuuuuuuustsfjfmkddkkkddkmfjfstsuuuuuuuu..",
+        "..uusuuuuss.ssfnfkddkkdddkfjfss.ssuuuusuu..",
+        "..fuusuuss..sssfjkddkkmddkjfsss..ssuusuuf..",
+        "..fuussss...ssssfdffkffffffssss...ssssuuf..",
+        ".ffftpp.....ssssff.......ffssss.....pptffi.",
+        ".ftttppo....sssff.........ffsss....opptttf.",
+        ".ptggggbo...sssff.........ffsss...ogggggtp.",
+        ".ogfvvrrg...dsff...........ffsf...grrvvfgo.",
+        ".gfjupppr..ddfd.............ffdd..rpppujfg.",
+        "..fjjppoc..ddddh...........hdddd..cpppjjf..",
+        "..fjpoopg..ddfdk...........kdddd..gppppjf..",
+        "..jjpoppog.dddkk...........kkddf.boppppjj..",
+        "..jppgggggbdddbk...........kkdddbgggggppj..",
+        "...gggggggbkkk...............kkkbggggggg...",
+        "...ggggddgbkkkb.............bkkkbgddgggg...",
+        "...ddgdddppkkkk.............kkkkppdddgdd...",
+        ],
+        colors: &[
+            ('k', 0x250900), ('a', 0x440000), ('b', 0x21221d), ('c', 0x352709), ('d', 0x5b1103), ('e', 0x730000),
+            ('f', 0x6d2a00), ('g', 0x38342b), ('h', 0x493e13), ('i', 0x5e311a), ('j', 0x923c03), ('m', 0x77451f),
+            ('n', 0x884e11), ('o', 0x59574c), ('p', 0x6c613f), ('q', 0xac6c0c), ('r', 0x9b6d2a), ('s', 0xb87421),
+            ('t', 0x97895e), ('u', 0xcf9b38), ('v', 0xbe9d52), ('w', 0x98958f), ('x', 0xae9e83), ('y', 0xb7a5a0),
+            ('B', 0xf5de91), ('C', 0xfaeecd),
+        ],
+        // His eyes are dark slits under pale brows: closing lowers the brows over them.
+        closed: &[(16, 18, 'B'), (16, 19, 'B'), (16, 23, 'B'), (16, 24, 'B')],
+        happy: &[(16, 19, 'B'), (15, 19, 'k'), (16, 23, 'B'), (15, 23, 'k')],
+        // Left leg with right fist, then right leg with left fist.
+        lift_top: 33,
+        steps: [[(11, 18), (32, 43)], [(25, 32), (0, 11)]],
+        sit_rows: (35, 37),
+    };
 }
 
 /// A premium hero pet with the usual defaults (paw "w", eyes at columns 9 and 12).
@@ -466,6 +658,7 @@ fn hero(
         premium: true,
         wind_key: false,
         floats: false,
+        picture: None,
     }
 }
 
@@ -552,6 +745,7 @@ pub enum Trick {
     MossToss, MossBloom, MossRain,                         // Mossback
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
+    CowyStomp, CowyGraze, CowyBell,                        // Cowy
 }
 
 impl Trick {
@@ -581,7 +775,7 @@ impl Trick {
             Fishing => 11.0,
             GrumboSpin | GrumboHelmet | GrumboChop | WispThread | WispKnot | WispMoth | HexFrog | HexSheep | HexBook
             | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
-            | LunetteNap => 8.0,
+            | LunetteNap | CowyStomp | CowyGraze | CowyBell => 8.0,
         }
     }
 
@@ -627,6 +821,9 @@ impl Trick {
             LunetteRice => "Pound Rice Cakes",
             LunetteWish => "Wish on a Shooting Star",
             LunetteNap => "Nap in a Crescent Moon",
+            CowyStomp => "Stomp the Ground",
+            CowyGraze => "Munch Some Grass",
+            CowyBell => "Ring the Cowbell",
         }
     }
 }
@@ -738,6 +935,18 @@ pub mod trick_art {
         ".kyyyyyyyTk...........", ".kyyyyyyyyTkk.........", "..kyyyyyyyyyTkkkkk....",
         "...kyyyyyyyyyyyyyykk..", "....kkyyyyyyyyyyyyyyk.", "......kkkkkkkkkkkkkk..",
     ];
+    // Cowy
+    pub const COWY_CRACK: &[&str] = &["U..U.U..U", ".UU.U.UU."];
+    pub const COWY_GRASS: [&[&str]; 3] = [
+        &[".G.G.G.", ".GGGGG.", "GGGGGGG"],
+        &[".......", ".G.G.G.", "GGGGGGG"],
+        &[".......", ".......", "G.G.G.G"],
+    ];
+    pub const COWY_BELL_A: &[&str] = &["..k..", ".kgk.", "kgggk", "kgggk", "kkkkk", ".y..."];
+    pub const COWY_BELL_B: &[&str] = &["..k..", ".kgk.", "kgggk", "kgggk", "kkkkk", "...y."];
+    pub const COWY_NOTE: &[&str] = &["..yy", "..y.", "..y.", "yy..", "yy.."];
+    pub const COWY_CHURN: &[&str] = &[".kkkkk.", "kNnnnNk", "kNnnnNk", "kNnnnNk", ".kkkkk."];
+    pub const COWY_DASHER: &[&str] = &["kwk", ".n.", ".n.", ".n.", ".n.", ".n."];
     /// Lunette's ears folded down for her nap; replaces the top six rows of her sitting frame.
     pub const LUNETTE_TUCKED_EARS: [&str; 6] = ["................", "................", "....kkkkkk......", "...kwwwwwwk.....",
                                                 "..kwwwwwwwwkk...", "..kwwwwwwwwwwwk."];

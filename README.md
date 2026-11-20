@@ -113,7 +113,7 @@ swift Scripts/make-codes.swift 10                 # 10 All Pets codes
 swift Scripts/make-codes.swift 10 --pet lunette   # 10 codes that unlock only Lunette
 ```
 
-Pet ids: `pip`, `puddle`, `sprout`, `grumbo`, `wispaling`, `hexley`, `mossback`, `sirclank`, `lunette` (Mochi and Ember are free). A code for a pet that a copy of the app doesn't have yet is rejected there, so add a pet to the app before selling codes for it.
+Pet ids: `pip`, `puddle`, `sprout`, `grumbo`, `wispaling`, `hexley`, `mossback`, `sirclank`, `lunette`, `cowy` (Mochi and Ember are free). A code for a pet that a copy of the app doesn't have yet is rejected there, so add a pet to the app before selling codes for it.
 
 - The first run (or the first `mac/build.sh`) creates the secret at `~/.config/deskpet/code-secret`. **Back it up.** Anyone who has it can make codes, and if it's lost, copies of the app already out there won't accept new codes.
 - Every code made is also logged in `~/.config/deskpet/codes.txt`, with the pet it unlocks.

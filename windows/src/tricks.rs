@@ -395,6 +395,22 @@ impl PetView {
                 }
             }
             Trick::LunetteNap => {}
+
+            Trick::CowyStomp => {
+                if t > 1.2 && self.once(1) {
+                    self.say("MOO!", 1.4);
+                }
+            }
+            Trick::CowyGraze => {
+                if t > 6.0 && self.once(1) {
+                    self.say("moo~", 1.8);
+                }
+            }
+            Trick::CowyBell => {
+                if t > 2.0 && self.once(1) {
+                    self.say("clong! clong!", 2.0);
+                }
+            }
         }
     }
 
@@ -473,7 +489,8 @@ impl PetView {
             | TypingStyle::SpellNotes
             | TypingStyle::Pebbles
             | TypingStyle::Checklist
-            | TypingStyle::Mortar => {}
+            | TypingStyle::Mortar
+            | TypingStyle::Churn => {}
         }
     }
 
@@ -574,6 +591,12 @@ impl PetView {
                 let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
                 look.props.push(prop(rows(trick_art::LUNETTE_MORTAR), 14.0, 0.0));
                 look.props.push(prop(rows(trick_art::LUNETTE_MALLET), 14.0, 3.0 + beat * 4.0));
+            }
+            TypingStyle::Churn => {
+                // Cowy churns butter, one plunge per beat.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::COWY_CHURN), 19.0, 0.0));
+                look.props.push(prop(rows(trick_art::COWY_DASHER), 21.0, 3.0 + beat * 2.0));
             }
         }
         look
@@ -1051,8 +1074,53 @@ impl PetView {
                     }
                 }
             }
+            Trick::CowyStomp => {
+                // Rears up and stomps three times: the ground cracks and dust puffs out. Then a proud grin.
+                if t < 6.0 {
+                    let ph = t % 2.0;
+                    if ph < 1.2 {
+                        look.frame = p.frame(eyes, Pose::Stand(0));
+                        look.y_offset = (ph / 1.2 * 3.0).round();
+                    } else {
+                        look.frame = p.frame(Eyes::Closed, Pose::Stand(1));
+                        look.x_offset = beat;
+                        look.props = vec![prop(rows(COWY_CRACK), 15.0, 0.0)];
+                        if ph < 1.6 {
+                            look.free = vec![self.placed(HERO_PUFF, -11.0, 0.0), self.placed(HERO_PUFF, 19.0, 0.0)];
+                        }
+                    }
+                } else {
+                    look.frame = p.frame(Eyes::Happy, Pose::Stand(0));
+                    look.props = vec![prop(rows(COWY_CRACK), 15.0, 0.0)];
+                }
+            }
+            Trick::CowyGraze => {
+                // Sits down and munches a tuft of grass to the roots, chewing as he goes.
+                let left = if t < 2.5 { 0 } else if t < 4.5 { 1 } else { 2 };
+                let chewing = (1.0..6.0).contains(&t);
+                look.frame = p.frame(if t >= 6.0 { Eyes::Happy } else { eyes }, Pose::Sit);
+                look.props = vec![prop(rows(COWY_GRASS[left]), 19.0, 0.0)];
+                if chewing {
+                    look.y_offset = -beat;
+                }
+            }
+            Trick::CowyBell => {
+                // Swings a cowbell; notes float up while it rings.
+                let ringing = (1.0..6.5).contains(&t);
+                look.frame = p.frame(if t >= 6.5 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                let bell = if ringing && beat > 0.0 { COWY_BELL_B } else { COWY_BELL_A };
+                look.props = vec![prop(rows(bell), 19.0 + if ringing { beat } else { 0.0 }, 2.0)];
+                if ringing {
+                    let rise = ((t - 1.0) * 4.0) % 10.0;
+                    look.free = vec![self.placed(COWY_NOTE, 22.0, (14.0 + rise).round())];
+                    if t > 2.5 {
+                        look.free.push(self.placed(COWY_NOTE, 27.0, (14.0 + (rise + 5.0) % 10.0).round()));
+                    }
+                }
+            }
             _ => {}
         }
         look
     }
 }
+

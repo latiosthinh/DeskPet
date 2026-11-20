@@ -2,7 +2,7 @@
 //! The pen (the pet's window) is `width`×`height` points; the pet moves inside it.
 //! Coordinates are points with y pointing up from the floor, as on the Mac.
 
-use crate::art::{self, bubble_icons, props, sys_color, Color, Eyes, Frame, Palette, Pet, Pose, Rows, Trick, PET_SIZE, PIXEL, PROP_ROOM};
+use crate::art::{self, bubble_icons, props, sys_color, Color, Eyes, Frame, Palette, Pet, Picture, Pose, Rows, Trick, PET_SIZE, PICTURE_PX, PIXEL, PROP_ROOM};
 use crate::canvas::{Canvas, Font};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -234,6 +234,10 @@ impl PetView {
     }
     /// Clickable area of the sprite: x, y (up from the floor), width, height.
     pub fn pet_rect(&self) -> (f64, f64, f64, f64) {
+        if self.pet.picture.is_some() {
+            let (w, h) = self.pet.size();
+            return (self.pet_center_x() - w / 2.0, 0.0, w, h);
+        }
         (self.pet_x + PIXEL, 0.0, PET_SIZE - 2.0 * PIXEL, PET_SIZE - 2.0 * PIXEL)
     }
     pub fn pet_center_x(&self) -> f64 {
@@ -293,7 +297,7 @@ impl PetView {
 
     pub fn spawn_above_head(&mut self, text: &'static str, color: Color, count: usize, life: f64) {
         for _ in 0..count {
-            let at = pt(self.pet_center_x() + rand(-14.0, 10.0), PET_SIZE - 14.0 + rand(-4.0, 4.0));
+            let at = pt(self.pet_center_x() + rand(-14.0, 10.0), self.pet.size().1.max(PET_SIZE) - 14.0 + rand(-4.0, 4.0));
             self.spawn_full(text, color, at, 14.0, (-10.0, 10.0), (22.0, 36.0), life, 0.0);
         }
     }
@@ -599,7 +603,10 @@ impl PetView {
             draw_sprite(c, &tw.frame, &look.palette, tw.center_x, tw.scale, tw.y_offset, tw.facing_left);
         }
         let shift = look.x_offset * PIXEL * if self.facing_left { -1.0 } else { 1.0 };
-        draw_sprite(c, &look.frame, &look.palette, self.pet_center_x() + shift, look.scale, look.y_offset, self.facing_left);
+        match &self.pet.picture {
+            Some(pic) => draw_picture(c, pic, &look.frame, &look.palette, self.pet_center_x() + shift, look.scale, look.y_offset, self.facing_left),
+            None => draw_sprite(c, &look.frame, &look.palette, self.pet_center_x() + shift, look.scale, look.y_offset, self.facing_left),
+        }
         let px0 = c.snap(self.pet_x + shift);
         for p in &look.props {
             draw_grid(c, &p.rows, &colors, px0, p.col, p.lift * PIXEL, PIXEL, self.facing_left);
@@ -652,7 +659,7 @@ impl PetView {
         let cx = self.pet_center_x();
 
         let (bw, bh) = (content_w + 16.0, content_h + 8.0);
-        let by = PET_SIZE * self.bubble_scale + 4.0;
+        let by = self.pet.size().1.max(PET_SIZE) * self.bubble_scale + 4.0;
         let bx = (cx - content_w / 2.0 - 8.0).max(2.0).min(self.width - bw - 2.0);
 
         let white = Color::new(255, 255, 255, 255);
@@ -698,6 +705,26 @@ fn draw_sprite(c: &mut Canvas, rows: &Frame, palette: &Palette, center_x: f64, s
     let x = c.snap(center_x - 8.0 * px);
     let y = c.snap(-2.0 * px + y_offset * PIXEL);
     draw_grid(c, &rows[..], palette, x, 0.0, y, px, mirrored);
+}
+
+/// Draws a picture pet's frame (chosen by the marker in `frame`) scaled around its centre,
+/// its bottom row standing on the ground.
+#[allow(clippy::too_many_arguments)]
+fn draw_picture(c: &mut Canvas, pic: &Picture, frame: &Frame, palette: &Palette, center_x: f64, scale: f64, y_offset: f64, mirrored: bool) {
+    let rows = pic.frame_for(frame);
+    let px = (PICTURE_PX * scale * 2.0).round().max(1.0) / 2.0;
+    let w = pic.width;
+    let x = c.snap(center_x - w as f64 / 2.0 * px);
+    let bottom = c.snap(y_offset * PIXEL);
+    let n = rows.len();
+    for (r, row) in rows.iter().enumerate() {
+        let y = bottom + (n - 1 - r) as f64 * px;
+        for (i, &ch) in row.iter().enumerate() {
+            let Some(color) = palette.get(ch) else { continue };
+            let col = if mirrored { w - 1 - i } else { i } as f64;
+            c.fill_edges(x + col * px, y, x + (col + 1.0) * px, y + px, color);
+        }
+    }
 }
 
 /// Draws pixel rows whose left edge is sprite column `col` and whose bottom row sits at `bottom_y`.
