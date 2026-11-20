@@ -442,6 +442,26 @@ impl PetView {
                     };
                     self.say(words, 1.4);
                 }
+                // The moon slash blows dust and pebbles away ahead of it as it goes, and sends a
+                // last spray flying where it breaks up.
+                if tr == Trick::WitcherMoonBlast {
+                    let dir = if self.facing_left { -1.0 } else { 1.0 };
+                    let push = |a: f64, b: f64| if dir > 0.0 { (a, b) } else { (-b, -a) };
+                    if (BLAST_SHOOT..BLAST_HIT).contains(&t) && self.every(2, 0.03) {
+                        let at = pt(self.slash_x(t) + dir * 8.0, 2.0);
+                        self.spawn_full("·", sys_color::BROWN.with_alpha(0.85), at, 20.0, push(60.0, 170.0), (20.0, 80.0), 0.8, -180.0);
+                        if rand(0.0, 1.0) < 0.45 {
+                            self.spawn_full("•", sys_color::SECONDARY_LABEL, at, 9.0, push(80.0, 200.0), (40.0, 110.0), 0.9, -260.0);
+                        }
+                    }
+                    if t > BLAST_HIT && self.once(3) {
+                        let at = pt(self.slash_x(BLAST_HIT), 4.0);
+                        for k in 0..12 {
+                            let (text, size) = if k % 3 == 0 { ("•", 9.0) } else { ("·", 20.0) };
+                            self.spawn_full(text, sys_color::BROWN.with_alpha(0.85), at, size, push(40.0, 220.0), (40.0, 150.0), 1.0, -260.0);
+                        }
+                    }
+                }
             }
             Trick::MoonaTriplicate => {
                 if t > 0.4 && self.once(1) {
@@ -1196,9 +1216,31 @@ impl PetView {
                     let (x, y) = (land - dir * 90.0 * (1.0 - q), 8.0 + (self.height - 30.0) * (1.0 - q));
                     let grid = mirrored(meteor(t, true), self.facing_left);
                     look.free.push(spell_sprite(grid, x, y, px, self.facing_left));
-                } else if (METEOR_LAND..METEOR_END).contains(&t) {
+                }
+                // Fires left burning where it struck (the biggest, and longest) and all along where
+                // it rolled: each flickers, dies down to embers and goes out.
+                for i in 0..=METEOR_FIRES {
+                    let s = i as f64 * METEOR_ROLL / METEOR_FIRES as f64;
+                    let passed = 1.0 - (1.0 - s / METEOR_ROLL).max(0.0).sqrt(); // inverse of the roll below
+                    let age = t - (METEOR_LAND + passed * (METEOR_END - METEOR_LAND));
+                    let stage = age / if i == 0 { 1.8 } else { 1.1 };
+                    let grid: &[&str] = if age < 0.0 {
+                        continue;
+                    } else if stage < 1.0 {
+                        if (self.step_of(0.12 + 0.02 * (i % 3) as f64) + i) % 2 == 0 { GROUND_FIRE_A } else { GROUND_FIRE_B }
+                    } else if stage < 1.6 {
+                        GROUND_FIRE_LOW
+                    } else if stage < 2.0 {
+                        GROUND_EMBERS
+                    } else {
+                        continue;
+                    };
+                    let size = if i == 0 { px * 1.6 } else { px };
+                    look.back.push(spell_sprite(rows(grid), land + dir * s, 0.0, size, false));
+                }
+                if (METEOR_LAND..METEOR_END).contains(&t) {
                     let q = (t - METEOR_LAND) / (METEOR_END - METEOR_LAND);
-                    let x = land + dir * 50.0 * (1.0 - (1.0 - q) * (1.0 - q));
+                    let x = land + dir * METEOR_ROLL * (1.0 - (1.0 - q) * (1.0 - q));
                     let grid = mirrored(meteor(t, false), self.facing_left);
                     look.free.push(spell_sprite(grid, x, 0.0, px, self.facing_left));
                     if t < METEOR_LAND + 0.5 {
@@ -1209,40 +1251,34 @@ impl PetView {
                 }
             }
             Trick::WitcherMoonBlast => {
-                // A pale moon swells in his outstretched hand, shoots straight out ahead of him and
-                // bursts in a ring of light.
+                // A crescent of moonlight gathers in his outstretched hand, then slashes straight out
+                // ahead of him (blowing the dust away as it goes, see step_trick) and breaks up.
                 look.frame = if t < 0.3 {
                     Picture::marker_index(pictures::WITCHER_CAST)
-                } else if t < BLAST_HIT + 0.3 {
+                } else if t < BLAST_HIT + 0.2 {
                     Picture::marker_index(pictures::WITCHER_THROW)
                 } else {
                     p.frame(Eyes::Happy, Pose::Sit)
                 };
                 let px = self.pet.picture.as_ref().map_or(1.6, |p| p.px);
                 let (hand_x, hand_y) = self.witcher_hand(0.0);
-                let x = self.spell_x(230.0);
-                let disc = |r: f64, cx: f64| {
-                    let grid = moon_disc(r);
+                let flip = self.facing_left;
+                let slash = |size: f64, faint: bool, cx: f64| {
+                    let grid = mirrored(moon_slash(size, faint), flip);
                     let half = grid.len() as f64 * px / 2.0;
-                    spell_sprite(grid, cx, hand_y - half, px, false)
+                    spell_sprite(grid, cx, (hand_y - half).max(0.0), px, false)
                 };
                 if (0.3..BLAST_SHOOT).contains(&t) {
-                    look.free.push(disc(2.0 + 5.0 * ((t - 0.3) / (BLAST_SHOOT - 0.3)), hand_x));
+                    look.free.push(slash(0.3 + 0.5 * ((t - 0.3) / (BLAST_SHOOT - 0.3)), false, hand_x));
                 } else if (BLAST_SHOOT..BLAST_HIT).contains(&t) {
                     // Flies level, with fading copies trailing behind it.
-                    for (lag, r) in [(0.1, 3.0), (0.05, 5.0), (0.0, 7.0)] {
-                        let q = ((t - lag - BLAST_SHOOT) / (BLAST_HIT - BLAST_SHOOT)).max(0.0);
-                        look.free.push(disc(r, hand_x + (x - hand_x) * q));
+                    for (lag, faint) in [(0.08, true), (0.04, true), (0.0, false)] {
+                        look.free.push(slash(1.0, faint, self.slash_x(t - lag)));
                     }
-                } else if (BLAST_HIT..BLAST_HIT + 0.8).contains(&t) {
-                    let q = (t - BLAST_HIT) / 0.8;
-                    let ry = 4.0 + 22.0 * q;
-                    let grid = blast_ring(ry * 0.4, ry, q > 0.6);
-                    let half = grid.len() as f64 * px / 2.0;
-                    look.free.push(spell_sprite(grid, x, (hand_y - half).max(0.0), px, false));
-                    if q < 0.4 {
-                        look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, hand_y + 30.0 * q, PIXEL));
-                    }
+                } else if (BLAST_HIT..BLAST_HIT + 0.4).contains(&t) {
+                    let q = (t - BLAST_HIT) / 0.4;
+                    look.free.push(slash(1.0 + 0.3 * q, true, self.slash_x(BLAST_HIT)));
+                    look.free.push(free(rows(MOONA_TWINKLE), self.slash_x(BLAST_HIT) - 6.0, hand_y + 30.0 * q, PIXEL));
                 }
             }
             Trick::WitcherSpirits => {
@@ -1472,6 +1508,13 @@ impl PetView {
         (self.pet_center_x() + dir * ahead).clamp(12.0, (self.width - 12.0).max(13.0))
     }
 
+    /// Where his moon slash is at time `t` of the trick: from his hand straight out to the edge of the pen.
+    fn slash_x(&self, t: f64) -> f64 {
+        let (hand_x, _) = self.witcher_hand(0.0);
+        let q = ((t - BLAST_SHOOT) / (BLAST_HIT - BLAST_SHOOT)).clamp(0.0, 1.0);
+        hand_x + (self.spell_x(400.0) - hand_x) * q
+    }
+
     /// Where his two fire spirits stand: either side of him, inside the pen, wandering a little.
     fn spirit_xs(&self, t: f64) -> [f64; 2] {
         let c = self.pet_center_x();
@@ -1651,16 +1694,19 @@ const VANISH_GONE: f64 = 1.3;
 const VANISH_MOVE: f64 = 1.7;
 const VANISH_BACK: f64 = 2.3;
 /// Orbis's spells: when the sunlight is called and strikes; when the tornado dies away; when the
-/// meteor appears, lands and stops rolling; when the moon shoots off and hits; when his spirits come and go.
+/// meteor appears, lands and stops rolling; when the moon slash flies and breaks up; when his spirits come and go.
 const SUN_CALL: f64 = 0.6;
 const SUN_HIT: f64 = 1.0;
 const SUN_END: f64 = 2.1;
 const TORNADO_END: f64 = 3.3;
 const METEOR_START: f64 = 0.5;
 const METEOR_LAND: f64 = 1.3;
-const METEOR_END: f64 = 2.8;
+const METEOR_END: f64 = 3.6;
+/// How far the meteor rolls after it lands (points), and how many fires it leaves on the way.
+const METEOR_ROLL: f64 = 90.0;
+const METEOR_FIRES: usize = 9;
 const BLAST_SHOOT: f64 = 0.9;
-const BLAST_HIT: f64 = 1.5;
+const BLAST_HIT: f64 = 1.8;
 const SPIRITS_COME: f64 = 0.7;
 const SPIRITS_GO: f64 = 7.3;
 /// Triplicate: the copies appear, the glaives start whirling, are caught, and the copies go.
@@ -1790,36 +1836,31 @@ fn meteor(t: f64, falling: bool) -> Rows {
         .collect()
 }
 
-/// A pale moon `r` cells across the middle, with a soft halo.
-fn moon_disc(r: f64) -> Rows {
-    let n = (2.0 * (r + 3.0)).ceil() as usize;
-    let mid = (n as f64 - 1.0) / 2.0;
-    (0..n)
-        .map(|y| {
-            (0..n)
-                .map(|x| {
-                    let d = ((x as f64 - mid).powi(2) + (y as f64 - mid).powi(2)).sqrt();
-                    if d <= r - 1.5 { '0' } else if d <= r { '#' } else if d <= r + 2.0 { '+' } else { '.' }
-                })
-                .collect()
-        })
-        .collect()
-}
-
-/// A ring of light spreading out, `rx` cells to each side and `ry` up and down (seen edge-on, so
-/// narrower one way).
-fn blast_ring(rx: f64, ry: f64, fading: bool) -> Rows {
-    let (rx, ry) = (rx.max(2.0), ry.max(2.0));
-    let (w, h) = ((2.0 * rx + 3.0) as usize, (2.0 * ry + 3.0) as usize);
-    let (mx, my) = ((w as f64 - 1.0) / 2.0, (h as f64 - 1.0) / 2.0);
+/// A crescent of moonlight standing on end, bulging the way it flies (right; mirror it for left):
+/// what is inside one circle and outside another set back from it. `size` 1 is about 32 cells
+/// tall; a faint one is all halo, for its trail.
+fn moon_slash(size: f64, faint: bool) -> Rows {
+    let r = 17.0 * size;
+    let (inner, back) = (r * 0.95, r * 0.35);
+    let x0 = r * 0.35 + 1.0; // the circle's centre column: the tips reach a little behind it
+    let (w, h) = ((x0 + r + 3.0).ceil() as usize, (2.0 * r + 4.0).ceil() as usize);
+    let my = (h as f64 - 1.0) / 2.0;
     (0..h)
         .map(|y| {
             (0..w)
                 .map(|x| {
-                    let e = (((x as f64 - mx) / rx).powi(2) + ((y as f64 - my) / ry).powi(2)).sqrt();
-                    if (e - 1.0).abs() < 0.12 {
-                        if fading { '+' } else { '#' }
-                    } else if e < 1.0 && e > 0.75 {
+                    let (dx, dy) = (x as f64 - x0, y as f64 - my);
+                    let outer_d = (dx * dx + dy * dy).sqrt();
+                    let inner_d = ((dx + back).powi(2) + dy * dy).sqrt();
+                    if outer_d <= r && inner_d > inner {
+                        if faint {
+                            '+'
+                        } else if r - outer_d < 1.2 || inner_d - inner < 1.2 {
+                            '#'
+                        } else {
+                            '0'
+                        }
+                    } else if dx > 0.0 && outer_d <= r + 1.8 && inner_d > inner - 1.0 {
                         '+'
                     } else {
                         '.'
@@ -1829,3 +1870,10 @@ fn blast_ring(rx: f64, ry: f64, fading: bool) -> Rows {
         })
         .collect()
 }
+
+/// Fires the meteor leaves on the ground: two flickers of a flame (6 yellow, 7 orange, 8 red), a low
+/// one as it dies down, then embers.
+const GROUND_FIRE_A: &[&str] = &["..7...", ".767..", ".7677.", "76667.", "866687", ".8888."];
+const GROUND_FIRE_B: &[&str] = &["...7..", "..767.", ".7767.", ".76667", "786668", ".8888."];
+const GROUND_FIRE_LOW: &[&str] = &["..7..", ".767.", "78887"];
+const GROUND_EMBERS: &[&str] = &["8.8.8"];

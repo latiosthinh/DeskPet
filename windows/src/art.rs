@@ -2590,8 +2590,8 @@ impl Trick {
             WitcherVanish => 4.0,
             WitcherSunStrike => 2.6,
             WitcherTornado => 3.7,
-            WitcherMeteor => 3.2,
-            WitcherMoonBlast => 2.8,
+            WitcherMeteor => 5.6,
+            WitcherMoonBlast => 2.6,
             WitcherSpirits => 8.0,
         }
     }
