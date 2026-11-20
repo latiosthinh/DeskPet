@@ -71,6 +71,7 @@ fn uptime() -> f64 {
 }
 
 enum DemoStep {
+    Walk,
     Typing(f64),
     Reading(f64),
     Sweep(f64),
@@ -378,6 +379,12 @@ impl App {
             if let Some((seconds, step)) = self.demo.pop_front() {
                 let v = &mut self.view;
                 match step {
+                    DemoStep::Walk => {
+                        // To the far side of the pen.
+                        let (lo, hi) = (v.min_pet_x(), v.max_pet_x());
+                        v.target_x = if v.pet_x - lo > hi - v.pet_x { lo } else { hi };
+                        v.set_mode(Mode::Walking, 0.0);
+                    }
                     DemoStep::Typing(s) => v.begin_typing(s),
                     DemoStep::Reading(s) => v.set_mode(Mode::Reading, s),
                     DemoStep::Sweep(s) => {
@@ -912,6 +919,8 @@ fn main() {
     if demo || tricks || typing {
         let q = &mut app.demo;
         if demo {
+            q.push_back((6.0, DemoStep::Walk));
+            q.push_back((6.0, DemoStep::Walk));
             q.push_back((7.0, DemoStep::Typing(6.0)));
             if app.view.pet.sweeps {
                 q.push_back((7.0, DemoStep::Sweep(6.0)));

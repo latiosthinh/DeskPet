@@ -518,7 +518,10 @@ impl PetView {
             return p.frame(Eyes::Happy, Pose::Stand(self.step_of(0.1)));
         }
         match self.mode {
-            Mode::Walking => p.frame(Eyes::Open, Pose::Stand(self.step_of(0.18))),
+            Mode::Walking => match p.picture.as_ref().filter(|pic| !pic.walk.is_empty()) {
+                Some(pic) => Picture::marker_index(pic.walk[(self.clock / 0.14) as usize % pic.walk.len()]),
+                None => p.frame(Eyes::Open, Pose::Stand(self.step_of(0.18))),
+            },
             Mode::Idle => p.frame(eyes, if p.picture.as_ref().is_some_and(|pic| pic.idle_sits) { Pose::Sit } else { Pose::Stand(0) }),
             Mode::Sitting | Mode::Typing | Mode::Reading => p.frame(eyes, Pose::Sit),
             Mode::Cheering => p.frame(Eyes::Happy, if beat { Pose::Stand(0) } else { Pose::Sit }),

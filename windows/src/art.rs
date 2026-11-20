@@ -503,6 +503,8 @@ pub struct Picture {
     pub idle_sits: bool,
     /// How far (in 16-grid columns) held props move forward, to clear a long body.
     pub prop_shift: f64,
+    /// A walk cycle of more than two steps (frame indices), when the picture has one.
+    pub walk: Vec<usize>,
     /// Frames for sleeping and eating, when the picture has its own.
     pub sleep: Option<usize>,
     pub eat: Option<usize>,
@@ -562,7 +564,7 @@ impl Picture {
             frames.push(face.iter().enumerate().filter(|&(r, _)| r < first || r > last).map(|(_, row)| row.clone()).collect());
         }
         let anchors = frames.iter().map(|f| f[0].len() as f64 / 2.0).collect();
-        Picture { frames, anchors, width, height, px: PICTURE_PX, idle_sits: false, prop_shift: 0.0, sleep: None, eat: None }
+        Picture { frames, anchors, width, height, px: PICTURE_PX, idle_sits: false, prop_shift: 0.0, walk: vec![], sleep: None, eat: None }
     }
 
     /// A picture from separately drawn poses: (rows, anchor column) each, standing first.
@@ -571,7 +573,7 @@ impl Picture {
         let (width, height) = (frames[0].0[0].len(), frames[0].0.len());
         let anchors = frames.iter().map(|f| f.1).collect();
         let frames = frames.into_iter().map(|f| f.0).collect();
-        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, sleep: None, eat: None }
+        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, walk: vec![], sleep: None, eat: None }
     }
 
     /// A marker frame for any frame by index (the extra poses come after the first nine).
@@ -606,6 +608,64 @@ impl Picture {
     }
 }
 
+/// A four-step walk cycle for a four-legged picture: each leg (a separate blob of pixels below row
+/// `hip`) swings about the hip, its rows shifting sideways in proportion to their depth, and is
+/// lifted `lift` rows while it passes forward. Diagonal legs move together.
+fn gait(grid: &[Vec<u8>], hip: usize, swing: f64, lift: usize) -> [Vec<Vec<u8>>; 4] {
+    let (h, w) = (grid.len(), grid[0].len());
+    // Find the legs: 4-connected blobs of at least ten cells below the hip.
+    let mut seen = vec![vec![false; w]; h];
+    let mut legs: Vec<(f64, Vec<(usize, usize)>)> = Vec::new();
+    for r in hip..h {
+        for c in 0..w {
+            if grid[r][c] == b'.' || seen[r][c] {
+                continue;
+            }
+            seen[r][c] = true;
+            let (mut stack, mut cells) = (vec![(r, c)], Vec::new());
+            while let Some((y, x)) = stack.pop() {
+                cells.push((y, x));
+                let near = [(y + 1, x), (y.wrapping_sub(1), x), (y, x + 1), (y, x.wrapping_sub(1))];
+                for (y2, x2) in near {
+                    if (hip..h).contains(&y2) && x2 < w && grid[y2][x2] != b'.' && !seen[y2][x2] {
+                        seen[y2][x2] = true;
+                        stack.push((y2, x2));
+                    }
+                }
+            }
+            if cells.len() >= 10 {
+                let cx = cells.iter().map(|p| p.1 as f64).sum::<f64>() / cells.len() as f64;
+                legs.push((cx, cells));
+            }
+        }
+    }
+    legs.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // Back to front: hind (back), hind (under), front (near), front (far). Pairs 0+2 and 1+3;
+    // the far ones are drawn first so the near ones overlap them.
+    let pair = |i: usize| if i % 2 == 0 { 0 } else { 2 };
+    let order: Vec<usize> = if legs.len() == 4 { vec![0, 3, 1, 2] } else { (0..legs.len()).collect() };
+    let phase = [(1.0, 0), (0.0, 0), (-1.0, 0), (0.0, 1)]; // (swing, lifted) through the cycle
+    std::array::from_fn(|step| {
+        let mut out = grid.to_vec();
+        for (_, cells) in &legs {
+            for &(r, c) in cells {
+                out[r][c] = b'.';
+            }
+        }
+        for &i in &order {
+            let (sw, up) = phase[(step + pair(i)) % 4];
+            for &(r, c) in &legs[i].1 {
+                let dx = (sw * swing * (r - hip) as f64 / (h - 1 - hip) as f64).round() as i64;
+                let (nr, nc) = (r - up * lift, c as i64 + dx);
+                if (0..w as i64).contains(&nc) {
+                    out[nr][nc as usize] = grid[r][c];
+                }
+            }
+        }
+        out
+    })
+}
+
 pub mod pictures {
     use super::{Picture, PictureSpec};
 
@@ -616,24 +676,13 @@ pub mod pictures {
     pub const MOONA_STORM: usize = 12;
     pub const MOONA_SLEEP: usize = 13;
     pub const MOONA_EAT: usize = 14;
+    const MOONA_STEP_B: usize = 15;
+    const MOONA_STEP_D: usize = 16;
 
     /// Moona riding her panther, from the poses in prototypes/moona.jpg (one art pixel ≈ 4.3 pixels
     /// there). Each pose has its own picture; walking lifts the legs of the walking picture.
     pub fn moona() -> Picture {
         let grid = |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
-        // Lifts the columns in each range by `n` rows from row `top` down: legs off the ground.
-        let lift = |g: &Vec<Vec<u8>>, ranges: &[(usize, usize)], n: usize| -> Vec<Vec<u8>> {
-            let mut out = g.clone();
-            let h = g.len();
-            for &(from, to) in ranges {
-                for r in 46..h {
-                    for c in from..to {
-                        out[r][c] = if r + n < h { g[r + n][c] } else { b'.' };
-                    }
-                }
-            }
-            out
-        };
         let walk = grid(MOONA_WALK);
         let anchor = 36.5;
         let mut frames = Vec::new();
@@ -645,16 +694,23 @@ pub mod pictures {
                     face[r][c] = b'f';
                 }
             }
-            frames.push((lift(&face, &[(11, 18), (42, 51)], 2), anchor));
-            frames.push((lift(&face, &[(26, 36), (53, 63)], 2), anchor));
+            let steps = super::gait(&face, 46, 4.0, 2);
+            frames.push((steps[0].clone(), anchor));
+            frames.push((steps[2].clone(), anchor));
             frames.push((face, anchor));
         }
         for (rows, anchor) in [(MOONA_JUMP_ROWS, 32.5), (MOONA_WEAPON_ROWS, 34.5), (MOONA_SPLIT_ROWS, 41.5),
                                (MOONA_STORM_ROWS, 36.5), (MOONA_SLEEP_ROWS, 28.0), (MOONA_EAT_ROWS, 27.5)] {
             frames.push((grid(rows), anchor));
         }
+        // The in-between steps of the walk, where a pair of legs passes forward off the ground.
+        let steps = super::gait(&walk, 46, 4.0, 2);
+        frames.push((steps[1].clone(), anchor)); // MOONA_STEP_B
+        frames.push((steps[3].clone(), anchor)); // MOONA_STEP_D
+        assert_eq!(frames.len(), MOONA_STEP_D + 1, "Moona frame indices out of step");
         let mut pic = Picture::from_frames(frames, 1.6);
         pic.idle_sits = true;
+        pic.walk = vec![0, MOONA_STEP_B, 1, MOONA_STEP_D];
         pic.prop_shift = 7.0;
         pic.sleep = Some(MOONA_SLEEP);
         pic.eat = Some(MOONA_EAT);
