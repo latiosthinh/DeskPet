@@ -431,6 +431,18 @@ impl PetView {
                 }
             }
             Trick::WitcherOrb => {}
+            Trick::WitcherSunStrike | Trick::WitcherTornado | Trick::WitcherMeteor | Trick::WitcherMoonBlast | Trick::WitcherSpirits => {
+                if t > 0.3 && self.once(1) {
+                    let words = match tr {
+                        Trick::WitcherSunStrike => "sun strike!",
+                        Trick::WitcherTornado => "tornado!",
+                        Trick::WitcherMeteor => "meteor!",
+                        Trick::WitcherMoonBlast => "moon blast!",
+                        _ => "rise, little flames!",
+                    };
+                    self.say(words, 1.4);
+                }
+            }
             Trick::MoonaTriplicate => {
                 if t > 0.4 && self.once(1) {
                     self.say("Manta style!", 1.4);
@@ -623,13 +635,7 @@ impl PetView {
                 look.props.push(prop(rows(trick_art::LUNETTE_MORTAR), 14.0, 0.0));
                 look.props.push(prop(rows(trick_art::LUNETTE_MALLET), 14.0, 3.0 + beat * 4.0));
             }
-            TypingStyle::Orbs => {
-                // Orbis keeps an orb bobbing in front of him, a different one every so often.
-                let kind = ((self.now - self.mode_start) / 0.9) as usize % 3;
-                let bob = if self.alt(0.2) { 0.0 } else { 2.0 };
-                let (x, y) = self.witcher_hand(0.0);
-                look.free.push(self.orb_sprite(kind, x, y - 8.0 + bob, false));
-            }
+            TypingStyle::Orbs => {} // Orbis's orb wheel spins faster while you type (orb_wheel)
             TypingStyle::Moonlight => {
                 // Moona waits on her panther while a little moon glows in front of it, twinkling as you type.
                 let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
@@ -1127,6 +1133,147 @@ impl PetView {
                     look.free = vec![self.placed(HERO_PUFF, -14.0, 0.0), self.placed(HERO_PUFF, 22.0, 0.0)];
                 }
             }
+            Trick::WitcherSunStrike => {
+                // Raises his hands, then a shaft of sunlight burns down on a spot ahead of him.
+                let x = self.spell_x(70.0);
+                look.frame = if t < SUN_CALL {
+                    Picture::marker_index(pictures::WITCHER_CAST)
+                } else if t < SUN_END {
+                    Picture::marker_index(pictures::WITCHER_THROW)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                if (SUN_CALL..SUN_HIT).contains(&t) {
+                    // A thin warning glimmer first.
+                    look.free.push(self.light_shaft(x, 4, 1.0, ['.', '3', '3', '2', '2'], false));
+                } else if (SUN_HIT..SUN_END).contains(&t) {
+                    let reach = ((t - SUN_HIT) / 0.12).min(1.0);
+                    look.free.push(self.light_shaft(x, 16 + 2 * beat as usize, reach, ['.', '3', '2', '1', '@'], t > SUN_END - 0.3));
+                    if t < SUN_HIT + 0.5 {
+                        look.free.push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL));
+                        look.free.push(free(rows(MOONA_TWINKLE), x - 22.0, 10.0 + 30.0 * (t - SUN_HIT), PIXEL));
+                        look.free.push(free(rows(MOONA_TWINKLE), x + 10.0, 16.0 + 30.0 * (t - SUN_HIT), PIXEL));
+                    }
+                }
+            }
+            Trick::WitcherTornado => {
+                // Sends a little whirlwind spinning off ahead of him along the ground.
+                look.frame = if t < 0.5 {
+                    Picture::marker_index(pictures::WITCHER_THROW)
+                } else if t < TORNADO_END {
+                    Picture::marker_index(pictures::WITCHER_AFTER)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                if (0.35..TORNADO_END).contains(&t) {
+                    let q = (t - 0.35) / (TORNADO_END - 0.35);
+                    let dir = if self.facing_left { -1.0 } else { 1.0 };
+                    let start = self.pet_center_x() + dir * 30.0;
+                    let x = start + (self.spell_x(280.0) - start) * q;
+                    let (px, tall) = self.pet.picture.as_ref().map_or((1.6, 56), |p| (p.px, p.height));
+                    let grid = tornado(t, tall, q > 0.88); // as tall as he is
+                    let w = grid[0].len() as f64 * px;
+                    look.free.push(FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, 0.0, px) });
+                    if self.alt(0.15) {
+                        look.free.push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL / 2.0));
+                    }
+                }
+            }
+            Trick::WitcherMeteor => {
+                // Calls a burning rock down out of the sky; it crashes ahead of him and rolls on, burning.
+                look.frame = if t < METEOR_LAND {
+                    Picture::marker_index(pictures::WITCHER_CAST)
+                } else if t < METEOR_LAND + 0.6 {
+                    Picture::marker_index(pictures::WITCHER_AFTER)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                let dir = if self.facing_left { -1.0 } else { 1.0 };
+                let land = self.spell_x(60.0);
+                let px = self.pet.picture.as_ref().map_or(1.6, |p| p.px);
+                if (METEOR_START..METEOR_LAND).contains(&t) {
+                    let q = (t - METEOR_START) / (METEOR_LAND - METEOR_START);
+                    let (x, y) = (land - dir * 90.0 * (1.0 - q), 8.0 + (self.height - 30.0) * (1.0 - q));
+                    let grid = mirrored(meteor(t, true), self.facing_left);
+                    look.free.push(spell_sprite(grid, x, y, px, self.facing_left));
+                } else if (METEOR_LAND..METEOR_END).contains(&t) {
+                    let q = (t - METEOR_LAND) / (METEOR_END - METEOR_LAND);
+                    let x = land + dir * 50.0 * (1.0 - (1.0 - q) * (1.0 - q));
+                    let grid = mirrored(meteor(t, false), self.facing_left);
+                    look.free.push(spell_sprite(grid, x, 0.0, px, self.facing_left));
+                    if t < METEOR_LAND + 0.5 {
+                        look.free.push(free(rows(HERO_PUFF), land - 24.0, 0.0, PIXEL * 1.5));
+                        look.free.push(free(rows(HERO_SPARK), land - 30.0, 18.0 + 40.0 * q, PIXEL));
+                        look.free.push(free(rows(HERO_SPARK), land + 18.0, 24.0 + 40.0 * q, PIXEL));
+                    }
+                }
+            }
+            Trick::WitcherMoonBlast => {
+                // A pale moon swells in his outstretched hand, shoots straight out ahead of him and
+                // bursts in a ring of light.
+                look.frame = if t < 0.3 {
+                    Picture::marker_index(pictures::WITCHER_CAST)
+                } else if t < BLAST_HIT + 0.3 {
+                    Picture::marker_index(pictures::WITCHER_THROW)
+                } else {
+                    p.frame(Eyes::Happy, Pose::Sit)
+                };
+                let px = self.pet.picture.as_ref().map_or(1.6, |p| p.px);
+                let (hand_x, hand_y) = self.witcher_hand(0.0);
+                let x = self.spell_x(230.0);
+                let disc = |r: f64, cx: f64| {
+                    let grid = moon_disc(r);
+                    let half = grid.len() as f64 * px / 2.0;
+                    spell_sprite(grid, cx, hand_y - half, px, false)
+                };
+                if (0.3..BLAST_SHOOT).contains(&t) {
+                    look.free.push(disc(2.0 + 5.0 * ((t - 0.3) / (BLAST_SHOOT - 0.3)), hand_x));
+                } else if (BLAST_SHOOT..BLAST_HIT).contains(&t) {
+                    // Flies level, with fading copies trailing behind it.
+                    for (lag, r) in [(0.1, 3.0), (0.05, 5.0), (0.0, 7.0)] {
+                        let q = ((t - lag - BLAST_SHOOT) / (BLAST_HIT - BLAST_SHOOT)).max(0.0);
+                        look.free.push(disc(r, hand_x + (x - hand_x) * q));
+                    }
+                } else if (BLAST_HIT..BLAST_HIT + 0.8).contains(&t) {
+                    let q = (t - BLAST_HIT) / 0.8;
+                    let ry = 4.0 + 22.0 * q;
+                    let grid = blast_ring(ry * 0.4, ry, q > 0.6);
+                    let half = grid.len() as f64 * px / 2.0;
+                    look.free.push(spell_sprite(grid, x, (hand_y - half).max(0.0), px, false));
+                    if q < 0.4 {
+                        look.free.push(free(rows(MOONA_TWINKLE), x - 6.0, hand_y + 30.0 * q, PIXEL));
+                    }
+                }
+            }
+            Trick::WitcherSpirits => {
+                // Two little fire spirits spring up beside him, bob about, spit a few sparks and go out.
+                look.frame = if t < 0.6 {
+                    Picture::marker_index(pictures::WITCHER_CAST)
+                } else {
+                    p.frame(if t > SPIRITS_GO { Eyes::Happy } else { eyes }, Pose::Sit)
+                };
+                let dir = if self.facing_left { -1.0 } else { 1.0 };
+                let px = self.pet.picture.as_ref().map_or(1.6, |p| p.px);
+                for (k, x) in self.spirit_xs(t).into_iter().enumerate() {
+                    if (SPIRITS_COME..SPIRITS_GO).contains(&t) {
+                        let flicker = self.step_of(0.11 + 0.03 * k as f64);
+                        let bob = (3.0 * ((t * 5.0 + k as f64 * 1.7).sin() + 1.0)).round();
+                        let grid = mirrored(rows(pictures::WITCHER_SPIRIT[flicker]), self.facing_left);
+                        look.free.push(spell_sprite(grid, x, bob, px * 1.4, false));
+                        // Now and then each one spits a spark ahead.
+                        let spit = (t - SPIRITS_COME - 1.2 - k as f64 * 0.6) % 2.2;
+                        if (0.0..0.6).contains(&spit) {
+                            let sx = x + dir * (10.0 + 90.0 * spit);
+                            look.free.push(spell_sprite(rows(&[".67.", "6776", "6776", ".67."]), sx, 12.0 + bob, px, false));
+                        }
+                    }
+                    for at in [SPIRITS_COME - 0.1, SPIRITS_GO - 0.1] {
+                        if (at..at + 0.45).contains(&t) {
+                            look.free.push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL));
+                        }
+                    }
+                }
+            }
             Trick::WitcherOrb => {
                 // Holds out an orb, it bursts from his hand and flies off ahead, popping where it lands.
                 let kind = (self.mode_start * 7.0) as usize % 3; // a different orb from throw to throw
@@ -1303,6 +1450,61 @@ impl PetView {
 
     // MARK: Orbis's orbs
 
+    /// His three orbs turning on a wheel behind his shoulder (faster while you type), each with a
+    /// faint trail. Drawn behind him.
+    pub fn orb_wheel(&self) -> Vec<FreeSprite> {
+        let dir = if self.facing_left { -1.0 } else { 1.0 };
+        let (cx, cy, r) = (self.pet_center_x() - dir * 30.0, 70.0, 19.0);
+        let speed = if self.mode == Mode::Typing { 4.0 } else { 1.4 };
+        let mut out = vec![];
+        for (lag, faint) in [(0.14, true), (0.0, false)] {
+            for k in 0..3 {
+                let a = -dir * (self.clock - lag) * speed + k as f64 * 2.0 * PI / 3.0;
+                out.push(self.orb_sprite(k, cx + r * a.cos(), cy + r * a.sin(), faint));
+            }
+        }
+        out
+    }
+
+    /// Where a spell lands: `ahead` points in front of him, kept inside the pen.
+    fn spell_x(&self, ahead: f64) -> f64 {
+        let dir = if self.facing_left { -1.0 } else { 1.0 };
+        (self.pet_center_x() + dir * ahead).clamp(12.0, (self.width - 12.0).max(13.0))
+    }
+
+    /// Where his two fire spirits stand: either side of him, inside the pen, wandering a little.
+    fn spirit_xs(&self, t: f64) -> [f64; 2] {
+        let c = self.pet_center_x();
+        let w = self.pet.size().0;
+        let (lo, hi) = (12.0, (self.width - 12.0).max(13.0));
+        [
+            (c - w * 0.62 + 8.0 * (t * 1.3).sin()).clamp(lo, hi),
+            (c + w * 0.62 + 8.0 * (t * 1.1 + 2.0).sin()).clamp(lo, hi),
+        ]
+    }
+
+    /// A shaft of light `width` cells wide centred on x, reaching `reach` of the way down from the
+    /// top of the pen, brightest down the middle: `levels` from none to brightest.
+    fn light_shaft(&self, x: f64, width: usize, reach: f64, levels: [char; 5], faint: bool) -> FreeSprite {
+        let px = PIXEL / 2.0;
+        let rows_n = ((self.height / px).ceil() * reach).round().max(1.0) as usize;
+        let mid = (width as f64 - 1.0) / 2.0;
+        let across: Vec<usize> = (0..width)
+            .map(|c| {
+                let d = (c as f64 - mid).abs() / (width as f64 / 2.0);
+                let level = if d > 0.75 { 1 } else if d > 0.5 { 2 } else if d > 0.2 { 3 } else { 4 };
+                if faint { level - 1 } else { level }
+            })
+            .collect();
+        let grid: Rows = (0..rows_n)
+            .map(|r| {
+                let dim = if r * 10 < rows_n * 3 { 1 } else { 0 };
+                across.iter().map(|&l| levels[l.saturating_sub(dim)]).collect()
+            })
+            .collect();
+        FreeSprite { own_colors: true, ..free(grid, x - width as f64 * px / 2.0, self.height - rows_n as f64 * px, px) }
+    }
+
     /// Where a cast orb is (pen points, its centre), `q` of the way along its flight: from his hand,
     /// straight out ahead, dipping a little as it goes.
     fn witcher_hand(&self, q: f64) -> (f64, f64) {
@@ -1448,6 +1650,19 @@ const ORB_WHIRL_FLASH: f64 = 2.2;
 const VANISH_GONE: f64 = 1.3;
 const VANISH_MOVE: f64 = 1.7;
 const VANISH_BACK: f64 = 2.3;
+/// Orbis's spells: when the sunlight is called and strikes; when the tornado dies away; when the
+/// meteor appears, lands and stops rolling; when the moon shoots off and hits; when his spirits come and go.
+const SUN_CALL: f64 = 0.6;
+const SUN_HIT: f64 = 1.0;
+const SUN_END: f64 = 2.1;
+const TORNADO_END: f64 = 3.3;
+const METEOR_START: f64 = 0.5;
+const METEOR_LAND: f64 = 1.3;
+const METEOR_END: f64 = 2.8;
+const BLAST_SHOOT: f64 = 0.9;
+const BLAST_HIT: f64 = 1.5;
+const SPIRITS_COME: f64 = 0.7;
+const SPIRITS_GO: f64 = 7.3;
 /// Triplicate: the copies appear, the glaives start whirling, are caught, and the copies go.
 const TRI_APPEAR: f64 = 0.45;
 const TRI_SPIN: f64 = 0.8;
@@ -1492,3 +1707,125 @@ fn crescent(angle: f64, r: f64, faint: bool) -> Rows {
 const POUNCE_UP: f64 = 0.3;
 const POUNCE_LAND: f64 = 1.25;
 
+
+// MARK: Orbis's spells (grids in his palette: 4/5 wind, 6/7/8 fire, 9 rock, 0/#/+ moonlight)
+
+/// A grid drawn in the pet's own colours, centred on x with its bottom `bottom` points up.
+fn spell_sprite(grid: Rows, x: f64, bottom: f64, px: f64, _mirrored: bool) -> FreeSprite {
+    let w = grid.first().map_or(0, |r| r.chars().count()) as f64 * px;
+    FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, bottom, px) }
+}
+
+/// Rows flipped left to right when `flip`.
+fn mirrored(grid: Rows, flip: bool) -> Rows {
+    if flip { grid.iter().map(|r| r.chars().rev().collect()).collect() } else { grid }
+}
+
+/// A whirlwind `h` cells tall: a funnel wide at the top and narrow at the ground, its stripes
+/// turning; thin and faint as it dies away.
+fn tornado(t: f64, h: usize, dying: bool) -> Rows {
+    let total = 40;
+    (0..h)
+        .map(|r| {
+            let rf = r as f64;
+            let down = rf / h as f64; // 0 at the top, 1 at the ground
+            let w = 2.5 + 15.0 * (1.0 - down);
+            let off = 4.0 * (rf * 0.22 + t * 9.0).sin() * (1.0 - down);
+            (0..total)
+                .map(|c| {
+                    let x = c as f64 - total as f64 / 2.0 - off;
+                    if x.abs() > w {
+                        '.'
+                    } else if dying || x.abs() > w - 1.2 {
+                        '5'
+                    } else if ((x + t * 30.0 + rf * 0.8) / 2.5).floor().rem_euclid(2.0) == 0.0 {
+                        '4'
+                    } else {
+                        '5'
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// A burning rock: falling, its flames stream out behind it (up and back); rolling on the ground,
+/// they flicker above it. Drawn for one heading right.
+fn meteor(t: f64, falling: bool) -> Rows {
+    let n = 26;
+    let (cx, cy) = (18.0, 19.0); // the rock, near the bottom right
+    (0..n)
+        .map(|r| {
+            (0..n)
+                .map(|c| {
+                    let (dx, dy) = (c as f64 - cx, r as f64 - cy);
+                    let d = (dx * dx + dy * dy).sqrt();
+                    if d <= 4.2 {
+                        return if (c + r) % 3 == 0 { '8' } else { '9' };
+                    }
+                    if d <= 5.4 {
+                        return '7';
+                    }
+                    // The flames: along the way back (up-left when falling, straight up when rolling).
+                    let (ux, uy) = if falling { (-0.707, -0.707) } else { (0.0, -1.0) };
+                    let u = dx * ux + dy * uy;
+                    let v = (dx * uy - dy * ux).abs();
+                    let len = if falling { 18.0 } else { 9.0 };
+                    if u <= 0.0 || u >= len {
+                        return '.';
+                    }
+                    let width = 5.4 * (1.0 - u / len) + 0.8 * (u * 0.9 + t * 25.0).sin();
+                    if v > width {
+                        '.'
+                    } else if v < width * 0.35 && u < len * 0.6 {
+                        '6'
+                    } else if u < len * 0.75 {
+                        '7'
+                    } else {
+                        '8'
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// A pale moon `r` cells across the middle, with a soft halo.
+fn moon_disc(r: f64) -> Rows {
+    let n = (2.0 * (r + 3.0)).ceil() as usize;
+    let mid = (n as f64 - 1.0) / 2.0;
+    (0..n)
+        .map(|y| {
+            (0..n)
+                .map(|x| {
+                    let d = ((x as f64 - mid).powi(2) + (y as f64 - mid).powi(2)).sqrt();
+                    if d <= r - 1.5 { '0' } else if d <= r { '#' } else if d <= r + 2.0 { '+' } else { '.' }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// A ring of light spreading out, `rx` cells to each side and `ry` up and down (seen edge-on, so
+/// narrower one way).
+fn blast_ring(rx: f64, ry: f64, fading: bool) -> Rows {
+    let (rx, ry) = (rx.max(2.0), ry.max(2.0));
+    let (w, h) = ((2.0 * rx + 3.0) as usize, (2.0 * ry + 3.0) as usize);
+    let (mx, my) = ((w as f64 - 1.0) / 2.0, (h as f64 - 1.0) / 2.0);
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| {
+                    let e = (((x as f64 - mx) / rx).powi(2) + ((y as f64 - my) / ry).powi(2)).sqrt();
+                    if (e - 1.0).abs() < 0.12 {
+                        if fading { '+' } else { '#' }
+                    } else if e < 1.0 && e > 0.75 {
+                        '+'
+                    } else {
+                        '.'
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}

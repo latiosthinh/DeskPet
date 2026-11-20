@@ -628,6 +628,14 @@ impl PetView {
             let key = self.placed(art::trick_art::HERO_KEY_A, -4.0 + look.x_offset, 4.0 + look.y_offset);
             look.back.push(key);
         }
+        // Orbis's orbs turn on their wheel whenever he's standing or walking (not in his other poses).
+        if let Some(pic) = self.pet.picture.as_ref().filter(|p| p.orb_wheel) {
+            let i = pic.index_for(&look.frame);
+            if i < 9 || pic.walk.contains(&i) {
+                let wheel = self.orb_wheel();
+                look.back.splice(0..0, wheel);
+            }
+        }
         look
     }
 

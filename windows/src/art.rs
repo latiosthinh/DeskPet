@@ -544,7 +544,8 @@ pub fn pets() -> Vec<Pet> {
             click_trick: Some(Trick::WitcherOrb),
             right_click_trick: Some(Trick::WitcherWhirl),
             ..hero("witcher", "Orbis the witcher", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
-                   &[Trick::WitcherOrb, Trick::WitcherWhirl, Trick::WitcherWeigh, Trick::WitcherVanish], TypingStyle::Orbs)
+                   &[Trick::WitcherOrb, Trick::WitcherWhirl, Trick::WitcherWeigh, Trick::WitcherVanish, Trick::WitcherSunStrike,
+                     Trick::WitcherTornado, Trick::WitcherMeteor, Trick::WitcherMoonBlast, Trick::WitcherSpirits], TypingStyle::Orbs)
         },
     ]
 }
@@ -572,6 +573,8 @@ pub struct Picture {
     /// Frames for sleeping and eating, when the picture has its own.
     pub sleep: Option<usize>,
     pub eat: Option<usize>,
+    /// Orbs turn on a wheel behind it while it stands or walks (Orbis).
+    pub orb_wheel: bool,
 }
 
 /// Marker bytes start here; they are past the 128-entry palette, so they never draw.
@@ -584,7 +587,7 @@ impl Picture {
         let (width, height) = (frames[0].0[0].len(), frames[0].0.len());
         let anchors = frames.iter().map(|f| f.1).collect();
         let frames = frames.into_iter().map(|f| f.0).collect();
-        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, walk: vec![], sleep: None, eat: None }
+        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, walk: vec![], sleep: None, eat: None, orb_wheel: false }
     }
 
     /// A marker frame for any frame by index (the extra poses come after the first nine).
@@ -1184,7 +1187,7 @@ pub mod pictures {
     ];
 
     // Orbis the witcher, from prototypes/witcher.jpg (one art pixel is about 2.87 px there). Frames
-    // 0-8 are all his standing pose, orbs round him; then a seven-step walk and his other poses.
+    // 0-8 are all his standing pose (his orbs turn on a wheel behind him, drawn separately); then a seven-step walk and his other poses.
     pub const WITCHER_WALK: usize = 9;
     /// Three side views, each looking at a different orb (orange, blue, pink).
     pub const WITCHER_SIDE: usize = 16;
@@ -1210,6 +1213,7 @@ pub mod pictures {
         pic.idle_sits = true;
         pic.walk = (WITCHER_WALK..WITCHER_WALK + 7).collect();
         pic.sleep = Some(WITCHER_BACK);
+        pic.orb_wheel = true;
         pic
     }
 
@@ -1222,8 +1226,15 @@ pub mod pictures {
         p
     }
 
-    /// Trails of the orange, blue and pink orbs.
-    pub const WITCHER_LIGHTS: &[(char, u32, f64)] = &[('S', 0xf0b050, 0.4), ('T', 0x78cfe4, 0.4), ('U', 0xe2a0f4, 0.4)];
+    /// Trails of the orange, blue and pink orbs; sunlight (3 faint to @ brightest); wind (4, 5);
+    /// fire (6 yellow, 7 orange, 8 red) and rock (9); moonlight (0 core, # rim, + halo).
+    pub const WITCHER_LIGHTS: &[(char, u32, f64)] = &[
+        ('S', 0xf0b050, 0.4), ('T', 0x78cfe4, 0.4), ('U', 0xe2a0f4, 0.4),
+        ('3', 0xffc040, 0.16), ('2', 0xffd060, 0.3), ('1', 0xffe490, 0.5), ('@', 0xfff8d8, 0.75),
+        ('4', 0xe4ecf6, 0.6), ('5', 0xa8b8d0, 0.38),
+        ('6', 0xffe070, 1.0), ('7', 0xff8a20, 1.0), ('8', 0xd8401c, 1.0), ('9', 0x4a2a20, 1.0),
+        ('0', 0xf2f8ff, 0.85), ('#', 0xa8d0ff, 0.55), ('+', 0xcfe4ff, 0.25),
+    ];
     pub const WITCHER_ORBS: [&[&str]; 3] = [WITCHER_ORB_ORANGE, WITCHER_ORB_BLUE, WITCHER_ORB_PINK];
 
 
@@ -1239,7 +1250,7 @@ pub mod pictures {
     ];
 
     /// (pose, anchor column) in frame order after the nine standard frames (all the standing pose).
-    pub const WITCHER_STAND: (&[&str], f64) = (WITCHER_IDLE1_ROWS, 32.8);
+    pub const WITCHER_STAND: (&[&str], f64) = (WITCHER_STAND_ROWS, 32.8);
     pub const WITCHER_EXTRA: &[(&[&str], f64)] = &[
         (WITCHER_WALK1_ROWS, 25.4),
         (WITCHER_WALK2_ROWS, 30.7),
@@ -1307,36 +1318,36 @@ pub mod pictures {
         "......a....",
     ];
 
-    pub const WITCHER_IDLE1_ROWS: &[&str] = &[
+    pub const WITCHER_STAND_ROWS: &[&str] = &[
         "......................c.....PPOP.....a........................",
         "......................Ej.c.JOOOORaacoE........................",
         "......................coycEOOOOOPJjjEc........................",
         ".....................jajCxPKHOHOOPjDHco.......................",
-        "..................EyEyyjDxPJCEJCKPHDxEELOyc...............g...",
-        "..................EJLnnLxxPEPOOKHPDDEEnLLLj............haqa...",
-        "..................tnnnnnttOKKKKKKODHLnnnkJe...........gqfqc...",
-        "..................tkknnnntKKKKKKKODxnnnnE.............qqqqka..",
-        "...................LLknnntOoOKKOxOxynnnJL............qvIINvvq.",
-        "...........tE......tECyykLCxxCCxxHPJJHKHt......E....hqINNIAvq.",
-        ".....t.....oOP..oOPJECKLoLKKHjeHOKKCKKOPJEEa..JJc..avvANNIIAqa",
-        "....ts.....oOPPaoOPPLHKKCKKOHyhHOHHHOPRPRROjcLRKc..qvIIANNIIqa",
-        "..ctxse...csCPRRxOPPPOKKCDHOHyjHOHHOPPPRRROPRRPOecakvAANNIIAqa",
-        "..yxxstc.cJKOCHPPHOPPOOKKDHOHCjHOHHOPPPRRHCPRPKKKJE.kvAINAIqa.",
-        "coDOPPxxcacxxxxPOHEPPJCHLjsOKLLOOOOOPRRRRCHKOCxCxj...qqIAIqq..",
-        "yxODDDOxsaa...xCEecPPLJCLnnLPKOPOPPPRRRPJceyKcacc.....bkkkk...",
-        "tPRODPROxa.....acEfeJRRECJHKHHDDHHRRRRRLoffhLcbbg........a....",
-        "tOPDOPJRxa.....acykyJRRJDDsxxsxxxoJRRRRPtkkhhEcdd.............",
-        "tKODOPKOxc.....aeykLLRRLDHfjssssofLJRRRPEykkkEebb.......e.....",
-        "jsKKORKDsc....ojoykhtLPPKEhfCKKHjhtCKRRyohkkhCcEja.....Ly.....",
-        ".csKPPCjca...eHsxChkhyCCycfEjeeeHexxCERGuhkkjHeECj...jLLc.....",
-        "..exxxs.EaaaeDHsxDLhhfaaafcxHHDHDeJHJMMFFwgtKDccHHKHLefffLL...",
-        ".........LJjLHjsssHhhgaaaeDsDDDDDKHJMQQMMFMtKDcbosoxoffoEEEJ..",
-        ".........ffhtHKxssDJaaaaaCxsDDDDDHOPQQQGQQMPHxcfoxoHJEEEEEE...",
-        ".......EoeffjooetsHcaaaayCOKCCDDDOLRQMQQGMMyCDcjjtj...........",
-        "......tJJyfcLcbbeEEabaaeJHKOPPHHCRRRQMQQQMFioxcbbta...........",
-        "......JLJEyyabbbbbbaaaJHyfKOPPPPRRRMFMQQQzrddttbbbb...........",
-        "............abdbbbabaJHJffLOPPHHKRPLGMQQGridbbddddd...........",
-        "............abbbbbaaJsEEhhfPRROHHRPOKwwwwEEbbbdddbbd..........",
+        "..................EyEyyjDxPJCEJCKPHDxEELOyc...................",
+        "..................EJLnnLxxPEPOOKHPDDEEnLLLj...................",
+        "..................tnnnnnttOKKKKKKODHLnnnkJe...................",
+        "..................tkknnnntKKKKKKKODxnnnnE.....................",
+        "...................LLknnntOoOKKOxOxynnnJL.....................",
+        "...........tE......tECyykLCxxCCxxHPJJHKHt......E..............",
+        "...........oOP..oOPJECKLoLKKHjeHOKKCKKOPJEEa..JJc.............",
+        "...........oOPPaoOPPLHKKCKKOHyhHOHHHOPRPRROjcLRKc.............",
+        "..........csCPRRxOPPPOKKCDHOHyjHOHHOPPPRRROPRRPOeca...........",
+        ".........cJKOCHPPHOPPOOKKDHOHCjHOHHOPPPRRHCPRPKKKJE...........",
+        ".........acxxxxPOHEPPJCHLjsOKLLOOOOOPRRRRCHKOCxCxj............",
+        ".........aa...xCEecPPLJCLnnLPKOPOPPPRRRPJceyKcacc.............",
+        ".........a.....acEfeJRRECJHKHHDDHHRRRRRLoffhLcbbg.............",
+        ".........a.....acykyJRRJDDsxxsxxxoJRRRRPtkkhhEcdd.............",
+        ".........c.....aeykLLRRLDHfjssssofLJRRRPEykkkEebb.......e.....",
+        ".........c....ojoykhtLPPKEhfCKKHjhtCKRRyohkkhCcEja.....Ly.....",
+        ".........a...eHsxChkhyCCycfEjeeeHexxCERRhhkkjHeECj...jLLc.....",
+        ".........aaaeDHsxDLhhfaaafcxHHDHDeJHJJRRRhgtKDccHHKHLefffLL...",
+        ".........LJjLHjsssHhhgaaaeDsDDDDDKHJJJRRRRttKDcbosoxoffoEEEJ..",
+        ".........ffhtHKxssDJaaaaaCxsDDDDDHOPJJJRRRRPHxcfoxoHJEEEEEE...",
+        ".......EoeffjooetsHcaaaayCOKCCDDDOLRJJJJRRRyCDcjjtj...........",
+        "......tJJyfcLcbbeEEabaaeJHKOPPHHCRRRJJJJJRRioxcbbta...........",
+        "......JLJEyyabbbbbbaaaJHyfKOPPPPRRRRJJJJJJRddttbbbb...........",
+        "............abdbbbabaJHJffLOPPHHKRPLJJJJJJidbbddddd...........",
+        "............abbbbbaaJsEEhhfPRROHHRPOKJJJJEEbbbdddbbd..........",
         "..........abdddabaacyJsjhffLRRPHLRPOKhhikyEbbbbdbaad..........",
         "...........dddddbbaCeLohkhhhRRRPRRLOLhhhnqtjbbbb..............",
         "..........bdddddbacEfLohkhhhRRRRRRPLEhhkqqJLbbbba.............",
@@ -2371,6 +2382,43 @@ pub mod pictures {
         ".................lllppl.............................",
         "..................llll..............................",
     ];
+
+    /// A little fire spirit he calls up, two flickers of its flames. 6 yellow, 7 orange, 8 red,
+    /// a dark (eyes, mouth).
+    pub const WITCHER_SPIRIT: [&[&str]; 2] = [
+        &[
+            "...7.....7..",
+            "..787...787.",
+            "..7887.7887.",
+            "..78866688..",
+            ".7866666687.",
+            ".786a66a687.",
+            ".7866666687.",
+            "..7866a687..",
+            "8.78666687.8",
+            "78.786687.87",
+            ".8..7887..8.",
+            "...78..87...",
+            "..78....87..",
+            "..88....88..",
+        ],
+        &[
+            "....7...7...",
+            "...787.787..",
+            "..78877887..",
+            "..78866688..",
+            ".7866666687.",
+            ".786a66a687.",
+            ".7866666687.",
+            "..7866a687..",
+            ".8786666878.",
+            "7..786687..7",
+            "....7887....",
+            "...78..87...",
+            "..78....87..",
+            "..88....88..",
+        ],
+    ];
 }
 
 /// A premium hero pet with the usual defaults (paw "w", eyes at columns 9 and 12).
@@ -2498,6 +2546,7 @@ pub enum Trick {
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
     MoonaPounce, MoonaGlaive, MoonaTriplicate, MoonaMoonlight, // Moona
     WitcherOrb, WitcherWhirl, WitcherWeigh, WitcherVanish,     // Orbis
+    WitcherSunStrike, WitcherTornado, WitcherMeteor, WitcherMoonBlast, WitcherSpirits,
 }
 
 /// One throw of Moona's glaive, out and back; clicks during a throw add more throws.
@@ -2539,6 +2588,11 @@ impl Trick {
             WitcherWhirl => 3.2,
             WitcherWeigh => 3.8,
             WitcherVanish => 4.0,
+            WitcherSunStrike => 2.6,
+            WitcherTornado => 3.7,
+            WitcherMeteor => 3.2,
+            WitcherMoonBlast => 2.8,
+            WitcherSpirits => 8.0,
         }
     }
 
@@ -2592,6 +2646,11 @@ impl Trick {
             WitcherWhirl => "Whirl the Orbs",
             WitcherWeigh => "Weigh the Orbs",
             WitcherVanish => "Vanish",
+            WitcherSunStrike => "Sun Strike",
+            WitcherTornado => "Tornado",
+            WitcherMeteor => "Meteor",
+            WitcherMoonBlast => "Moon Blast",
+            WitcherSpirits => "Call the Fire Spirits",
         }
     }
 }
