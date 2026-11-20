@@ -1,6 +1,6 @@
 //! Each pet's own tricks and typing activities, ported from main.swift.
 
-use crate::art::{bubble_icons, hex, hue_shifted, props, rotated, rows, sys_color, trick_art, Eyes, Pose, Trick, TypingStyle, PET_SIZE, PIXEL};
+use crate::art::{bubble_icons, hex, hue_shifted, pictures, props, rotated, rows, sys_color, trick_art, Eyes, Picture, Pose, Trick, TypingStyle, PET_SIZE, PIXEL};
 use crate::pet::{free, prop, pt, rand, rand_index, FreeSprite, Look, Mode, Particle, PetView, Pt, TRICK_GAP};
 use std::f64::consts::PI;
 
@@ -411,6 +411,28 @@ impl PetView {
                     self.say("clong! clong!", 2.0);
                 }
             }
+            Trick::MoonaPounce => {
+                // Leaps forward.
+                if (POUNCE_UP..POUNCE_LAND).contains(&t) {
+                    let dir = if self.trick_start_facing { -1.0 } else { 1.0 };
+                    self.pet_x += dir * 60.0 * dt;
+                }
+            }
+            Trick::MoonaGlaive => {
+                if t > 0.4 && self.once(1) {
+                    self.say("hyah!", 1.2);
+                }
+            }
+            Trick::MoonaSplit => {
+                if t > 0.5 && self.once(1) {
+                    self.say("times three!", 1.6);
+                }
+            }
+            Trick::MoonaStorm => {
+                if t > 0.4 && self.once(1) {
+                    self.say("moon storm!", 1.8);
+                }
+            }
         }
     }
 
@@ -490,7 +512,8 @@ impl PetView {
             | TypingStyle::Pebbles
             | TypingStyle::Checklist
             | TypingStyle::Mortar
-            | TypingStyle::Churn => {}
+            | TypingStyle::Churn
+            | TypingStyle::Moonlight => {}
         }
     }
 
@@ -597,6 +620,14 @@ impl PetView {
                 let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
                 look.props.push(prop(rows(trick_art::COWY_CHURN), 19.0, 0.0));
                 look.props.push(prop(rows(trick_art::COWY_DASHER), 21.0, 3.0 + beat * 2.0));
+            }
+            TypingStyle::Moonlight => {
+                // Moona waits on her panther while a little moon glows in front of it, twinkling as you type.
+                let beat = if self.alt(0.2) { 0.0 } else { 1.0 };
+                look.props.push(prop(rows(trick_art::MOONA_MOON), 13.0, 15.0 + beat));
+                if beat > 0.0 {
+                    look.props.push(prop(rows(trick_art::MOONA_TWINKLE), 12.0, 21.0));
+                }
             }
         }
         look
@@ -1118,9 +1149,58 @@ impl PetView {
                     }
                 }
             }
+            Trick::MoonaPounce => {
+                // Gathers, springs forward in an arc, lands with a puff of dust.
+                if (POUNCE_UP..POUNCE_LAND).contains(&t) {
+                    let q = (t - POUNCE_UP) / (POUNCE_LAND - POUNCE_UP);
+                    look.frame = Picture::marker_index(pictures::MOONA_JUMP);
+                    look.y_offset = (8.0 * 4.0 * q * (1.0 - q)).round();
+                } else {
+                    look.frame = p.frame(if t >= POUNCE_LAND + 0.4 { Eyes::Happy } else { eyes }, Pose::Sit);
+                }
+                if (POUNCE_LAND..POUNCE_LAND + 0.45).contains(&t) {
+                    look.free = vec![self.placed(HERO_PUFF, -14.0, 0.0), self.placed(HERO_PUFF, 22.0, 0.0)];
+                }
+            }
+            Trick::MoonaGlaive => {
+                // Sweeps her glaive in a glowing arc, twice.
+                let swinging = (0.25..2.2).contains(&t);
+                look.frame = if swinging { Picture::marker_index(pictures::MOONA_WEAPON) } else { p.frame(eyes, Pose::Sit) };
+                if swinging && (t * 5.0) as i64 % 5 == 0 {
+                    look.x_offset = 0.5;
+                }
+                if swinging && beat > 0.0 {
+                    look.free = vec![self.placed(MOONA_TWINKLE, 26.0, 15.0), self.placed(MOONA_TWINKLE, -2.0, 11.0)];
+                }
+            }
+            Trick::MoonaSplit => {
+                // Two shadows of her step out of her, flicker, and fold back in.
+                let split = (0.3..2.9).contains(&t);
+                look.frame = if split { Picture::marker_index(pictures::MOONA_SPLIT) } else { p.frame(eyes, Pose::Sit) };
+                if split && (t - 0.3) < 0.3 && beat > 0.0 {
+                    look.frame = p.frame(eyes, Pose::Sit);
+                }
+            }
+            Trick::MoonaStorm => {
+                // Raises her glaive: a storm of moonlight swirls round her, sparks raining down.
+                let storm = (0.25..3.3).contains(&t);
+                look.frame = if storm { Picture::marker_index(pictures::MOONA_STORM) } else { p.frame(if t > 3.3 { Eyes::Happy } else { eyes }, Pose::Sit) };
+                if storm {
+                    look.x_offset = if beat > 0.0 { 0.5 } else { 0.0 };
+                    for k in 0..5 {
+                        let fall = ((t * 7.0 + k as f64 * 5.3) % 26.0).round();
+                        let col = [-8.0, 2.0, 12.0, 20.0, 28.0][k];
+                        look.free.push(self.placed(MOONA_TWINKLE, col, 30.0 - fall));
+                    }
+                }
+            }
             _ => {}
         }
         look
     }
 }
+
+/// When Moona leaves the ground in her pounce, and when she lands.
+const POUNCE_UP: f64 = 0.3;
+const POUNCE_LAND: f64 = 1.25;
 

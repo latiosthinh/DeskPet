@@ -116,6 +116,7 @@ pub enum TypingStyle {
     Checklist,
     Mortar,
     Churn,
+    Moonlight,
 }
 
 pub type Frame = [[u8; 16]; 16];
@@ -150,8 +151,16 @@ impl Pet {
     /// Width and height of the drawn pet in points: the 16×16 sprite box, or a picture pet's picture.
     pub fn size(&self) -> (f64, f64) {
         match &self.picture {
-            Some(p) => (p.width as f64 * PICTURE_PX, p.height as f64 * PICTURE_PX),
+            Some(p) => (p.width as f64 * p.px, p.height as f64 * p.px),
             None => (PET_SIZE, PET_SIZE),
+        }
+    }
+
+    /// Height in points of the pet's tallest frame (a picture pet's big moves reach higher).
+    pub fn tallest(&self) -> f64 {
+        match &self.picture {
+            Some(p) => p.frames.iter().map(|f| f.len()).max().unwrap_or(0) as f64 * p.px,
+            None => PET_SIZE,
         }
     }
 
@@ -461,6 +470,14 @@ pub fn pets() -> Vec<Pet> {
             ..hero("cowy", "Cowy the bull", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
                    &[Trick::CowyStomp, Trick::CowyGraze, Trick::CowyBell], TypingStyle::Churn)
         },
+        // A moon knight riding a black panther, drawn from prototypes/moona.jpg.
+        Pet {
+            palette: Palette::new(&pictures::MOONA_COLORS.iter().map(|&(k, v)| (k, hex(v))).collect::<Vec<_>>()),
+            paw: b'f',
+            picture: Some(pictures::moona()),
+            ..hero("moona", "Moona the moon knight", &[], [EMPTY_ROW; 13], [EMPTY_ROW; 2], None,
+                   &[Trick::MoonaPounce, Trick::MoonaGlaive, Trick::MoonaSplit, Trick::MoonaStorm], TypingStyle::Moonlight)
+        },
     ]
 }
 
@@ -474,9 +491,21 @@ pub const PICTURE_PX: f64 = PIXEL / 2.0;
 pub struct Picture {
     /// Indexed by `eyes * 3 + pose`: eyes open, closed, happy; poses standing (two walking
     /// steps) and sitting. Rows top to bottom; the bottom row stands on the ground.
+    /// Frames past the first nine are a pet's own extra poses (Moona's leap, sleep, ...).
     pub frames: Vec<Vec<Vec<u8>>>,
-    pub width: usize,
+    /// The column of each frame that stands at the pet's centre, so poses of different
+    /// widths line up.
+    pub anchors: Vec<f64>,
+    pub width: usize,  // of the standing picture
     pub height: usize,
+    pub px: f64, // points per art pixel
+    /// Stands still on the sitting frame when idle (its standing frames are the two walking steps).
+    pub idle_sits: bool,
+    /// How far (in 16-grid columns) held props move forward, to clear a long body.
+    pub prop_shift: f64,
+    /// Frames for sleeping and eating, when the picture has its own.
+    pub sleep: Option<usize>,
+    pub eat: Option<usize>,
 }
 
 /// How to make a picture pet's poses from its standing picture.
@@ -532,7 +561,30 @@ impl Picture {
             let (first, last) = spec.sit_rows;
             frames.push(face.iter().enumerate().filter(|&(r, _)| r < first || r > last).map(|(_, row)| row.clone()).collect());
         }
-        Picture { frames, width, height }
+        let anchors = frames.iter().map(|f| f[0].len() as f64 / 2.0).collect();
+        Picture { frames, anchors, width, height, px: PICTURE_PX, idle_sits: false, prop_shift: 0.0, sleep: None, eat: None }
+    }
+
+    /// A picture from separately drawn poses: (rows, anchor column) each, standing first.
+    /// The nine standard frames are built by the caller; `extra` are appended after them.
+    pub fn from_frames(frames: Vec<(Vec<Vec<u8>>, f64)>, px: f64) -> Picture {
+        let (width, height) = (frames[0].0[0].len(), frames[0].0.len());
+        let anchors = frames.iter().map(|f| f.1).collect();
+        let frames = frames.into_iter().map(|f| f.0).collect();
+        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, sleep: None, eat: None }
+    }
+
+    /// A marker frame for any frame by index (the extra poses come after the first nine).
+    pub fn marker_index(i: usize) -> Frame {
+        let mut out = [[b'.'; 16]; 16];
+        out[0][0] = PICTURE_MARK + i as u8;
+        out
+    }
+
+    /// Which frame a marker frame asks for.
+    pub fn index_for(&self, marker: &Frame) -> usize {
+        let i = marker.iter().flatten().find(|&&b| b >= PICTURE_MARK).map_or(0, |&b| (b - PICTURE_MARK) as usize);
+        i.min(self.frames.len() - 1)
     }
 
     /// What `Pet::frame` returns for a picture pet: an empty 16×16 frame holding one marker byte
@@ -552,16 +604,503 @@ impl Picture {
         out[0][0] = PICTURE_MARK + (e * 3 + p) as u8;
         out
     }
-
-    /// The picture frame a marker frame asks for (standing, eyes open, if there is no marker).
-    pub fn frame_for(&self, marker: &Frame) -> &Vec<Vec<u8>> {
-        let i = marker.iter().flatten().find(|&&b| b >= PICTURE_MARK).map_or(0, |&b| (b - PICTURE_MARK) as usize);
-        &self.frames[i.min(self.frames.len() - 1)]
-    }
 }
 
 pub mod pictures {
-    use super::PictureSpec;
+    use super::{Picture, PictureSpec};
+
+    /// Moona's extra poses, after the nine standard frames.
+    pub const MOONA_JUMP: usize = 9;
+    pub const MOONA_WEAPON: usize = 10;
+    pub const MOONA_SPLIT: usize = 11;
+    pub const MOONA_STORM: usize = 12;
+    pub const MOONA_SLEEP: usize = 13;
+    pub const MOONA_EAT: usize = 14;
+
+    /// Moona riding her panther, from the poses in prototypes/moona.jpg (one art pixel ≈ 4.3 pixels
+    /// there). Each pose has its own picture; walking lifts the legs of the walking picture.
+    pub fn moona() -> Picture {
+        let grid = |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
+        // Lifts the columns in each range by `n` rows from row `top` down: legs off the ground.
+        let lift = |g: &Vec<Vec<u8>>, ranges: &[(usize, usize)], n: usize| -> Vec<Vec<u8>> {
+            let mut out = g.clone();
+            let h = g.len();
+            for &(from, to) in ranges {
+                for r in 46..h {
+                    for c in from..to {
+                        out[r][c] = if r + n < h { g[r + n][c] } else { b'.' };
+                    }
+                }
+            }
+            out
+        };
+        let walk = grid(MOONA_WALK);
+        let anchor = 36.5;
+        let mut frames = Vec::new();
+        for eyes in 0..3 {
+            let mut face = walk.clone();
+            if eyes == 1 {
+                // The panther's glowing eye goes dark.
+                for (r, c) in [(30, 66), (30, 67), (29, 69)] {
+                    face[r][c] = b'f';
+                }
+            }
+            frames.push((lift(&face, &[(11, 18), (42, 51)], 2), anchor));
+            frames.push((lift(&face, &[(26, 36), (53, 63)], 2), anchor));
+            frames.push((face, anchor));
+        }
+        for (rows, anchor) in [(MOONA_JUMP_ROWS, 32.5), (MOONA_WEAPON_ROWS, 34.5), (MOONA_SPLIT_ROWS, 41.5),
+                               (MOONA_STORM_ROWS, 36.5), (MOONA_SLEEP_ROWS, 28.0), (MOONA_EAT_ROWS, 27.5)] {
+            frames.push((grid(rows), anchor));
+        }
+        let mut pic = Picture::from_frames(frames, 1.6);
+        pic.idle_sits = true;
+        pic.prop_shift = 7.0;
+        pic.sleep = Some(MOONA_SLEEP);
+        pic.eat = Some(MOONA_EAT);
+        pic
+    }
+
+    pub const MOONA_COLORS: &[(char, u32)] = &[
+        ('a', 0x070417), ('b', 0x130d31), ('c', 0x241b48), ('d', 0x242235), ('e', 0x1f2c60), ('f', 0x35225c),
+        ('g', 0x303a57), ('h', 0x37396e), ('i', 0x234a72), ('j', 0x48465c), ('k', 0x394a92), ('l', 0x49507e),
+        ('m', 0x814447), ('n', 0x2e6a95), ('o', 0x4c5db5), ('p', 0x566493), ('q', 0x4367d2), ('r', 0x726780),
+        ('s', 0x3d85b4), ('t', 0xbb5f72), ('u', 0x448fda), ('v', 0x6f81b5), ('w', 0x907d91), ('x', 0x5fa4c3),
+        ('y', 0xac8ba2), ('z', 0x3eb8e3), ('A', 0xd9818f), ('B', 0x8ea3c9), ('C', 0x5bc4ed), ('D', 0xc29dad),
+        ('E', 0x2cdef5), ('F', 0x76beeb), ('G', 0x47d8f6), ('H', 0xccbfc3), ('I', 0x6ee5f8), ('J', 0xaed3ee),
+        ('K', 0x8ef6fd), ('L', 0xaffcfe), ('M', 0xd7f1fb), ('N', 0xc8fdfd),
+    ];
+
+    pub const MOONA_WALK: &[&str] = &[
+        "......................................d.dd...............................",
+        "......................................p..b...............................",
+        ".....................................pb..dd..............................",
+        "....................................inab.ac..............................",
+        "....................................phecedf..............................",
+        "....................................phehpee..............................",
+        "................................j...ehcaiib..............................",
+        "..............................jrBJwJgedwphb..............................",
+        ".............................rjlNNNNrclywya..............................",
+        "..............................MMNNJJvheyyya..............................",
+        ".............................MBvBJhbbaahyw...............................",
+        ".............................Mvvvcehcccbbaa..............................",
+        ".............................MrgesCeabcbbbeb.............................",
+        "...............................dxneeajceiheh.............................",
+        "...............................bcefajilpbwahc............................",
+        "...............................eefaaesnhpkpba............................",
+        "...............................bcbagbeihekkb.............................",
+        ".............................dbicb.aeeechbcbd............................",
+        ".............................lbecd.dcccfhcabcdd..........................",
+        "............................biebg...ccehhcabgfwb.........................",
+        "............................gihc...accbehbdaacyw....bb..bad..............",
+        "........................l...ghfa..dghhaecadgbaja..aaffcacfbacba..........",
+        "........................g..behcd..dcfffenbdggcbabccbffafffbffccaa........",
+        "......................p..hhchb...bjecbflxbbcfbacffcffbfffbffbcaccfcd.....",
+        ".....................p..gohbdbjdgeeefbabgbclcacfffbfcaffcfffcafacfffbdca.",
+        "....................gx..pocyywbpbneecbeccbahaaccbdffccffbfffcacfbffffbda.",
+        "....................ki..ouhffbeeiiehceecfclcabcfcacfdffbfffaadbfffpffgba.",
+        "....................xCngiLokkhkkhebbeeeebcpcaffffbgfcbfbfffaccfffffffffb.",
+        "..................j.ixLuxvnCukkxbaabbeeeebjacfffffaffcccdfaafffffffBepBb.",
+        ".................gh..xNxJqKiezubbcbbbceeeagaffffffbabbaaaabafffffbbefxec.",
+        "................ghk.iINvkFiiieelfffbbbeecaaffffffffabaaffffffhexkcCFaffi.",
+        "................xhsiCNJkKaleeeefhffcbabeebaffffffffafaffffbffefepfccfff..",
+        "................ilinKMoFNaleeeeellfbcaceebaffffffffafccfffacffvffffffffb.",
+        "................ingzLMoJffjeeeeeecjacfeeccacfffffffaffadbcbafffffffffdfcd",
+        ".bcd............iIinLMnKhfblheeeeebcefaahgcbfffffffafffabcaaaffffcffffacd",
+        ".ffc............bnCzNMINkhfagheeeeceefchhacccfffffbafffcaabbaadffaaffffc.",
+        "dffa...........afhkxLMNLphfcaabdeececchhbaacbffffbbbfffffaaaa..adaaabbab.",
+        "cffa..........affboqsNNLNBhbffbfbaebahhabacbcffcabffffffffffb....caBara..",
+        "ffc..........bcfbahoFILNNMMBvJBhcccbababfbabfbbfffffffffefffa....dffga...",
+        "ffc.........dffcaaffkqGCLMNMMBhfbcbabfbcfbacfffffffbfffiFefbd.....aba....",
+        "dffd......dacfcadaffffeqhokkfcabegabbffbcaacffffffcafffexcbfd............",
+        ".bffa...baffffa.dbfffffffcccccaaeebbbcfbbaaccfffffbafffffafc.............",
+        ".afffcccfffcaa..dcfffffffcdcaabaeeaabaffbacfcbcffbabffffaafa.............",
+        "..abfffffbbad...acfffffffaaaaaaaeeaaaacfaacffffcbaabcbaaaaba.............",
+        "....aabbba......bbffffffcaaaaaaaceabaaaffabbffffaaabaaaaabfcd............",
+        "...............abcffffffa..aaaaaaaaaadabfbafffffaaaaaaaaabff.............",
+        ".............ddbcffffffbb..aaaaaaab...dabacfffffadd..aaccbffb............",
+        "............daffffffffba..dabbaabdd.......afffffd.....aabbfffa...........",
+        "............dffcffffcba...dbbbbbcb........dffcffd......abcbffd...........",
+        "............dffcbbbaaa....abbbbca.........dbfcffd.......babffcd..........",
+        "............cffaad........bbbba............affccd........aabbcb..........",
+        "............cffba.........bbbba............acbffb.........aacffa.........",
+        "............cffbd.........bbbbb............abfffb.........dafffa.........",
+        "............fffbd..........abbba...........acfffd..........bfffa.........",
+        "...........afffa............abbc............bfffc..........abcfa.........",
+        "...........afffa............abbbda..........bcfffc........babcfd.........",
+        "...........afffcda...........abbbbba........bffffbbd......abcda..........",
+        "...........affffb............aabbbba.........cffbcca......bbbd...........",
+        "............bbbbad...........................bcfacab......dddd...........",
+        "..............................................aaaaaa.....................",
+    ];
+    const MOONA_JUMP_ROWS: &[&str] = &[
+        ".........................................b..d.........................",
+        "........................................dl..bc........................",
+        "........................................vc..jc........................",
+        ".......................................lhbeeacb.......................",
+        "..................................Mr...jecelbhb.......................",
+        "...............................MMMpMl..eebeckla.......................",
+        "...............................jHMNMMHJvfcyeeb........................",
+        "...............................MMMMMMMMvccDlHb........................",
+        "..............................MvBBJJpppbhcyyyd........................",
+        "..............................Mv.wvCxnhgbcyyw.........................",
+        "..............................j..bpnnhhacdaad.........................",
+        "................................dccckhbccbbap.........................",
+        ".................................ahgbaeblpebp.........................",
+        "................................bccaaeillcba..........................",
+        "...............................bccbacexhlrlad........bbb..............",
+        "...............................bcinbbchchkgba....acbacfcabba..........",
+        "...............................aehkibbceaggddddabcfaffbffcbcaaa.......",
+        "................................behhlbaaahecaccfbfdcffbffcfbccccd..a..",
+        "...............................dbcaeebrwbhcacffbbfaffbfffdacbcfffcac..",
+        "...............................iiegcafwDfcabfffbfffffdfffdaffaffffad..",
+        "..............................nieefabbbalbacbfbaffffccffaadbfffvfhfb..",
+        "............................beeeeebcbbaagabafffaffbfbfffacffffffefff..",
+        "............................cehflbeeecfbeabcffffaffabacaafffffffifBnc.",
+        "............................aaaabbeeeecjbaffffffbaaabbccafffifbicflfa.",
+        "...........................gcccbbbceeeajadfffffffbcbffffbfefenfxlcfcx.",
+        "...........................blfccbbbbeecgaaffffffffacfffcbffhfffffcffd.",
+        "........................abiblfffcbbbccbgaaffffffffacafbaaffffffffffff.",
+        "........................ineeclfffcbabeehacbfffffffaffaccacffffbffffaaa",
+        "......................aaleeeealcfffbeeehacabffffffaffcabbabfffbdfffcba",
+        ".....................afcleeeeebppceeeedjababcfffbccaffdaaaaafcaafffcfb",
+        "....................ffffbheeeeeeaecfgchacbacbccbfffaffffffb..ccawava..",
+        "...................fffffcbpeeeeebecebfgafbaffbcfffcaffezffb..dfaaaa...",
+        "..................bffffffcagghlgeebbghaffbbfffffffaaffizeba...bffca...",
+        "..aa.............bbfffffffffbaabebaaaafffafffccbbaabfffedaab...aaa....",
+        ".cffa...........bbcfffffffbfffbabbacfbffbacfffffbaaafffaaafffa........",
+        "bffc...........dfbffffffffabfcccabbbfccfbafbffbcfffcbcaaabfffcaa......",
+        "bfc...........dccafffffffccabaeecbbbbfbbaaccbcffffffffaaabbcfffffa....",
+        "bfc...........cfbbfffffffcffaaeeabbbaffaaaaabffffffffcbcabbccfbfffa...",
+        "bfc..........bffabfffffffccfcdbeaaaaaafcaaaabbcffffffcfffaaabcccfffb..",
+        "bffd.......afffbaffffffffbffaaacaaaaaadffcaa..aabfffaffffcdgdaabfffb..",
+        ".bffbb..dbcffbb.affffffffdfaaaaaa...aabbbbab......dbacfffffd...abbbcd.",
+        ".abfffabccffba..afffffffbbaaaaaba...................abffffffb...bbbca.",
+        "...bfffffcca....ffffffffaaaaaaabj....................dffffffd...abaca.",
+        "....dabbaaa....afffffffbaaaaaaba......................bfcffba....aab..",
+        "..............bcffffffbbbbaaaab.......................abccbad.....a...",
+        ".............acfffffffbabbbaaba........................agad.d.........",
+        "............bfffffffbaabbbbbba..........................d.............",
+        "...........bfffffcbaabbbbbbdb.........................................",
+        "...........dffbbbaabbbbbaab...........................................",
+        "...........ffcbb..abbbaa..............................................",
+        "..........affca..abbbd................................................",
+        "..........bffb...abbb.................................................",
+        ".........dfffa...acba.................................................",
+        ".........bfff...abcba.................................................",
+        "........bfffb..babbb..................................................",
+        ".......abfffa..bbbba..................................................",
+        ".......affcfa..dbbb...................................................",
+        ".......acacba...ba....................................................",
+        "........aaab..........................................................",
+    ];
+    const MOONA_WEAPON_ROWS: &[&str] = &[
+        ".........................................hhiiiiiiiiiiig................",
+        ".......................................lkopppssGIIIKKCzus..............",
+        "......................................hgg......ggszILLGGIsg............",
+        "...................................................iEKLLNLIzsg.........",
+        "....................................................nEGLMNNKEzg........",
+        "......................................................nELNNNLGzg.......",
+        ".........................................g.d........xngxEKNNNNIEg......",
+        "........................................vb..g........ixiEENNNNNGzg.....",
+        ".......................................pka..f.........gisEKNNNNLEn.....",
+        ".................................Jw...ckbecaaa.........hgiENNNNNIEg....",
+        "...............................MMlM...ckaeeeba.........vigGKNNNNLEz....",
+        "..............................rwMMNM..bebceshb.........gxgzELNNNLGEg...",
+        "..............................JBBJMNMMpefrhea...........isnELNNNNKEz...",
+        "..............................MvvvvpJJpfeHlDa...........gEnELNNNNLEz...",
+        "............................eajfgsssichceyyDa...........gEzELNNNNNGz...",
+        "...............is.........bnibibheisihebcrmj............gEEELNNNNNGz...",
+        "..............hxg..kol..blehcccbcfhhhfaccaaed...........gEKGNNNNNLEz...",
+        ".............gog..ns...bhhefcaaabaagccffabeisd.........peELGNNNNNKEz...",
+        "...........g.hIi..Ck.aHccfaaa.....aahhagvlcheca........liELLNNNNNKEg...",
+        "........o.p..gsKugCqjabwad........bbesijbbaadca.......hpnINNNNNNNEz....",
+        "........vgsk.xKLzKsookcagg........abesevrpaabcb.......pizKNNNNNNLGg....",
+        "........iixqCCNNNqqIIqggghg.......beeeblhs.bbbcb.....niCELKLNNNNGu.....",
+        "........FgizLNxqKzCCeqookk........bbhehbcb..aabii...nsiEILKNNNNKzi.....",
+        "........CinKMJuLB....CCig........bbbhehf.....dfel..nsgzINKNNNNKEs......",
+        "........nusNNFLJ................dcbbchfb...bbdbfegxxgizLKINNNLEzg......",
+        ".......hhCKNNFs................abbfhcbbb..llggddlrggizKKKNNNLzz........",
+        ".......gokKNNLh.............da.egebhhvbf.dpecggjDwahGIGLNNLKzzg........",
+        "........puINNNh.............llaneeeaclgcblfcbdjgdehzEILNNLzEsg.........",
+        ".........oCNNNp.............haneeebbbbaaahbaacffeiCGKNLLKEsg...........",
+        ".........hqKNNMh............jlhhhbeeebcblaaafeeFIKKLLKznid.............",
+        "..........hqKNNMlgggh.....dahbhfbbeeecfapaaikCIIKKKGzueffc.a...........",
+        "....cca....gkoNMMMMMv...bniblbbbbbeeennssuuCGGGGCxxkeffffaccba.........",
+        "..bffba.......koovkg..aaheeehccccbbeeebkbbabeeecbffbfffbccbbcffba......",
+        ".bffda..............acfcleeeblfffbbceeacbbafffffaffdffcffcbfacfffbdda..",
+        ".ffcd..............afffcleeeehlcfbabbeaabacfffffcccbffbffcacfaffffcca..",
+        "afcb.............aafffffcheeeeglbccceecabafffffffafbfcfffabacffhfffba..",
+        "afc.............bcffffffbleeeeebbeececbbabfffffffbaaccffcadbfffnffpfa..",
+        "aff...........dcccfffffffbbleeebecebacjbaafffffffdbaaacfabccffffhfffc..",
+        ".bfd.........afcbcffffffffcaallaecheelababfffffffcfbcbaaaaffffffeeesc..",
+        ".affdb....dbcfcbaffffffffbbcfaaecbchlabbbafffffffcfcffffcffeeecppfffe..",
+        ".abfffabaafffbabaffffffffcaffdbebaaaacbbccbfffffbbfaffffafevfxfbpbffi..",
+        "...bcffffffcaa..afffffffccaaccbaabcaffabffbffffbacfdcffbaffefeffffffc..",
+        "....abbbbaaa...dcfffffffbffbbeeaaacbfcbffffbbbcfbcffaccbafffffffffbffb.",
+        "...............bffffffffbffcbeeabbcbbaffffffffffacfffabcaaffffccfffbba.",
+        "...............cfffffffcbbaabeeabbbcaafffbffffffafffffaaaabfffccfffcdc.",
+        "..............dcfffffffaaaaaaeeaaaafbcfffcbbffbabffffeffcaaabacabfffcd.",
+        "............babfffffffbaaaaaaacaaaaffbccfffaaaabbfffizecaadca.bccaaaa..",
+        "...........bffffffffffa..aaaaaaaaaacfabccfffdaaabcffeibaabccb..acfff...",
+        "...........bfffffffffba..aaaaaaba.aafcbfbffffaaaccbfcaaaacccd...acab...",
+        "..........affabcfffbaa..abbaaaba......ddfcfffbaaaa...daaaacffb.........",
+        "..........affaaaaaaa...abbbbbbb........bcffffb.........adbbfffb........",
+        ".........bfffa.........abbbbbd..........dcfffba.........abccfffa.......",
+        ".........affc..........dabbba............accffc..........abbbfffb......",
+        ".........cfca............abba.............affffb..........daaccbca.....",
+        "........affba............abbbaa............affffb...........aachfffad..",
+        "........affcd.............abbbbaa...........cfffbad..........abcfffcdad",
+        "........afffcb.............abbbba...........affbhcfa..........aacffccda",
+        ".........dfbcda.............................acfchcfda...........abbabaa",
+        ".........aaaaaa..............................acdbbdba..................",
+    ];
+    const MOONA_SPLIT_ROWS: &[&str] = &[
+        "......................................lkkkk....................................",
+        "....................................ghqqCCCxvh.................................",
+        "...................................pouKLNNNNLLx................................",
+        "...................................hkLNNKFFFNLLJl..............................",
+        ".................................guzCNLuFvjhhixLMp.............................",
+        "................................gxiuINuKg......gBM.............................",
+        "............................j......iFMFp.........pl............................",
+        ".........................pg.jj....hCKkF...........l............................",
+        "........................lp...j...puIuou........................................",
+        "........................phlhgg..gnhiCns........................................",
+        ".......................jphlhll.....fkoqs.......................................",
+        "........................pplppph...arfckF........b.a............................",
+        "........................llllpp....yyjdhs.......ld.b............................",
+        "..................jBJ..jhplBlyl..bjjljkk......Bg..bb...........................",
+        ".................BBvBBBBBhllwwg.bpbbaj.......ppbebcj..................log......",
+        ".................lBBBBBBlphlwv..aibehj.......vlhhebj...................kMp.....",
+        ".................vBBBBpvpplhllhpljbehb..jJ...chehped....................pMJj...",
+        ".................Bpplpvvplhlhhhppg.effjrJJM.Bbhbceeb.....................hMJh..",
+        ".................pljlplllhlllvlhll.chcarbbMMMhcfrr.......................hMMuh.",
+        ".................ghlhhlhhlhllhBlgg.acbcbgvxscpecHDw.......................FMLp.",
+        "................jphlhg.gggpkplppgg..abcccesnhcacDrj.......................FNNqg",
+        "................pllg....glhplhllhh.gjwabbgelbacabacb......................JNNCh",
+        "......ll...lj..llll......lhhhlphhllplgggaabhagbbabixb.....................NLNIo",
+        "......p...pl..lll.........pllppgglpplghhlaaadbypbhehhb.......hxFFg.......iJNNCk",
+        ".....ph..vpg.wvl..........ghlllhggpphlllhjabnilbbaabbccbdd..jhhpqCg......NFNNqo",
+        "..j..ppl.ppgjpvg..........ghhllhggplhllllgabcsewpiaabbccilbdggggougg...lNsNNNko",
+        ".lp..lvpppppplj...........pllllllgplghhlllbiceehip.ddabbghileljgouxzFxJJsFNNzkl",
+        "l.phlvBBvpvvplgglj.......llhlppphhpgglplhjbebbhceb.....bccffbrwbhqonnkkoLNLzuk.",
+        "..plBBBvvplgvlppj........lllhhhhlhpglllphjgccelgbgg.......albwjjhuFuJJNNNLCinp.",
+        "p.pvBvvvg...glg.........gvllhlhllhphllllphacbefgjggaa......abajjkCnhuKLKzzFgsg.",
+        "phpBBovr...............phplllllllhhllllllhehbeebhhchhc...daaggdhquggFGnghqn.p..",
+        "lvvBBvv................plllhllllhhglllllcaaffhsbbhhecb.aabccaffcbbajizgggv.....",
+        "llBBBvg................lllhhhllllgghllllneecffFbbbfcbaffccfccffbfffclxgghh.....",
+        "llvBBv.................llhhhhhlllhghlcpaieecachblhcaafffbfcdffbffcfbcaaafh.....",
+        ".lpBBBl..............gplpllllhhhllglhhbieeeeebebbhabcbfcffacfdcffcafbfffbfba...",
+        "..lvBBB.............ppllppllllhllllhllbeehbeeegcljadcfbafffffbffccafbcfffbfb...",
+        "...lvBBBvggg........plllllvplfllllllglggabbeeebbpdacffcaffffdfffaaaaffffffaa...",
+        "....lppBBBvvj......gpllllllhlhlhhaahglbbbbbceecalacffffaffbfbfffabbcffffflfa...",
+        "......llplgd.......lhlllllllllbaahieelbfcbbbeecaadffffffaffbaccbaffffffepfhe...",
+        ".........dffa.....gphppllllpbbffbheeechffcbbcebaafffffffaaaaacccbffffccefieg...",
+        "........bffd......gllhhhhlbbffffbheeeeghfccbeeeaafffffffabacffffffheicpBbffb...",
+        "........affa.......lllllbbbcffffcleeeeeelaeeeeegafffffffafbffffaffffxfcccffB...",
+        "........afc........hlllhfcaffffffblheeeebcefcehgbfffffffaffbffbafffffffffffc...",
+        "........aff........ellbffbffffffffahheeebecfbelacbfffffbafffbffbbffffffffcffa..",
+        ".........bfcd......ghcffbbffffffffcbablheecchlbdgacffbacfaffbaabaaffffffffbda..",
+        ".........affca....aaffcbjfffffffffcfcaacecahhaacacafbcfffafffabbaaaffaafffcba..",
+        "..........bffffcccffccbjlffffffffbacffacbbaaaccaffffffffbabfffdcdc.dbbabccad...",
+        "...........acccfffcbabllbfffffffccabcbbcbabfbfcafffffffcaabffeeffb...dajaga....",
+        ".............aaabbd.glphffffffffaccbaceeabbfbfbcfffccbbbabbffxzffcd..daaad.....",
+        "....................hlllfffffffcafffbceeabbfbbbcfffffbaaaabffiFfaca..dcccd.....",
+        "....................ghlcfffffffbddaaabeeaaabfaacbfbffccbaabfffcaafa...da.......",
+        "......................afffffffcaaaaaaaecaaaafbafbffffffffacffbaaaffd...........",
+        "....................dcffffffffbgaaaaaaaaaaaaffbaacffffffffcaaaaaccff...........",
+        "...................bfffffffffbajaaaaaaaa..aaaffaaabffffffcccdaaabcffa..........",
+        "..................dfffffffffbagabbaaaaa.......bbaa.abbffbffffggbcdffcd.........",
+        "..................affaabbbaaddabbbbaba................bcbffffbddabcffcd........",
+        "..................bffbgl.....dbbbbbb...................dafffffdgbabcffb........",
+        ".................affballg....dbbbba......................cfffffaddabfffd.......",
+        ".................affbjllhg....abbba......................afcffffb..accffa......",
+        ".................dfcaglllh.....bbbba.....................acfcccbb..abcfffb.....",
+        "................affcagllllg....abbbbaa....................aaabaab...bbbfffd.d..",
+        "................afffbaglllj.....abbbbba....................baba.......acfbcbd..",
+        "................affccbaggg.......aaabaa...............................bbbbbab..",
+        "................ac.ccba........................................................",
+    ];
+    const MOONA_STORM_ROWS: &[&str] = &[
+        "......................................eI....................................",
+        "......................................gi......oooooooooooh..................",
+        "...........................x..............hqquuuuuuuuuuuuqqoh.....pon.......",
+        "..........................BIs...........lnuCIIKLLLNNNMNLLLKFqol....sEs......",
+        "..........................gze..........oKIIzuussqqsGLLNNNNLLNKqo...gGEo.....",
+        "....................................ooqqiihh....hhinuzGLNNNNNNNJqo..szo.....",
+        "...................................kqo..............gqqGKNNNNNNNKuv...g.....",
+        "..................................oog.................gsGILNNNNNNKzn........",
+        "..................................g...............gxxsggluCKNNMNNNKzi.......",
+        ".....................................................sxi..kEKNNNNNNKzi......",
+        "..............J.......................................gx...nEKNNNNNNKGn.....",
+        "..............g.............................................sEKNNNNNNCuh....",
+        ".............l........................g...gg.................zENNNNNNNCv....",
+        "......................ho.....gx.....goFhkvll...............i.nEKNNMNNNLEk...",
+        ".......gFg........hhoh.h.....xx.....ooisukgg...............oggzGNNNNNNLGs...",
+        "......iGC......kkoql...............sCnzLKKKKzsp............hqjnGNNNNNNNKzh..",
+        "......ivg....giuqqg.....nqs.gpl...gFIILNNNNNLIsk............qohGzNNNNNNLGo..",
+        ".............qsCo......nGIvkp.....hJLNNJJJJNNNLzk...........qohGENNNNNNNGu..",
+        "............quEn......iGigggggg...hJNJoqqGIIGJNLuh..........qukGENNNNNNNIsh.",
+        "...........ouECh....gouGggggCIICkgiIuqzzxgsssoJNIk..........qCoGENNNNNNNLGq.",
+        ".....x..glhqGzq..gouuKKKxnuzGIIIFCCFqCi.......oJLq.....J....qGCGENNNNNNNNEqo",
+        "....px.hj.hqGuhlsCIKLKzLNNCIkeeeboooqz.........oNJl.....vg..qGzEGNNNNNNNLEuo",
+        "......go..kzEuuCINNNNKCLNJekfrrlbchkqug........hkJv.....nx..oEEEGNNNNNNNLEEo",
+        "......vk..ozEEKLNNNNNNNNNixcbjrwaabkuC..........kNv........gqEEENNNNNNNNLEGo",
+        "......u..hCEGLNNNNNNNNLLbhhhfcdwbcooF...........hFp........oGzEELNNNNNNNCqGs",
+        ".....sz..uGLNNNNNNNIIIEEdcevvbjbb.g...d.........ho........oCGuEINNNNNNNNGquG",
+        ".....si.ozKNNNNNNLGEEEEIIIvopbffa....db.........hp.......gqGsGELNNNNNNNLGquE",
+        "....gzh.uKNNNNNNIEEEGqqqqqzukbffa...beb..bb..............hqIkGINNNNNNLNKukiG",
+        "....izhszLNNNNNKEEGuqqqqFIzijccff...xeaa..b..............kqnuELNNNNNNLLzkgiE",
+        "..l.nzoGLNNNNIIEzqqqqCzsig...bfhh..lFeeecbhd......gp...hoohsGKNNNNNNNNKzggiz",
+        "..p.nGuGNNNNNGEEqqquCng......bfh...ieeeesee.......IC...ohgizGLNNNNNNNKGuggkq",
+        ".gl.nEEKNNNNLEGqquCg....x.....bgaa.ceebbeie......CGn.....izGNNNNNNNNLECo.gk.",
+        ".k..kzGLNNNNGGqqqs.....xg.....bbccbgehdwbwa..........FF.vGINNKzNNNNKEEqh.p..",
+        ".lh.nzGNNNNLEuqqCg.............abeclbheDDDa...........hsGKNNNLLNNLKEEzq.....",
+        ".kogCELNNNNKEqqGi.............JMbecbnhhyjyb.........houGKNNNNNNNLIGuGzo...lk",
+        ".kCgCENNNNLEGqCz....glk.....JBBMabbbiecwyj........gouCKNNMNNNNKEEskuIqh..gGq",
+        ".hCkGKNNNNLEqzGu....sxg....jglMMBbcbgdbaaa....hhooquzLNNNNNNNKEEsgsuzh...ICl",
+        ".hCkGKNNNNLEqzso...gCi......MNJvvabcbdabbcdjssuuzLLLNNNNLLLIEEEu.hGuq...ssp.",
+        ".iGnGKNNNNLGqCno...ix.......MBBBvpaaaagbwchbqCIIIIIICGGGEEEsuIu..sCh........",
+        "..szGKNNNNLGqkgk..gzg.......MvlvllabaeiBccbcgkqququqqqqzqqokkk..ok..........",
+        "..qEEKNNNNLGqk.....zg........B....laaeievvvbd.ggggghhkJFh...hp..g.....pg....",
+        "..izEKNNNNLGqk.....sg........l.....aiciieiie.......lhhhi..lk....ph...pKx....",
+        "..gqEKNNNNLGqk......................pbeecchb.....ig...........hoog...gFp....",
+        "...qEKNNNNLEqk......................acbbhhbad...lsv..........hl.............",
+        "gv.ouGNNNNLEqo.......................bcfpecccg..............................",
+        ".l.ouELNNNLEqk..iz..................acceehbffblla...aaaaaaa.................",
+        "..lhqzKNNNNKqk..gui................alhbcceabcleea..acfcbccbbba..............",
+        "....hqGNNNNLGk...iC................dehhhkccaagcbbbfbffbffbfcfccddd..........",
+        ".....qzNNNNNGkg...ggg..............pebbhklcagcbafffcfbffaffbdadffcd.........",
+        "...g.kuKNNNNIuk....gB...........ddiieeaahbabgbabffcffffcfffdacacfffadda.....",
+        "..gx..qCLNNNKzog................eexeegcbgbcbhabcacafaffdfffcabcaffffbca.....",
+        "...ix..ozLNNNzqo.......n.......leiehfeeeafbpbaaffaafbffcffaadbfffifefba.....",
+        "....eladuINNNNzqh.....gCg......lalebbeeeecblbbffffaffacfffabacffffffffa.....",
+        ".....cfckuLNNMNFo.....gng.....jjaaaabceeebcjafffffcbcfaabaacffffffFhepb.....",
+        "....affcgquLNNNKqoh.........aallcbbbbbeeecjafffffffabcaaaaacffffccefxec.....",
+        "...bfff..gouINNNLuqo......dleeeclffcbabebbaafffffffcaaafffdfBfseaxpcccB.....",
+        "...dffa...hkqKLNNLFqohg.dableeeeccffcbabeeaaffffffffccfffdffffeffbbfffl.....",
+        "...dffa.....hqqLNNNLLuokkkhleeeeelcfbcaeeeaafffffffffcffcadffpffffffffc.....",
+        "...dffa.......eoosLNNNNMFohaleeeeeclbeaceblacffffffdccbbbaafffffffffcffd....",
+        "...dafa.........ghkkkkkhhfffcheeeeeaeefbahacafffffbaaffbcaaaffffcffffaaa....",
+        "....aff............acbbfffffbcleeeeceehbhlacacfffbacaffdaabaacffabfffbca....",
+        "....acfba.......dafcbbfffffffbadjhcebccelabaaafbacffafffaabaaabbaafccbd.....",
+        ".....afffa....aacffcacfffffffccaaahebblaacabfcabffffaffffccccabcaaBjaB......",
+        "......affffffffffcbaafffffffcacfcaecabbaccaffffffffbaffffffffa.aalaal.......",
+        ".......abcfffffcba..bfffffffcabfbabbabcbffafffcbffbabfffsxffbd.baBaag.......",
+        "..........abba.....bffffffffbdfaeeeabbfbbbccffffbaaaafffeifacc.ccccc........",
+        "...................affffffffacfaeeeabbfbaafccfffffaaafffffcacc..bffb........",
+        "...................bfffffffcaffccecaaacfaaffccfcbcffabfffcaacc..............",
+        "...................cfffffffbcffaaeeaaaacfaaffaaffffffdabbaaacc..............",
+        "..................afffffffcacaaaaccaaaabcbaaacfffffffffcaaabcfd.............",
+        "................aaffffffffaaaaaaaaaabaaafcaaabfffffffffabaacbfd.............",
+        "...............cfffffffffbaabaaaaaaaa..abbfdaabbfffffbffffaacdacb...........",
+        "..............afcffffffcaaacbbbbaaad......ddd..aabfffcffffcadacffa..........",
+        "..............cfabccccaaababbbbbbaaa...............ddcfffffbadfffb..........",
+        "..............ffaaaaaaaaaacbbbbbcca..................bffffffadffff..........",
+        ".............ffbaabbbbb..dbbbabad.....................affffcfbcfffg.........",
+        "............affbad.......dbbbd.........................cfcffcdaffbba........",
+        "............affaa.........cbbd.........................bfcccccafbfff........",
+        "............afba..........dbba..........................adab.daacfffa.......",
+        "...........dffca..........abbbd..........................a.d...dbbbccb......",
+        "...........fffcb...........bbbaaa...............................aabffcbd....",
+        "...........cffcfa..........abbbbb................................abcfacca...",
+        "...........afcgbb...........aaaaa.................................ababbaa...",
+        "............ba.aa....................................................aada...",
+    ];
+    const MOONA_SLEEP_ROWS: &[&str] = &[
+        "..........................b...................................",
+        "......................h...cc..................................",
+        "......................l....cb.................................",
+        ".....................jb..aabld................................",
+        "...................aahfabhhahg................................",
+        "............dcccbadcclcceehhhb...ddd..d.......................",
+        "..........acfffffcbbcgccfhiicbllavssssiaaaa...................",
+        "........ddbfffbbfffcbafcghbwDceeeeeeeepdffffffaaa.............",
+        ".......aaafffffffbffaaefbyyDddeeeeeeeelbfffffffffa............",
+        "......acccccccffffbfcbbfbryyyrvpeeeeeepdffffffffffca..........",
+        "......ffcafffffabfbccbbehryyyrJMeeeeelbcffffffffffffa.........",
+        ".....dfffffffffffbfbalMcbhDyybhMleeeepacffffccfffffffd........",
+        "....dcbffffffffffbbbaHJebcaaabebleeehlbffcabffffffffffa.......",
+        "...ddcabbfbccccccbabcaehhbbbbbehlclpjacfdacffffffffffffd......",
+        "...dcccffaffffffffcfcaxshhlllnbacgaabcfcbffffffffffffffb......",
+        "...bcbbaffffffffffffaaxnhegpxeBlgaabbffbbfffffffffffffffb.....",
+        "...bbdcaaffffffpffffabsiecliihhiibabbffabfffffffffffffffdb....",
+        "...bcbcbbfffehfffffffbecfaeinhbcbbdbcbbabfffffffffffffffbfa...",
+        "..affabfffffffeefikffhfjabbcecehadcbbbaabfffffffffffffffbff...",
+        "..afbaafffffffepfxeffcabbaehhchhaeebbaeecbffffffffffffffbffb..",
+        "..acfbafffffffffffffaaaecaabehheahhcaeeeeeaffffffffffffbabffa.",
+        "..abfbafffffffffffbbfcaecaabccebrccbeecbeeaffffffcffffccabffga",
+        "..abcbaephffaaaffffffcaccaaabacyyraeeebaeeadffffffbfffcbaafffa",
+        "..bbaaacfffffffffffcbdecaacfhhbyyacecbbababacffffffbbcbbj.fffa",
+        ".acfbbbcfpffffffffffaaelhcaabbbaabbbbbaceeecbbffffffcaaa..fffa",
+        ".acfcbaabfffffffbcccdaaikcacehfbbaabbaaafheeabbffffffcad.affca",
+        ".cfbaaaaaabbbfffaadacbalkhacehbeeeecaaaaceeeaaabbbffffb..affba",
+        "acbfffhbbaaaabffffbfbbbbihacehaceeeeeeeeaceegbfffffffbadcffca.",
+        "abbfffbaabffbbaccbaaaffbhfabefabbeeeeeeeeaceebccbbbbbbaafffba.",
+        "abcfcbbffffffcbadcfbbfcbawwdefbbbbbbbbeecacceebbbaaaacffffba..",
+        ".abcbbcbcfffffcbaaaccbbaaDDybabbbbbbbabaaebaeeaaaafffffffba...",
+        "..abadbffbfffbbbbbbbaad.armjdd.aaaccfabheecbceafffffffcba.....",
+        "....abbfacfcbbaaaaaaa...........acffffbabeeeabedacfcbaad......",
+        ".....aababbbd...................bbcbbcbaaaaaaceeegaadd........",
+        "......abaaa......................baaaa......abbchgca..........",
+    ];
+    const MOONA_EAT_ROWS: &[&str] = &[
+        ".................................g..bg.....................................",
+        "................................da...a.....................................",
+        "................................xa...ah....................................",
+        "...............................bpaaadaha...................................",
+        "..............................dJhdeebaha...................................",
+        "..............................dBhceeecha...................................",
+        "..............................dehcehscia...................................",
+        "..............................dghbdbhcb....................................",
+        "..............................llcbrjyga....................................",
+        "...........................B..JlecrHDHd....................................",
+        "............................MMJechjDrra....................................",
+        "...........................JMJhebbjrmtAra..................................",
+        "..........................wBMeihhdadjmmdry.................................",
+        "...........................JrssnhafaajmjbDw................................",
+        "..........................dpesnhhhbbpbcbbwj................................",
+        "...........................dbeehcbhhxbbaacb................................",
+        "...........................jjhbabiehyppbaffa...............................",
+        "...........................aaaaaciniheiaaffa...............................",
+        "...........................bebaahcccceeaafha...............................",
+        "..........................acbbgdeawmhebaacga...............................",
+        "..........................agiicdddAAaeb.aaa................................",
+        "..........................deihhcaammbf...aa................................",
+        "............................baefcyrcca.....................................",
+        "..............................cbbwwfbfg..aa................................",
+        "............................dbcbawwbnbhadhhb...............................",
+        "..........................bdrbiecadfvbcghheea.daaaaaaj.....................",
+        "..........................apapeccebbbbbahbbaaffffbfffbccb..................",
+        "..........................araihhceegfcbdeaacffffbfffcffffb.................",
+        "..........................albehbeeeebcarbabcfffcfffffbbfcba................",
+        ".......................aaaapaaabbeeeeaagabbcbffbffbffccaccffa...a..........",
+        ".................dbcccapnnelhcccbbeeeepbadbfdcbffbffffacafffffbff..........",
+        "................afffffleeeebphccbbbcaaaaaafffaaffaffbcaccaffffcbd..........",
+        "..............bfffffffaleeeebhfcbaaceeaabffffcaccbfbaaabfffiffifa..........",
+        ".............bffffffffcleeeeeajracaeeeaaffffffafcbcabaabfffefffff..........",
+        "............bffffffcbcfcheeeeecaceacccjcffffffbadabaafffffffhhfhe..........",
+        "............fffffffffbfblleeeeeachhbbljfffffffcaabcbafffffffhhheea.........",
+        "..........dbffffffffffccbadlleeeehfllcbffffffffabffccfkeiebxccfeca.........",
+        "..........bffffffffffffbfcaalpgeecehgacfffffffcbbffaffpcnefexbffse.........",
+        ".........dcffffffffffffbcfcbbacebbljaabfffffffbcccfafffnffffcbfffa.........",
+        ".........abffffffffffffbbffffaccbaabcabbfffffcbccbaacffeffffffcffb.........",
+        ".......dcbbffffffffffffbbfffcebaabbffabacfffffffccbbaffffcffffccfca........",
+        "......dffbbffffffffffffbbfffaeeeabbffabadffbffffcfbaabfffbfffffaaaa........",
+        "....afffcabbffffffffffcaabbfaeeeafbfcbafadbffffbbfbaaaabadjacfffbcaj.......",
+        "...bffcbbaabcffffffffcbabbbbbaeebfdbbbfffffffffbbcccbamDtmmmaccbdcwM.......",
+        ".dffffba..aabbffffffbbaaaabbbaegafcbbafffcccffbaablecaAAAmmmmbmddHHM.......",
+        ".bffcba....aabffffcbbaaaaabbbbadaffabafffffcbbbaabcfcatttAmmmmmddbdHj......",
+        "afffa......abcfffbaaaaabbbbdbaaaacfbaacffffcbfcaaabbaaAAtAmmddddacbaa......",
+        "bfff......abbffffffffaaaaaaacbaabacfaaccffbfffffcaaaaattAmddddaacffcba.....",
+        "bcffb......abbfffffffffcddaaab.ddabcaafcbfffffffffccdaaAtddddbbbbccfcfcbb..",
+        ".afffaa.....aaabbbbffffbfcbaab......aaccbfffffffffffffcaaaaaaaabbbbffcccb.a",
+        "..bffffcdd.........abbbcaca...........aaafffffffffffffffbba.....daabfcaccdd",
+        "...bcffffcaaaaaaaa....aaaad.............aaabbffffbfffffbcbca......aaabaaaab",
+        "....bbbfffffffffffcb........................ddddddaabffcbcda.........d.....",
+        "......aabbffffffffba................................abcdabaa...............",
+        ".........dbbbbbbbbb..................................ddada.................",
+    ];
 
     /// Cowy, from prototypes/cowy.webp (one art pixel = 4×4 pixels there).
     pub const COWY: PictureSpec = PictureSpec {
@@ -746,6 +1285,7 @@ pub enum Trick {
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
     CowyStomp, CowyGraze, CowyBell,                        // Cowy
+    MoonaPounce, MoonaGlaive, MoonaSplit, MoonaStorm,      // Moona
 }
 
 impl Trick {
@@ -776,6 +1316,10 @@ impl Trick {
             GrumboSpin | GrumboHelmet | GrumboChop | WispThread | WispKnot | WispMoth | HexFrog | HexSheep | HexBook
             | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
             | LunetteNap | CowyStomp | CowyGraze | CowyBell => 8.0,
+            MoonaPounce => 2.6,
+            MoonaGlaive => 2.8,
+            MoonaSplit => 3.4,
+            MoonaStorm => 4.0,
         }
     }
 
@@ -824,6 +1368,10 @@ impl Trick {
             CowyStomp => "Stomp the Ground",
             CowyGraze => "Munch Some Grass",
             CowyBell => "Ring the Cowbell",
+            MoonaPounce => "Pounce",
+            MoonaGlaive => "Sweep the Glaive",
+            MoonaSplit => "Split into Three",
+            MoonaStorm => "Moon Storm",
         }
     }
 }
@@ -947,6 +1495,9 @@ pub mod trick_art {
     pub const COWY_NOTE: &[&str] = &["..yy", "..y.", "..y.", "yy..", "yy.."];
     pub const COWY_CHURN: &[&str] = &[".kkkkk.", "kNnnnNk", "kNnnnNk", "kNnnnNk", ".kkkkk."];
     pub const COWY_DASHER: &[&str] = &["kwk", ".n.", ".n.", ".n.", ".n.", ".n."];
+    /// A little glowing crescent and a twinkle for Moona.
+    pub const MOONA_MOON: &[&str] = &["..BB.", ".Bb..", "Bb...", "Bb...", ".Bb..", "..BB."];
+    pub const MOONA_TWINKLE: &[&str] = &[".B.", "BWB", ".B."];
     /// Lunette's ears folded down for her nap; replaces the top six rows of her sitting frame.
     pub const LUNETTE_TUCKED_EARS: [&str; 6] = ["................", "................", "....kkkkkk......", "...kwwwwwwk.....",
                                                 "..kwwwwwwwwkk...", "..kwwwwwwwwwwwk."];

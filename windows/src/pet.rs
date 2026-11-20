@@ -2,7 +2,7 @@
 //! The pen (the pet's window) is `width`×`height` points; the pet moves inside it.
 //! Coordinates are points with y pointing up from the floor, as on the Mac.
 
-use crate::art::{self, bubble_icons, props, sys_color, Color, Eyes, Frame, Palette, Pet, Picture, Pose, Rows, Trick, PET_SIZE, PICTURE_PX, PIXEL, PROP_ROOM};
+use crate::art::{self, bubble_icons, props, sys_color, Color, Eyes, Frame, Palette, Pet, Picture, Pose, Rows, Trick, PET_SIZE, PIXEL, PROP_ROOM};
 use crate::canvas::{Canvas, Font};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -519,13 +519,19 @@ impl PetView {
         }
         match self.mode {
             Mode::Walking => p.frame(Eyes::Open, Pose::Stand(self.step_of(0.18))),
-            Mode::Idle => p.frame(eyes, Pose::Stand(0)),
+            Mode::Idle => p.frame(eyes, if p.picture.as_ref().is_some_and(|pic| pic.idle_sits) { Pose::Sit } else { Pose::Stand(0) }),
             Mode::Sitting | Mode::Typing | Mode::Reading => p.frame(eyes, Pose::Sit),
             Mode::Cheering => p.frame(Eyes::Happy, if beat { Pose::Stand(0) } else { Pose::Sit }),
-            Mode::Sleeping => p.frame(Eyes::Closed, Pose::Sit),
+            Mode::Sleeping => match p.picture.as_ref().and_then(|pic| pic.sleep) {
+                Some(i) => Picture::marker_index(i),
+                None => p.frame(Eyes::Closed, Pose::Sit),
+            },
             Mode::Sweeping => p.frame(eyes, Pose::Stand(self.step_of(0.3))),
             Mode::Drinking => p.frame(if is_sipping(t) { Eyes::Happy } else { Eyes::Open }, Pose::Sit),
-            Mode::Eating => p.frame(if self.step_of(0.4) == 0 { Eyes::Happy } else { Eyes::Open }, Pose::Sit),
+            Mode::Eating => match p.picture.as_ref().and_then(|pic| pic.eat) {
+                Some(i) => Picture::marker_index(i),
+                None => p.frame(if self.step_of(0.4) == 0 { Eyes::Happy } else { Eyes::Open }, Pose::Sit),
+            },
             Mode::Trick => p.frame(eyes, Pose::Sit),
         }
     }
@@ -546,6 +552,7 @@ impl PetView {
             Mode::Sweeping => Some(prop(props::broom(self.alt(0.3)), 14.0, 0.0)),
             Mode::Reading => Some(prop(props::book(t % 3.0 < 0.25), 13.0, self.book_lift())),
             Mode::Drinking => Some(prop(props::cup(1.0 - progress), 14.0, if is_sipping(t) { 5.0 } else { 3.0 })),
+            Mode::Eating if self.pet.picture.as_ref().is_some_and(|pic| pic.eat.is_some()) => None, // has its own food
             Mode::Eating => Some(prop(props::bowl(1.0 - progress), 14.0, 0.0)),
             _ => None,
         }
@@ -608,8 +615,9 @@ impl PetView {
             None => draw_sprite(c, &look.frame, &look.palette, self.pet_center_x() + shift, look.scale, look.y_offset, self.facing_left),
         }
         let px0 = c.snap(self.pet_x + shift);
+        let prop_shift = self.pet.picture.as_ref().map_or(0.0, |pic| pic.prop_shift);
         for p in &look.props {
-            draw_grid(c, &p.rows, &colors, px0, p.col, p.lift * PIXEL, PIXEL, self.facing_left);
+            draw_grid(c, &p.rows, &colors, px0, p.col + prop_shift, p.lift * PIXEL, PIXEL, self.facing_left);
         }
         for f in &look.free {
             let (x, y) = (c.snap(f.x), c.snap(f.y));
@@ -711,10 +719,12 @@ fn draw_sprite(c: &mut Canvas, rows: &Frame, palette: &Palette, center_x: f64, s
 /// its bottom row standing on the ground.
 #[allow(clippy::too_many_arguments)]
 fn draw_picture(c: &mut Canvas, pic: &Picture, frame: &Frame, palette: &Palette, center_x: f64, scale: f64, y_offset: f64, mirrored: bool) {
-    let rows = pic.frame_for(frame);
-    let px = (PICTURE_PX * scale * 2.0).round().max(1.0) / 2.0;
-    let w = pic.width;
-    let x = c.snap(center_x - w as f64 / 2.0 * px);
+    let i = pic.index_for(frame);
+    let rows = &pic.frames[i];
+    let px = (pic.px * scale * 2.0).round().max(1.0) / 2.0;
+    let w = rows[0].len();
+    let anchor = if mirrored { w as f64 - pic.anchors[i] } else { pic.anchors[i] };
+    let x = c.snap(center_x - anchor * px);
     let bottom = c.snap(y_offset * PIXEL);
     let n = rows.len();
     for (r, row) in rows.iter().enumerate() {

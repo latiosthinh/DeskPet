@@ -12,7 +12,7 @@
 #
 # A code is 20 characters: a 40-bit serial number plus 60 bits of HMAC-SHA256. An All Pets code
 # signs [1] + serial; a single-pet code signs [2] + serial + the pet's id (mochi, ember, pip, puddle,
-# sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette, cowy). An All Pets code also unlocks
+# sprout, grumbo, wispaling, hexley, mossback, sirclank, lunette, cowy, moona). An All Pets code also unlocks
 # pets added in later versions.
 # DESKPET_SECRET_DIR, if set, is used instead of ~/.config/deskpet (handy for test builds).
 

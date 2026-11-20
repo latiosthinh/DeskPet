@@ -159,7 +159,7 @@ fn with_app<T>(f: impl FnOnce(&mut App) -> T) -> Option<T> {
 /// Uses a whole number of device pixels per art pixel when that fills the square well, so it stays crisp.
 fn pet_pixels(pet: &Pet, size: i32) -> Vec<u32> {
     let all: Vec<Vec<u8>> = match &pet.picture {
-        Some(pic) => pic.frames[0].clone(),
+        Some(pic) => pic.frames[if pic.idle_sits { 2 } else { 0 }].clone(),
         None => pet.rows(Eyes::Open).iter().map(|r| r.to_vec()).collect(),
     };
     let width = all[0].len();
@@ -265,7 +265,7 @@ impl App {
         self.last_dpi = screen.dpi;
         let s = screen.dpi as f64 / 96.0;
         let width = ((wa.right - wa.left) as f64 / s).min(2.0 * self.range + PET_SIZE + 2.0 * PROP_ROOM);
-        let tallest = self.pets.iter().map(|p| p.size().1).fold(PET_SIZE, f64::max);
+        let tallest = self.pets.iter().map(|p| p.tallest()).fold(PET_SIZE, f64::max);
         let height = tallest + 70.0;
         let (w, h) = ((width * s).round() as i32, (height * s).round() as i32);
         let home = self.home_x.unwrap_or(wa.right - (CORNER_MARGIN * s).round() as i32 - w / 2);
