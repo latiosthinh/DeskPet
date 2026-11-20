@@ -73,7 +73,7 @@ fn uptime() -> f64 {
 enum DemoStep {
     Walk,
     Typing(f64),
-    Reading(f64),
+    Pastime(f64),
     Sweep(f64),
     Remind(Reminder),
     Trick(Trick),
@@ -386,7 +386,7 @@ impl App {
                         v.set_mode(Mode::Walking, 0.0);
                     }
                     DemoStep::Typing(s) => v.begin_typing(s),
-                    DemoStep::Reading(s) => v.set_mode(Mode::Reading, s),
+                    DemoStep::Pastime(s) => v.set_mode(Mode::Pastime, s),
                     DemoStep::Sweep(s) => {
                         v.set_mode(Mode::Sweeping, s);
                         v.target_x = v.random_target(v.pet_x, 50.0);
@@ -928,10 +928,11 @@ fn main() {
     app.view.say("hi!", 2.0);
     app.update_tray_icon();
 
-    // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks.
+    // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks;
+    // `--typing` and `--pastime` show just that activity.
     let has = |f: &str| args.iter().any(|a| a == f);
-    let (demo, tricks, typing) = (has("--demo"), has("--tricks"), has("--typing"));
-    if demo || tricks || typing {
+    let (demo, tricks, typing, pastime) = (has("--demo"), has("--tricks"), has("--typing"), has("--pastime"));
+    if demo || tricks || typing || pastime {
         let q = &mut app.demo;
         if demo {
             q.push_back((6.0, DemoStep::Walk));
@@ -940,8 +941,8 @@ fn main() {
             if app.view.pet.sweeps {
                 q.push_back((7.0, DemoStep::Sweep(6.0)));
             }
-            if app.view.pet.reads {
-                q.push_back((7.0, DemoStep::Reading(6.0)));
+            if app.view.pet.pastime.is_some() {
+                q.push_back((7.0, DemoStep::Pastime(6.0)));
             }
             q.push_back((7.0, DemoStep::Remind(Reminder::Water)));
             q.push_back((7.0, DemoStep::Remind(Reminder::Lunch)));
@@ -949,6 +950,8 @@ fn main() {
         }
         if typing {
             q.push_back((9.0, DemoStep::Typing(8.0)));
+        } else if pastime {
+            q.push_back((9.0, DemoStep::Pastime(8.0)));
         } else {
             for &t in app.view.pet.tricks {
                 q.push_back((t.duration() + 0.5, DemoStep::Trick(t)));

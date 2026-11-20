@@ -110,6 +110,28 @@ pub enum Pose {
     Sit,
 }
 
+/// What a pet does now and then to pass the time (sitting down with it for a while).
+#[derive(Clone, Copy, PartialEq)]
+pub enum Pastime {
+    Book,    // reads (Mochi, Puddle)
+    Yoyo,    // plays with a yo-yo
+    Knit,    // knits a scarf
+    Flower,  // sits by a flower while a butterfly flutters round it
+    Juggle,  // juggles three balls
+    Bubbles, // blows bubbles
+}
+
+/// The hero pets' pastimes.
+fn hero_pastime(id: &str) -> Option<Pastime> {
+    Some(match id {
+        "grumbo" | "wispaling" => Pastime::Juggle,
+        "mossback" | "samurai" => Pastime::Flower,
+        "sirclank" | "ninja" => Pastime::Yoyo,
+        "lunette" => Pastime::Knit,
+        _ => Pastime::Bubbles, // Hexley
+    })
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum TypingStyle {
     Laptop,
@@ -151,7 +173,7 @@ pub struct Pet {
     pub wind_key: bool, // Sir Clank's wind-up key, always drawn behind him
     pub floats: bool,   // bobs up and down while walking instead of stepping (Wisp-a-ling)
     pub picture: Option<Picture>, // drawn from a detailed picture instead of `body` (Moona)
-    pub reads: bool,  // sits with a book now and then
+    pub pastime: Option<Pastime>, // what it does now and then to pass the time
     pub trick_gap: (f64, f64), // seconds between the tricks it does on its own
     pub favorite_trick: Option<Trick>, // picked for about half the tricks it does on its own
     pub turn_trick: Option<Trick>, // done each time it turns round to walk the other way
@@ -267,7 +289,7 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
-            reads: true,
+            pastime: Some(Pastime::Book),
             trick_gap: crate::pet::TRICK_GAP,
             favorite_trick: None,
             turn_trick: None,
@@ -303,7 +325,7 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
-            reads: true,
+            pastime: Some(Pastime::Yoyo),
             trick_gap: crate::pet::TRICK_GAP,
             favorite_trick: None,
             turn_trick: None,
@@ -340,7 +362,7 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
-            reads: true,
+            pastime: Some(Pastime::Knit),
             trick_gap: crate::pet::TRICK_GAP,
             favorite_trick: None,
             turn_trick: None,
@@ -377,7 +399,7 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
-            reads: true,
+            pastime: Some(Pastime::Book),
             trick_gap: crate::pet::TRICK_GAP,
             favorite_trick: None,
             turn_trick: None,
@@ -415,7 +437,7 @@ pub fn pets() -> Vec<Pet> {
             wind_key: false,
             floats: false,
             picture: None,
-            reads: true,
+            pastime: Some(Pastime::Flower),
             trick_gap: crate::pet::TRICK_GAP,
             favorite_trick: None,
             turn_trick: None,
@@ -533,7 +555,7 @@ pub fn pets() -> Vec<Pet> {
             ],
             ["....kwk..kwk....", "......kwkkwk...."],
             None,
-            &[Trick::NinjaSmoke, Trick::NinjaShuriken, Trick::NinjaHide],
+            &[Trick::NinjaSmoke, Trick::NinjaShuriken, Trick::NinjaHide, Trick::NinjaClones, Trick::NinjaFlip, Trick::NinjaMeditate],
             TypingStyle::Scroll,
         ),
         Pet {
@@ -551,7 +573,7 @@ pub fn pets() -> Vec<Pet> {
                 ],
                 ["...khk....khk...", ".....khkkhk....."],
                 None,
-                &[Trick::SamuraiDraw, Trick::SamuraiBow, Trick::SamuraiBamboo],
+                &[Trick::SamuraiDraw, Trick::SamuraiBow, Trick::SamuraiBamboo, Trick::SamuraiTea, Trick::SamuraiSpin, Trick::SamuraiFly],
                 TypingStyle::Polish,
             )
         },
@@ -560,7 +582,7 @@ pub fn pets() -> Vec<Pet> {
             palette: Palette::new(&pictures::moona_palette()),
             paw: b'f',
             picture: Some(pictures::moona()),
-            reads: false,
+            pastime: None,
             trick_gap: (30.0, 40.0), // she shows off often
             favorite_trick: Some(Trick::MoonaGlaive), // about half her tricks
             turn_trick: Some(Trick::MoonaGlaive),
@@ -576,7 +598,7 @@ pub fn pets() -> Vec<Pet> {
             palette: Palette::new(&pictures::witcher_palette()),
             paw: b'L',
             picture: Some(pictures::witcher()),
-            reads: false,
+            pastime: None,
             drinks: false,
             click_trick: Some(Trick::WitcherOrb),
             right_click_trick: Some(Trick::WitcherWhirl),
@@ -2487,7 +2509,7 @@ fn hero(
         wind_key: false,
         floats: false,
         picture: None,
-        reads: true,
+        pastime: hero_pastime(id),
         trick_gap: crate::pet::TRICK_GAP,
         favorite_trick: None,
         turn_trick: None,
@@ -2582,7 +2604,9 @@ pub enum Trick {
     ClankWind, ClankSpring, ClankBell,                     // Sir Clank
     LunetteRice, LunetteWish, LunetteNap,                  // Lunette
     NinjaSmoke, NinjaShuriken, NinjaHide,                  // Kage
+    NinjaClones, NinjaFlip, NinjaMeditate,
     SamuraiDraw, SamuraiBow, SamuraiBamboo,                // Ronin
+    SamuraiTea, SamuraiSpin, SamuraiFly,
     MoonaPounce, MoonaGlaive, MoonaTriplicate, MoonaMoonlight, // Moona
     WitcherOrb, WitcherWhirl, WitcherWeigh, WitcherVanish,     // Orbis
     WitcherSunStrike, WitcherTornado, WitcherMeteor, WitcherMoonBlast, WitcherSpirits,
@@ -2618,7 +2642,8 @@ impl Trick {
             Fishing => 11.0,
             GrumboSpin | GrumboHelmet | GrumboChop | WispThread | WispKnot | WispMoth | HexFrog | HexSheep | HexBook
             | MossToss | MossBloom | MossRain | ClankWind | ClankSpring | ClankBell | LunetteRice | LunetteWish
-            | LunetteNap | NinjaSmoke | NinjaShuriken | NinjaHide | SamuraiDraw | SamuraiBow | SamuraiBamboo => 8.0,
+            | LunetteNap | NinjaSmoke | NinjaShuriken | NinjaHide | SamuraiDraw | SamuraiBow | SamuraiBamboo
+            | NinjaClones | NinjaFlip | NinjaMeditate | SamuraiTea | SamuraiSpin | SamuraiFly => 8.0,
             MoonaPounce => 2.6,
             MoonaGlaive => GLAIVE_THROW,
             MoonaTriplicate => 5.0,
@@ -2683,6 +2708,12 @@ impl Trick {
             SamuraiDraw => "Quick Draw",
             SamuraiBow => "Bow",
             SamuraiBamboo => "Cut the Bamboo",
+            NinjaClones => "Clone Trick",
+            NinjaFlip => "Backflips",
+            NinjaMeditate => "Meditate",
+            SamuraiTea => "Tea Ceremony",
+            SamuraiSpin => "Whirlwind Slash",
+            SamuraiFly => "Catch a Fly",
             MoonaPounce => "Pounce",
             MoonaGlaive => "Throw the Glaive",
             MoonaTriplicate => "Triplicate",
@@ -2840,6 +2871,39 @@ pub mod trick_art {
     pub const SAMURAI_BAMBOO_TOP: &[&str] = &[".L.", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL", "LGL"];
     pub const SAMURAI_BAMBOO_BOTTOM: &[&str] = &["LGL", "LGL", "GGG", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL"];
     pub const SAMURAI_PETAL: &[&str] = &["PP", ".P"];
+
+    // Kage's second set: a leaf that circles him while he meditates.
+    pub const NINJA_LEAF: &[&str] = &[".L", "LG"];
+    // Ronin's second set: a tea bowl and its steam, the ring of a whirlwind slash, a fly (wings up and
+    // down) and the chopsticks he catches it with.
+    pub const SAMURAI_TEA: &[&str] = &["kGGGk", ".kkk."];
+    pub const SAMURAI_STEAM_A: &[&str] = &["W.", ".W", "W."];
+    pub const SAMURAI_STEAM_B: &[&str] = &[".W", "W.", ".W"];
+    pub const SAMURAI_RING: &[&str] = &[
+        "......WWWWWWWW......",
+        "...WWW........WWW...",
+        ".WW..............WW.",
+        "W..................W",
+        ".WW..............WW.",
+        "...WWW........WWW...",
+        "......WWWWWWWW......",
+    ];
+    pub const SAMURAI_FLY_A: &[&str] = &["i.i", ".k."];
+    pub const SAMURAI_FLY_B: &[&str] = &["...", "iki"];
+    pub const SAMURAI_CHOPSTICKS: &[&str] = &["...nn", "..nn.", ".nn..", "nn..."];
+
+    // Pastimes (what pets other than Mochi and Puddle do instead of reading): a yo-yo, knitting
+    // needles (two clicks), a butterfly (wings open and shut), juggling balls, a bubble wand and a bubble.
+    pub const PASTIME_YOYO: &[&str] = &[".r.", "rkr", ".r."];
+    pub const PASTIME_NEEDLES_A: &[&str] = &["n...n", ".n.n.", "..n.."];
+    pub const PASTIME_NEEDLES_B: &[&str] = &[".n.n.", ".n.n.", "..n.."];
+    pub const PASTIME_BUTTERFLY_A: &[&str] = &["P.P", ".k.", "P.P"];
+    pub const PASTIME_BUTTERFLY_B: &[&str] = &["...", "PkP", "..."];
+    pub const PASTIME_BALL_R: &[&str] = &["rr", "rr"];
+    pub const PASTIME_BALL_Y: &[&str] = &["yy", "yy"];
+    pub const PASTIME_BALL_C: &[&str] = &["cc", "cc"];
+    pub const PASTIME_WAND: &[&str] = &[".ii.", "i..i", ".ii.", ".n..", "n..."];
+    pub const PASTIME_BUBBLE: &[&str] = &[".c.", "c.c", ".c."];
 }
 
 /// Turns a 16×16 frame a quarter turn clockwise `turns` times.

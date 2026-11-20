@@ -129,7 +129,7 @@ pub enum Mode {
     Cheering,
     Sleeping,
     Sweeping,
-    Reading,
+    Pastime, // reading, knitting, juggling... (Pet::pastime)
     Drinking,
     Eating,
     Trick,
@@ -395,8 +395,8 @@ impl PetView {
         } else if r < 0.57 && self.pet.sweeps {
             self.set_mode(Mode::Sweeping, rand(6.0, 10.0));
             self.target_x = self.random_target(self.pet_x, 50.0);
-        } else if r < 0.70 && self.pet.reads {
-            self.set_mode(Mode::Reading, rand(8.0, 14.0));
+        } else if r < 0.70 && self.pet.pastime.is_some() {
+            self.set_mode(Mode::Pastime, rand(8.0, 14.0));
         } else if r < 0.90 {
             self.set_mode(Mode::Sitting, rand(3.0, 8.0));
         } else {
@@ -505,7 +505,7 @@ impl PetView {
                     self.decide_next();
                 }
             }
-            Mode::Idle | Mode::Sitting | Mode::Cheering | Mode::Reading => {
+            Mode::Idle | Mode::Sitting | Mode::Cheering | Mode::Pastime => {
                 if now >= self.mode_until {
                     self.decide_next();
                 }
@@ -566,7 +566,7 @@ impl PetView {
                 None => p.frame(Eyes::Open, Pose::Stand(self.step_of(0.18))),
             },
             Mode::Idle => p.frame(eyes, if p.picture.as_ref().is_some_and(|pic| pic.idle_sits) { Pose::Sit } else { Pose::Stand(0) }),
-            Mode::Sitting | Mode::Typing | Mode::Reading => p.frame(eyes, Pose::Sit),
+            Mode::Sitting | Mode::Typing | Mode::Pastime => p.frame(eyes, Pose::Sit),
             Mode::Cheering => p.frame(Eyes::Happy, if beat { Pose::Stand(0) } else { Pose::Sit }),
             Mode::Sleeping => match p.picture.as_ref().and_then(|pic| pic.sleep) {
                 Some(i) => Picture::marker_index(i),
@@ -596,7 +596,6 @@ impl PetView {
                 Some(prop(props::laptop_open(self.alt(0.12), self.alt(0.5)), 14.0, 0.0))
             }
             Mode::Sweeping => Some(prop(props::broom(self.alt(0.3)), 14.0, 0.0)),
-            Mode::Reading => Some(prop(props::book(t % 3.0 < 0.25), 13.0, self.book_lift())),
             Mode::Drinking => Some(prop(props::cup(1.0 - progress), 14.0, if is_sipping(t) { 5.0 } else { 3.0 })),
             Mode::Eating if self.pet.picture.as_ref().is_some_and(|pic| pic.eat.is_some()) => None, // has its own food
             Mode::Eating => Some(prop(props::bowl(1.0 - progress), 14.0, 0.0)),
@@ -615,8 +614,11 @@ impl PetView {
             if let Some(p) = self.current_prop() {
                 look.props.push(p);
             }
-            if self.mode == Mode::Reading && self.pet.reads_with_glasses && !self.dragging {
+            if self.mode == Mode::Pastime && self.pet.reads_with_glasses && !self.dragging {
                 look.free.push(self.glasses_sprite());
+            }
+            if self.mode == Mode::Pastime && !self.dragging {
+                self.pastime_look(&mut look);
             }
             if self.mode == Mode::Walking && self.pet.floats {
                 look.y_offset = (1.0 + (self.clock * 3.0).sin()).round();

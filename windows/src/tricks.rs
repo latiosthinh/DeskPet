@@ -363,6 +363,45 @@ impl PetView {
                 }
             }
 
+            Trick::NinjaClones => {
+                if t > CLONE_IN + 0.6 && self.once(1) {
+                    self.say("which one is me?", 1.8);
+                }
+            }
+            Trick::NinjaFlip => {
+                if t > FLIPS[0] && self.once(1) {
+                    self.say("hup!", 0.8);
+                }
+                if t > FLIPS[1] && self.once(2) {
+                    self.say("hup!", 0.8);
+                }
+            }
+            Trick::NinjaMeditate => {
+                if t > 1.5 && self.once(1) {
+                    self.say("ommm…", 2.0);
+                }
+            }
+            Trick::SamuraiTea => {
+                if t > TEA_SIP.1 && self.once(1) {
+                    self.say("ahh.", 1.4);
+                }
+            }
+            Trick::SamuraiSpin => {
+                if t > SPIN.0 && self.once(1) {
+                    self.say("hyaa!", 1.0);
+                }
+                if (SPIN.0..SPIN.1).contains(&t) && self.every(2, 0.12) {
+                    self.facing_left = !self.facing_left;
+                }
+            }
+            Trick::SamuraiFly => {
+                if t > FLY_CATCH && self.once(1) {
+                    self.say("got it.", 1.4);
+                }
+                if t > FLY_FREE && self.once(2) {
+                    self.say("off you go.", 1.4);
+                }
+            }
             Trick::WispThread => {
                 let target = self.thread_target(t);
                 if (target.x - self.pet_center_x()).abs() > 6.0 {
@@ -1298,6 +1337,122 @@ impl PetView {
                     look.props = vec![prop(rows(SAMURAI_KATANA), 12.0, 5.0)];
                 }
             }
+            Trick::NinjaClones => {
+                // Two copies of him pop up either side; all three hop in turn, then the copies vanish.
+                let turn = (CLONE_IN + 1.0..CLONE_OUT - 0.3).contains(&t).then(|| ((t / 0.25) as usize) % 3);
+                let f = p.frame(if turn.is_some() { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                look.frame = f;
+                if (CLONE_IN..CLONE_OUT).contains(&t) {
+                    for (k, dx) in [(0, -15.0), (2, 15.0)] {
+                        look.back.push(self.frame_copy(&f, dx, if turn == Some(k) { 3.0 } else { 0.0 }));
+                    }
+                    if turn == Some(1) {
+                        look.y_offset = 3.0;
+                    }
+                }
+                for at in [CLONE_IN - 0.1, CLONE_OUT - 0.1] {
+                    if (at..at + 0.5).contains(&t) {
+                        let rise = ((t - at) * 6.0).round();
+                        look.free.push(self.placed(HERO_PUFF, -11.0, 3.0 + rise));
+                        look.free.push(self.placed(HERO_PUFF, 19.0, 3.0 + rise));
+                    }
+                }
+            }
+            Trick::NinjaFlip => {
+                // Crouches and does a backflip, lands in a puff of dust, and does another.
+                look.frame = p.frame(if t > FLIPS[1] + FLIP_TIME { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                for &at in &FLIPS {
+                    if (at - 0.3..at).contains(&t) {
+                        look.y_offset = -1.0;
+                    } else if (at..at + FLIP_TIME).contains(&t) {
+                        let q = (t - at) / FLIP_TIME;
+                        look.y_offset = (12.0 * (PI * q).sin()).round();
+                        look.frame = rotated(look.frame, (4 - (q * 4.0) as usize) % 4);
+                    } else if (at + FLIP_TIME..at + FLIP_TIME + 0.35).contains(&t) {
+                        look.free.push(self.placed(HERO_PUFF, -5.0, 0.0));
+                        look.free.push(self.placed(HERO_PUFF, 13.0, 0.0));
+                    }
+                }
+            }
+            Trick::NinjaMeditate => {
+                // Sits with his eyes shut, floats up, and leaves circle round him.
+                look.frame = p.frame(if t > 6.5 { Eyes::Happy } else { Eyes::Closed }, Pose::Sit);
+                let rise = if t < 1.0 {
+                    0.0
+                } else if t < 6.0 {
+                    (7.0 * (t - 1.0).min(1.0) + (t * 2.0).sin()).round()
+                } else {
+                    (14.0 * (6.5 - t).max(0.0)).round()
+                };
+                look.y_offset = rise;
+                if (1.2..6.2).contains(&t) {
+                    for k in 0..4 {
+                        let a = t * 1.8 + k as f64 * PI / 2.0;
+                        let leaf = self.placed(NINJA_LEAF, (6.0 + 11.0 * a.cos()).round(), (rise + 5.0 + 3.0 * a.sin()).round());
+                        if a.sin() > 0.0 {
+                            look.back.push(leaf);
+                        } else {
+                            look.free.push(leaf);
+                        }
+                    }
+                }
+            }
+            Trick::SamuraiTea => {
+                // Kneels with a bowl of tea, steam curling up; sips it slowly with his eyes shut.
+                let sipping = (TEA_SIP.0..TEA_SIP.1).contains(&t);
+                look.frame = p.frame(if sipping { Eyes::Closed } else if t > TEA_SIP.1 { Eyes::Happy } else { eyes }, Pose::Sit);
+                if (0.4..6.5).contains(&t) {
+                    let (col, lift) = if sipping { (11.0, 6.0) } else { (12.0, 2.0) };
+                    look.props = vec![prop(rows(SAMURAI_TEA), col, lift)];
+                    if !sipping {
+                        for k in 0..2 {
+                            let q = (t * 0.8 + k as f64 * 0.5) % 1.0;
+                            let wisp = if (q * 4.0) as usize % 2 == 0 { SAMURAI_STEAM_A } else { SAMURAI_STEAM_B };
+                            look.free.push(self.placed(wisp, 13.0 + k as f64 * 2.0, (4.0 + q * 5.0).round()));
+                        }
+                    }
+                }
+            }
+            Trick::SamuraiSpin => {
+                // Spins on the spot with his katana out while a ring of steel flashes round him.
+                let spinning = (SPIN.0..SPIN.1).contains(&t);
+                look.frame = p.frame(if t > SPIN.1 + 0.5 { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                if (SPIN.0 - 0.4..SPIN.1 + 1.0).contains(&t) {
+                    look.props = vec![prop(rows(SAMURAI_KATANA), 12.0, 5.0)];
+                }
+                if spinning {
+                    look.y_offset = if self.alt(0.12) { 1.0 } else { 0.0 };
+                    let ring = self.placed(SAMURAI_RING, -2.0, 3.0);
+                    if self.alt(0.06) {
+                        look.free.push(ring);
+                    } else {
+                        look.back.push(ring);
+                    }
+                }
+            }
+            Trick::SamuraiFly => {
+                // A fly buzzes round his head; he waits with his eyes shut, snaps it out of the air
+                // with chopsticks, then lets it go.
+                let calm = (1.2..FLY_CATCH).contains(&t);
+                look.frame = p.frame(if calm { Eyes::Closed } else if t > FLY_FREE { Eyes::Happy } else { eyes }, Pose::Stand(0));
+                let fly = if self.alt(0.04) { SAMURAI_FLY_A } else { SAMURAI_FLY_B };
+                if t < FLY_CATCH {
+                    let (dx, up) = (9.0 + 7.0 * (t * 3.1).sin(), 15.0 + 3.0 * (t * 5.3).sin());
+                    look.free.push(self.placed(fly, dx.round(), up.round()));
+                } else if t < FLY_FREE {
+                    look.free.push(self.placed(SAMURAI_CHOPSTICKS, 14.0, 6.0));
+                    look.free.push(self.placed(fly, 18.0, 10.0));
+                    if t < FLY_CATCH + 0.15 {
+                        look.x_offset = 1.0;
+                    }
+                } else {
+                    let q = t - FLY_FREE;
+                    look.free.push(self.placed(fly, (18.0 + 6.0 * q).round(), (10.0 + 8.0 * q + (q * 9.0).sin()).round()));
+                    if q < 0.8 {
+                        look.free.push(self.placed(SAMURAI_CHOPSTICKS, 14.0, 6.0));
+                    }
+                }
+            }
             Trick::MoonaPounce => {
                 // Gathers, springs forward in an arc, lands with a puff of dust.
                 if (POUNCE_UP..POUNCE_LAND).contains(&t) {
@@ -1780,6 +1935,58 @@ impl PetView {
         FreeSprite { own_colors: true, ..free(grid, left, self.height - rows_n as f64 * px, px) }
     }
 
+    /// A copy of the pet's own 16×16 frame, placed like a prop and drawn in its colours (Kage's clones).
+    fn frame_copy(&self, frame: &crate::art::Frame, dx: f64, up: f64) -> FreeSprite {
+        let lines: Vec<String> = frame.iter().map(|r| r.iter().map(|&b| b as char).collect()).collect();
+        let refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
+        FreeSprite { own_colors: true, ..self.placed(&refs, dx, up) }
+    }
+
+    /// What a pet does now and then to pass the time, sitting down. Mochi and Puddle read; the others
+    /// have pastimes of their own.
+    pub fn pastime_look(&self, look: &mut Look) {
+        use crate::art::Pastime;
+        use trick_art::*;
+        let t = self.now - self.mode_start;
+        let progress = (t / (self.mode_until - self.mode_start).max(1.0)).min(1.0);
+        match self.pet.pastime {
+            None => {}
+            Some(Pastime::Book) => look.props.push(prop(props::book(t % 3.0 < 0.25), 13.0, self.book_lift())),
+            Some(Pastime::Yoyo) => {
+                let depth = (5.0 * (PI * ((t * 1.1) % 1.0)).sin()).round();
+                let string = vec!["i"; depth as usize + 1];
+                look.free.push(self.placed(&string, 15.0, 8.0 - depth));
+                look.free.push(self.placed(PASTIME_YOYO, 14.0, 5.0 - depth));
+            }
+            Some(Pastime::Knit) => {
+                // The scarf grows longer the longer it knits.
+                let len = 1 + (progress * 4.0) as usize;
+                let scarf: Vec<&str> = (0..len).map(|i| if i % 2 == 0 { "rrr" } else { "yyy" }).collect();
+                look.free.push(self.placed(&scarf, 13.0, 5.0 - len as f64));
+                look.free.push(self.placed(if self.alt(0.25) { PASTIME_NEEDLES_A } else { PASTIME_NEEDLES_B }, 12.0, 5.0));
+            }
+            Some(Pastime::Flower) => {
+                look.free.push(self.placed(HERO_FLOWER, 15.0, 0.0));
+                let wings = if self.alt(0.15) { PASTIME_BUTTERFLY_A } else { PASTIME_BUTTERFLY_B };
+                look.free.push(self.placed(wings, (17.0 + 3.0 * (t * 1.3).cos()).round(), (8.0 + 2.0 * (t * 2.1).sin()).round()));
+            }
+            Some(Pastime::Juggle) => {
+                for (k, ball) in [PASTIME_BALL_R, PASTIME_BALL_Y, PASTIME_BALL_C].into_iter().enumerate() {
+                    let a = (t * 1.4 + k as f64 / 3.0) * 2.0 * PI;
+                    look.free.push(self.placed(ball, (15.0 + 4.0 * a.cos()).round(), (10.0 + 5.0 * a.sin()).round()));
+                }
+            }
+            Some(Pastime::Bubbles) => {
+                look.props.push(prop(rows(PASTIME_WAND), 13.0, 4.0));
+                for k in 0..4 {
+                    let q = (t * 0.45 + k as f64 * 0.25) % 1.0;
+                    let dx = 17.0 + 7.0 * q + (q * 9.0 + k as f64).sin();
+                    look.free.push(self.placed(PASTIME_BUBBLE, dx.round(), (9.0 + 14.0 * q).round()));
+                }
+            }
+        }
+    }
+
     /// Where Moona's two copies stand when she triplicates: either side of her, inside the pen.
     fn copy_centers(&self) -> [f64; 2] {
         let c = self.pet_center_x();
@@ -1850,6 +2057,17 @@ const SHURIKEN_THROWS: [f64; 3] = [1.0, 2.0, 3.0];
 const HIDE_POP: f64 = 6.0;
 const DRAW_CUT: f64 = 2.6;
 const BAMBOO_CUT: f64 = 2.0;
+
+/// Kage's second set: when the copies appear and go; when each backflip leaves the ground and how
+/// long it takes. Ronin's: when he sips the tea, spins, catches the fly and lets it go.
+const CLONE_IN: f64 = 1.0;
+const CLONE_OUT: f64 = 5.5;
+const FLIPS: [f64; 2] = [1.0, 3.2];
+const FLIP_TIME: f64 = 0.9;
+const TEA_SIP: (f64, f64) = (3.0, 4.6);
+const SPIN: (f64, f64) = (1.2, 3.4);
+const FLY_CATCH: f64 = 3.6;
+const FLY_FREE: f64 = 6.2;
 
 /// A bow: the head and shoulders (top nine rows) tip `cols` forward and one row down.
 fn lean(mut f: crate::art::Frame, cols: usize) -> crate::art::Frame {
