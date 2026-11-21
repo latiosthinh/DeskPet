@@ -1,0 +1,13 @@
+[package]
+name = "pet-wispaling"
+version = "1.0.0"
+edition = "2021"
+description = "Wisp-a-ling the spirit, a DeskPet pet"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+petkit = { path = "../../sdk/petkit" }

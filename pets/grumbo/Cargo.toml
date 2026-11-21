@@ -1,0 +1,13 @@
+[package]
+name = "pet-grumbo"
+version = "1.0.0"
+edition = "2021"
+description = "Grumbo the warrior, a DeskPet pet"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+petkit = { path = "../../sdk/petkit" }

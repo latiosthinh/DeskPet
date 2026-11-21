@@ -1,0 +1,12 @@
+# Cloudflare Pages project for the DeskPet pet website.
+# Run wrangler from this folder (site/).
+name = "deskpet"
+compatibility_date = "2026-06-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "deskpet"
+# Replace with the id printed by `npx wrangler d1 create deskpet`.
+# Local dev (`wrangler pages dev`) works with this placeholder.
+database_id = "00000000-0000-0000-0000-000000000000"

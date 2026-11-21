@@ -1,0 +1,8 @@
+petshot: the pet maker's tool. It runs pets the same way DeskPet does, off screen.
+
+  petshot check <pet.deskpet | folder>...    try every trick, activity and reminder; report problems
+  petshot gifs <pet.deskpet> <folder>        write hero.gif and <trick-id>.gif
+  petshot site <pets folder> <site folder>   for the website: check every pet, make its GIFs,
+                                             copy its module and rewrite pets.json
+
+Build pets first with windows\build-pets.ps1 (they go to build\pets).

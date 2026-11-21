@@ -1,0 +1,8 @@
+.wrangler/
+node_modules/
+.dev.vars
+
+# Made before each deploy by `petshot site` (GIFs, modules) and `node build.mjs` (pages, CSS,
+# placeholders); see README. Only the owner's donation QR code is kept here.
+public/*
+!public/donate-qr.png

@@ -1,0 +1,59 @@
+# Builds both apps on every push that changes them, to catch problems early (the Mac app can't be
+# built on Windows, and the other way round). Both run the same pet modules through the shared host.
+
+name: Build check
+
+on:
+  push:
+    paths: ["mac/**", "windows/**", "host/**", "sdk/**", "pets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/check.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build
+        run: mac/build.sh
+      - name: Run the shared host's tests
+        run: cargo test --release -p deskpet-host -p deskpet-mac
+      - name: The app starts, runs a pet and keeps running
+        run: |
+          build/DeskPet.app/Contents/MacOS/DeskPet --pet ninja --tricks > app.log 2>&1 &
+          pid=$!
+          sleep 15
+          screencapture -x screen.png || true
+          kill -0 $pid   # fails the step if the app quit or crashed
+          kill $pid
+          cat app.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-check
+          path: |
+            screen.png
+            app.log
+          if-no-files-found: ignore
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\build.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and check every pet, run the tests
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\check-pet.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --release -p petkit -p deskpet-host -p deskpet-mac -p deskpet
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: A new pet from the template passes the checks
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\new-pet.ps1 ci-template "Template Check" -Author CI
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
