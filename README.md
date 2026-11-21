@@ -106,6 +106,8 @@ powershell -ExecutionPolicy Bypass -File windows\build-pets.ps1              # e
 build\DeskPet.exe --pets build\pets --pet witcher --tricks                    # try one without installing it
 ```
 
+To make a pet of your own, see [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md): `windows\new-pet.ps1` starts one from a template, `windows\try-pet.ps1` shows it on the taskbar and `windows\check-pet.ps1` checks it and makes its GIFs.
+
 `DESKPET_SITE` points the app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `site/` locally.
 
 ## Making unlock codes (developer, Mac app only)
@@ -131,9 +133,10 @@ Pet ids: `pip`, `puddle`, `sprout`, `grumbo`, `wispaling`, `hexley`, `mossback`,
 | Folder | What's in it |
 | --- | --- |
 | `mac/` | The Mac app (`main.swift`) and `build.sh` |
-| `windows/` | The Windows app (Rust) and `build.ps1` |
+| `windows/` | The Windows app (Rust), `build.ps1`, and the pet scripts (`new-pet.ps1`, `try-pet.ps1`, `check-pet.ps1`, `build-pets.ps1`). `src/bin/petshot` is the pet checker and GIF maker |
 | `sdk/petkit/` | The pet API every pet is written against, and the shared behaviour (walking, sleeping, reminders, picking tricks) |
-| `pets/` | One Rust crate per pet: its art, one file per trick, and what it does while you type |
+| `pets/` | One Rust crate per pet: its art, one file per trick, and what it does while you type. `pets/_template` is the starting point for a new pet ([CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md)) |
+| `site/` | The pet website: gallery, pet pages, downloads and counters |
 | `Scripts/` | Code makers for the Mac app (`make-codes.swift`, `make-codes.ps1`) |
 | `prototypes/` | HTML mock-ups of the pets and their tricks |
 | `.github/workflows/` | The release build |

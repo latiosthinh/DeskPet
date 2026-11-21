@@ -1,0 +1,14 @@
+[package]
+name = "pet-__ID__"
+# Bump this when you change the pet: the app updates installed copies when the website has a newer one.
+version = "1.0.0"
+edition = "2021"
+description = "__NAME__, a DeskPet pet"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+petkit = { path = "../../sdk/petkit" }

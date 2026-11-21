@@ -30,12 +30,17 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File windows\build.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Build every pet, run the tests
+      - name: Build and check every pet, run the tests
         shell: pwsh
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File windows\build-pets.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\check-pet.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --release -p petkit -p deskpet
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: A new pet from the template passes the checks
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\new-pet.ps1 ci-template "Template Check" -Author CI
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Make codes
         shell: pwsh

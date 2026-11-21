@@ -15,7 +15,9 @@ if (-not $Pets) {
     $Pets = Get-ChildItem (Join-Path $root 'pets') -Directory | Where-Object { $_.Name -notlike '_*' } | ForEach-Object Name
 }
 if (-not ((rustup target list --installed) -contains $target)) {
+    $ErrorActionPreference = 'Continue'
     rustup target add $target
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { throw "couldn't add the $target Rust target" }
 }
 
@@ -24,7 +26,10 @@ New-Item -ItemType Directory -Force $out | Out-Null
 Push-Location $root
 try {
     $cargoArgs = @('build', '--release', '--target', $target) + ($Pets | ForEach-Object { '-p', "pet-$_" })
+    # cargo reports progress on stderr; only its exit code says whether it failed.
+    $ErrorActionPreference = 'Continue'
     cargo @cargoArgs
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { throw 'cargo build failed' }
 } finally {
     Pop-Location

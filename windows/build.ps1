@@ -22,7 +22,10 @@ Get-Process DeskPet -ErrorAction SilentlyContinue | Stop-Process -Force
 # cargo reads .cargo\config.toml (static C runtime) at the workspace root, so it runs from there.
 Push-Location $root
 try {
+    # cargo reports progress on stderr; only its exit code says whether it failed.
+    $ErrorActionPreference = 'Continue'
     cargo build --release -p deskpet
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { throw 'cargo build failed' }
 } finally {
     Pop-Location
