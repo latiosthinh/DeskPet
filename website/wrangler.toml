@@ -1,5 +1,5 @@
 # Cloudflare Pages project for the DeskPet pet website.
-# Run wrangler from this folder (site/).
+# Run wrangler from this folder (website/).
 name = "deskpet"
 compatibility_date = "2026-06-01"
 pages_build_output_dir = "public"

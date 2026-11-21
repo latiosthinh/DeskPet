@@ -5,7 +5,7 @@ downloads of `<id>.deskpet` modules, a donation QR code, and per-pet counters.
 Static HTML generated from `pets.json`, hosted on Cloudflare Pages, counters in D1.
 
 ```
-site/
+website/
   pets.json            source of truth, regenerated from the pets by `petshot site`
   build.mjs            node build.mjs  ->  public/*.html (no dependencies)
   schema.sql           D1 table: counts(pet_id, kind, day, n)
@@ -49,19 +49,19 @@ The functions bundle `pets.json` at deploy time, so redeploy after changing it (
 From the repository root:
 
 ```powershell
-node site/build.mjs
+node website/build.mjs
 ```
 
-Then, from `site/` (wrangler reads `wrangler.toml` and `functions/` from the current folder):
+Then, from `website/` (wrangler reads `wrangler.toml` and `functions/` from the current folder):
 
 ```powershell
-cd site
+cd website
 Copy-Item .dev.vars.example .dev.vars
 npx wrangler d1 execute deskpet --local --file=schema.sql
 npx wrangler pages dev
 ```
 
-Open http://localhost:8788. Local D1 data lives in `site/.wrangler/` (git-ignored).
+Open http://localhost:8788. Local D1 data lives in `website/.wrangler/` (git-ignored).
 
 - Stats: http://localhost:8788/stats?token=local-dev-token
 - To try a download, put any file at `public/files/ember.deskpet`, then open
@@ -69,7 +69,7 @@ Open http://localhost:8788. Local D1 data lives in `site/.wrangler/` (git-ignore
 
 ## Deploying (owner)
 
-One-time setup, from `site/`:
+One-time setup, from `website/`:
 
 ```powershell
 npx wrangler login
@@ -93,9 +93,9 @@ Before each deploy, from the repository root:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File windows\check-pet.ps1     # builds and checks every pet
-target\release\petshot.exe site build\pets site                     # GIFs, modules and pets.json
-node site/build.mjs
-cd site; npx wrangler pages deploy
+target\release\petshot.exe site build\pets website                  # GIFs, modules and pets.json
+node website/build.mjs
+cd website; npx wrangler pages deploy
 ```
 
 `petshot site` writes each pet's GIFs into `public/pets/<id>/` and each add-on pet's module into `public/files/`,

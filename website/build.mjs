@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Builds the DeskPet website from pets.json into public/. No dependencies.
 //
-//   node site/build.mjs
+//   node website/build.mjs
 //
 // Writes:   public/index.html, public/pets/<id>/index.html, public/contribute/index.html,
 //           public/404.html, public/site.css
@@ -63,6 +63,29 @@ function fileSize(p) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** <img> for a pet GIF with its real build-time dimensions (16×16 placeholder when missing). */
+function petImage(p, trick = 'hero', lazy = true) {
+  const rel = `pets/${p.id}/${trick}.gif`;
+  const file = join(OUT, rel);
+  let width = 16, height = 16;
+
+  if (existsSync(file)) {
+    const b = readFileSync(file);
+    if (b.length < 10 || !/^GIF8[79]a$/.test(b.toString('ascii', 0, 6))) {
+      throw new Error(`Invalid GIF: ${rel}`);
+    }
+    width = b.readUInt16LE(6);
+    height = b.readUInt16LE(8);
+    if (!width || !height) throw new Error(`Invalid GIF dimensions: ${rel}`);
+  }
+
+  const title = trick === 'hero'
+    ? p.name
+    : `${p.name}: ${p.tricks.find((t) => t.id === trick).title}`;
+
+  return `<img src="/${rel}" alt="${esc(title)}" width="${width}" height="${height}"${lazy ? ' loading="lazy"' : ''}>`;
+}
+
 const builtinNames = pets.filter((p) => p.builtin).map((p) => p.name.split(' the ')[0]);
 const listText = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
 
@@ -111,7 +134,7 @@ ${scripts}
 function petCard(p) {
   const n = p.tricks.length;
   return `<li><a class="card" href="/pets/${p.id}/">
-    <span class="frame"><img src="/pets/${p.id}/hero.gif" alt="${esc(p.name)}" loading="lazy"></span>
+    <span class="frame">${petImage(p)}</span>
     <span class="card-name">${esc(p.name)}</span>
     <span class="card-meta">${n} trick${n === 1 ? '' : 's'}${p.builtin ? ' <span class="badge">Included</span>' : ''}</span>
   </a></li>`;
@@ -192,7 +215,7 @@ function petPage(p) {
   <h2 id="tricks">Tricks</h2>
   <ul class="grid tricks">${p.tricks
     .map(
-      (t) => `<li class="card trick"><span class="frame"><img src="/pets/${p.id}/${t.id}.gif" alt="${esc(p.name)}: ${esc(t.title)}" loading="lazy"></span>
+      (t) => `<li class="card trick"><span class="frame">${petImage(p, t.id)}</span>
       <span class="card-name">${esc(t.title)}</span></li>`,
     )
     .join('')}</ul>
@@ -201,7 +224,7 @@ function petPage(p) {
 
   const body = `<p class="crumbs"><a href="/">← All pets</a> · ${cat.title}</p>
 <section class="pet">
-  <div class="frame frame-big"><img src="/pets/${p.id}/hero.gif" alt="${esc(p.name)}"></div>
+  <div class="frame frame-big">${petImage(p, 'hero', false)}</div>
   <div class="pet-text">
     <h1>${esc(p.name)}</h1>
     <p class="lead">${esc(p.description)}</p>
@@ -328,21 +351,58 @@ nav a[aria-current="page"], nav a:not(.btn):hover { text-decoration: underline; 
 .group-head h2 { margin: 0; }
 .group-head p { margin: 0; color: var(--muted); }
 
-.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
-.card { display: flex; flex-direction: column; gap: 6px; height: 100%; background: var(--paper); border: 3px solid var(--line); box-shadow: var(--shadow);
-  padding: 10px; text-decoration: none; transition: transform .08s, box-shadow .08s; }
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.grid > li { min-width: 0; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  background: var(--paper);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 0 0 10px;
+  text-decoration: none;
+  transition: transform .08s, box-shadow .08s;
+}
 a.card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--line); }
+.card > .card-name,
+.card > .card-meta {
+  margin-inline: 10px;
+  overflow-wrap: anywhere;
+}
 .card-name { font-size: 19px; line-height: 1.2; }
 .card-meta { font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 /* Picture frames stay light in dark mode too: the GIFs are drawn on this colour (petshot BACKGROUND). */
-.frame { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; background: var(--frame); overflow: hidden; }
-.frame img { width: 100%; height: 100%; object-fit: contain; }
+.frame {
+  display: block;
+  min-width: 0;
+  background: var(--frame);
+}
+.frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
 
 .crumbs { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
 .pet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 32px; align-items: center; padding: 16px 0 32px; }
 .frame-big { border: 3px solid var(--line); box-shadow: var(--shadow); }
 .included { font-weight: 600; display: flex; gap: 10px; align-items: center; }
-.tricks { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 36px; }
+.tricks {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 36px;
+}
 .trick .card-name { font-size: 17px; }
 
 .panel { background: var(--paper); border: 3px solid var(--line); box-shadow: var(--shadow); padding: 20px; margin: 0 0 28px; }

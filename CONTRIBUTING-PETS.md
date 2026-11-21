@@ -45,8 +45,8 @@ The same `.deskpet` file runs in the Mac and the Windows app, so you only build 
 `__ID__`, `__NAME__` and `__AUTHOR__` in its `Cargo.toml` and `src/lib.rs`), then try it in the app:
 
 ```bash
-mac/build.sh                     # once, to build the app
-mac/build-pets.sh bean
+macos/build.sh                     # once, to build the app
+macos/build-pets.sh bean
 build/DeskPet.app/Contents/MacOS/DeskPet --pets build/pets --pet bean --tricks
 ```
 
@@ -226,7 +226,7 @@ Random numbers: `rand(lo, hi)`, `rand01()` and `rand_index(n)`. There's no clock
 
 ### Props and sprites
 
-Props are drawn in the shared prop colours (`prop_palette()` in `sdk/petkit/src/art.rs`):
+Props are drawn in the shared prop colours (`prop_palette()` in `shared/petkit/src/art.rs`):
 
 | Character | Colour |
 |---|---|
@@ -292,7 +292,7 @@ If a pet breaks on someone's taskbar, the app swaps in Mochi and says so. Nothin
 2. Open a pull request that adds `pets/bean` (and the `Cargo.lock` change). CI builds every pet and runs the
    checks.
 3. A maintainer publishes it. They regenerate the website's pet list, GIFs and download files with
-   `petshot site build\pets site` and deploy the site (see `site/README.md`).
+   `petshot site build\pets website` and deploy the site (see `website/README.md`).
 
 Pets in this repository are released under the MIT licence: the `license` field in your pet's `Cargo.toml`.
 By sending a pet you agree to that, and confirm the art is your own or that you may use it.
