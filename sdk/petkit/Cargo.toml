@@ -1,0 +1,9 @@
+[package]
+name = "petkit"
+version = "1.0.0"
+edition = "2021"
+description = "Everything you need to make a DeskPet pet"
+license = "MIT"
+publish = false
+
+[dependencies]

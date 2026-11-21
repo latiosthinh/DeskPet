@@ -3,7 +3,7 @@
 //! pixels here; rectangle edges are rounded to whole pixels so art pixels never leave seams.
 //! Shapes are antialiased in software. Text is rendered once by GDI into a coverage mask and cached.
 
-use crate::art::Color;
+use petkit::art::Color;
 use crate::sys;
 use std::collections::HashMap;
 

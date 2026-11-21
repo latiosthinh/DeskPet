@@ -6,7 +6,7 @@ name: Build check
 
 on:
   push:
-    paths: ["mac/**", "windows/**", "Scripts/**", ".github/workflows/check.yml"]
+    paths: ["mac/**", "windows/**", "sdk/**", "pets/**", "Cargo.toml", "Cargo.lock", "Scripts/**", ".github/workflows/check.yml"]
   workflow_dispatch:
 
 jobs:

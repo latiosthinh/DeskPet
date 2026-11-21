@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["sdk/petkit", "pets/*", "windows"]
+exclude = ["pets/_template"]
+
+[profile.release]
+opt-level = "z"     # smallest code
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

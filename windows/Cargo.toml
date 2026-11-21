@@ -10,8 +10,22 @@ name = "DeskPet"
 path = "src/main.rs"
 
 [dependencies]
-hmac = "0.12"
-sha2 = { version = "0.10", default-features = false }
+petkit = { path = "../sdk/petkit" }
+pet-witcher = { path = "../pets/witcher" }
+pet-moona = { path = "../pets/moona" }
+pet-samurai = { path = "../pets/samurai" }
+pet-ninja = { path = "../pets/ninja" }
+pet-lunette = { path = "../pets/lunette" }
+pet-sirclank = { path = "../pets/sirclank" }
+pet-mossback = { path = "../pets/mossback" }
+pet-hexley = { path = "../pets/hexley" }
+pet-wispaling = { path = "../pets/wispaling" }
+pet-grumbo = { path = "../pets/grumbo" }
+pet-sprout = { path = "../pets/sprout" }
+pet-puddle = { path = "../pets/puddle" }
+pet-pip = { path = "../pets/pip" }
+pet-ember = { path = "../pets/ember" }
+pet-mochi = { path = "../pets/mochi" }
 
 [dependencies.windows-sys]
 version = "0.59"
@@ -32,9 +46,3 @@ features = [
 [build-dependencies]
 embed-resource = "3"
 
-[profile.release]
-opt-level = "z"     # smallest code
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true

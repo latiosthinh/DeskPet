@@ -74,7 +74,8 @@ The Windows version (in `windows/`) has the same pets, tricks, typing activities
 - **Open at Login** adds DeskPet to your startup apps. If you turn it off in **Task Manager → Startup apps**, the menu shows a dot instead of a tick; choosing it turns it back on.
 - The pet hides while a fullscreen app, game or presentation is in front.
 - Speech bubbles show little pixel pictures instead of emoji.
-- Settings are kept in the registry under `HKCU\Software\DeskPet`. Your code is remembered on this PC.
+- Every pet is free on Windows; there are no codes.
+- Settings are kept in the registry under `HKCU\Software\DeskPet`.
 
 ### Install
 
@@ -93,20 +94,15 @@ powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Zip               # 
 powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run -RunArgs --demo
 ```
 
-`--demo`, `--tricks` and `--typing` work the same as on the Mac. `windows\make-icon.ps1` redraws `DeskPet.ico` from Mochi's art.
+`--demo`, `--tricks`, `--typing` and `--pastime` work the same as on the Mac, and `--pet <id>` starts with that pet. `windows\make-icon.ps1` redraws `DeskPet.ico` from Mochi's art.
 
-To make codes on Windows, use `Scripts\make-codes.ps1` (same codes, same secret file):
+The app and the pets are one Cargo workspace at the top of the repo: `sdk/petkit` is the pet API and the behaviour every pet shares, and each pet is its own crate in `pets/<id>`, with one file per trick.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10                # All Pets codes
-powershell -ExecutionPolicy Bypass -File Scripts\make-codes.ps1 10 -Pet lunette   # codes for Lunette only
-```
+## Making unlock codes (developer, Mac app only)
 
-**Copy your secret first.** The Windows build reads the same `~/.config/deskpet/code-secret` as the Mac build (`C:\Users\<you>\.config\deskpet\code-secret` on Windows). Copy that file over from your Mac before the first Windows build, or the build makes a new secret and your existing codes won't work in it.
+Only the Mac app uses codes; the Windows app has none.
 
-## Making unlock codes (developer)
-
-A code is 20 characters: a random serial number plus a check value made with a secret key. The check value also says what the code unlocks: all pets, or one pet by its id. The secret is never in the repo; `mac/build.sh` and `windows\build.ps1` build it into the app.
+A code is 20 characters: a random serial number plus a check value made with a secret key. The check value also says what the code unlocks: all pets, or one pet by its id. The secret is never in the repo; `mac/build.sh` builds it into the app.
 
 ```bash
 swift Scripts/make-codes.swift 10                 # 10 All Pets codes
@@ -126,7 +122,9 @@ Pet ids: `pip`, `puddle`, `sprout`, `grumbo`, `wispaling`, `hexley`, `mossback`,
 | --- | --- |
 | `mac/` | The Mac app (`main.swift`) and `build.sh` |
 | `windows/` | The Windows app (Rust) and `build.ps1` |
-| `Scripts/` | Code makers for both platforms (`make-codes.swift`, `make-codes.ps1`) |
+| `sdk/petkit/` | The pet API every pet is written against, and the shared behaviour (walking, sleeping, reminders, picking tricks) |
+| `pets/` | One Rust crate per pet: its art, one file per trick, and what it does while you type |
+| `Scripts/` | Code makers for the Mac app (`make-codes.swift`, `make-codes.ps1`) |
 | `prototypes/` | HTML mock-ups of the pets and their tricks |
 | `.github/workflows/` | The release build |
 

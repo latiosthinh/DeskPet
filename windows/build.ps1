@@ -15,22 +15,18 @@ $version = if ($env:DESKPET_VERSION) { $env:DESKPET_VERSION } else { '1.2.0' }  
 $build = Join-Path $root 'build'
 New-Item -ItemType Directory -Force $build | Out-Null
 
-# The unlock-code secret lives in ~/.config/deskpet (created on first use), never in the repo.
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Scripts\make-codes.ps1') -RustFile (Join-Path $build 'code_secret.rs')
-if ($LASTEXITCODE -ne 0) { throw 'make-codes.ps1 failed' }
-
 Get-Process DeskPet -ErrorAction SilentlyContinue | Stop-Process -Force
-# cargo reads windows\.cargo\config.toml (static C runtime) only when run from this folder.
-Push-Location $PSScriptRoot
+# cargo reads .cargo\config.toml (static C runtime) at the workspace root, so it runs from there.
+Push-Location $root
 try {
-    cargo build --release
+    cargo build --release -p deskpet
     if ($LASTEXITCODE -ne 0) { throw 'cargo build failed' }
 } finally {
     Pop-Location
 }
 
 $exe = Join-Path $build 'DeskPet.exe'
-Copy-Item (Join-Path $PSScriptRoot 'target\release\DeskPet.exe') $exe -Force
+Copy-Item (Join-Path $root 'target\release\DeskPet.exe') $exe -Force
 Write-Host ("Built $exe ({0:N0} KB)" -f ((Get-Item $exe).Length / 1KB))
 
 if ($Zip) {

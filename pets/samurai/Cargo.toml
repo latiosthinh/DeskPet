@@ -1,0 +1,13 @@
+[package]
+name = "pet-samurai"
+version = "1.0.0"
+edition = "2021"
+description = "Ronin the samurai, a DeskPet pet"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+petkit = { path = "../../sdk/petkit" }

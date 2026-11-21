@@ -1,7 +1,7 @@
 # Builds the Mac and Windows apps when a version tag (v1.2.3) is pushed, and attaches both to a
 # draft GitHub release. Run it by hand (Actions → Release → Run workflow) to build without releasing.
 #
-# Needs the DESKPET_CODE_SECRET repository secret: the 32-byte ~/.config/deskpet/code-secret,
+# The Mac build needs the DESKPET_CODE_SECRET repository secret (the Windows app has no codes): the 32-byte ~/.config/deskpet/code-secret,
 # base64-encoded (see README → Releasing). Without it the build stops, so a release never ships
 # with a secret your codes don't match.
 
@@ -45,20 +45,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install the code secret
-        shell: pwsh
-        env:
-          SECRET: ${{ secrets.DESKPET_CODE_SECRET }}
-        run: |
-          if (-not $env:SECRET) {
-            Write-Output "::error::Add the DESKPET_CODE_SECRET repository secret first (README → Releasing)."
-            exit 1
-          }
-          $dir = Join-Path $HOME '.config\deskpet'
-          New-Item -ItemType Directory -Force $dir | Out-Null
-          $bytes = [Convert]::FromBase64String($env:SECRET.Trim())
-          if ($bytes.Length -ne 32) { throw 'DESKPET_CODE_SECRET must be 32 bytes, base64-encoded.' }
-          [IO.File]::WriteAllBytes((Join-Path $dir 'code-secret'), $bytes)
       - name: Build the zip
         shell: pwsh
         run: |

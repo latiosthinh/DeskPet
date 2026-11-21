@@ -29,19 +29,6 @@ pub fn remove(name: &str) {
 
 /// Every unlock code entered on this PC. "codes" holds them separated by spaces; "license" is the
 /// single code earlier versions kept.
-pub fn codes() -> Vec<String> {
-    let mut codes: Vec<String> = get_string("codes").unwrap_or_default().split_whitespace().map(String::from).collect();
-    codes.extend(get_string("license").filter(|c| !c.trim().is_empty()));
-    codes
-}
-pub fn add_code(code: &str) {
-    let mut codes: Vec<String> = get_string("codes").unwrap_or_default().split_whitespace().map(String::from).collect();
-    if !codes.iter().any(|c| c == code) {
-        codes.push(code.to_string());
-        set_string("codes", &codes.join(" "));
-    }
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum LoginState {
     Off,

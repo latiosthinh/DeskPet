@@ -1,0 +1,13 @@
+[package]
+name = "pet-hexley"
+version = "1.0.0"
+edition = "2021"
+description = "Hexley the apprentice, a DeskPet pet"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+petkit = { path = "../../sdk/petkit" }
