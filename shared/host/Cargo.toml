@@ -6,5 +6,5 @@ description = "Runs and draws DeskPet pet modules: the part the Windows and Mac 
 publish = false
 
 [dependencies]
-petkit = { path = "../sdk/petkit" }
+petkit = { path = "../petkit" }
 wasmi = { version = "2.0.2", default-features = false, features = ["std", "validate", "auto-dispatch"] }

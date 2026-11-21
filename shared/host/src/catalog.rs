@@ -8,11 +8,11 @@ use petkit::engine::About;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-/// The built-in pets, made into `build/pets` (by windows\build.ps1 or mac/build.sh) before the app is compiled.
+/// The built-in pets, made into `build/pets` (by windows\build.ps1 or macos/build.sh) before the app is compiled.
 pub const BUILT_IN: [&[u8]; 3] = [
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../build/pets/mochi.deskpet")),
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../build/pets/ninja.deskpet")),
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../build/pets/moona.deskpet")),
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../build/pets/mochi.deskpet")),
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../build/pets/ninja.deskpet")),
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../build/pets/moona.deskpet")),
 ];
 
 /// Bigger than any pet should be (the biggest today is about 200 KB).

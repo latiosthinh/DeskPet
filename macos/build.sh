@@ -1,11 +1,11 @@
 #!/bin/zsh
 # Builds DeskPet.app and installs it to ~/Applications.
 #
-#   mac/build.sh          # build and install
-#   mac/build.sh --dmg    # build the release disk image instead (build/DeskPet-<version>.dmg)
+#   macos/build.sh          # build and install
+#   macos/build.sh --dmg    # build the release disk image instead (build/DeskPet-<version>.dmg)
 #
 # Needs Xcode's command line tools and Rust (rustup). The pets are WebAssembly modules run by the
-# shared Rust host (mac/core), the same files the Windows app runs; Swift (mac/main.swift) is the Mac
+# shared Rust host (macos/core), the same files the Windows app runs; Swift (macos/main.swift) is the Mac
 # around it.
 set -e
 cd "$(dirname "$0")/.."   # run from the repo root; output goes to build/
@@ -16,7 +16,7 @@ rm -rf "$APP" build/dmg
 mkdir -p "$APP/Contents/MacOS"
 
 # The built-in pets (one per category) are modules too; the app embeds them from build/pets.
-mac/build-pets.sh mochi ninja moona
+macos/build-pets.sh mochi ninja moona
 
 # The shared host as a static library, for Apple silicon and Intel.
 export MACOSX_DEPLOYMENT_TARGET=13.0
@@ -27,8 +27,8 @@ done
 
 # Universal binary: Apple silicon + Intel.
 for arch in arm64:aarch64 x86_64:x86_64; do
-  swiftc -O -target "${arch%%:*}-apple-macos13" mac/main.swift \
-    -import-objc-header mac/core/deskpet.h \
+  swiftc -O -target "${arch%%:*}-apple-macos13" macos/main.swift \
+    -import-objc-header macos/core/deskpet.h \
     -L "target/${arch##*:}-apple-darwin/release" -ldeskpet_mac \
     -o "build/DeskPet-${arch%%:*}"
 done

@@ -1,8 +1,8 @@
 #!/bin/zsh
 # Builds pet modules (<id>.deskpet, WebAssembly) into build/pets. The same files run on Windows.
 #
-#   mac/build-pets.sh                 # every pet in pets/
-#   mac/build-pets.sh ninja moona     # just these
+#   macos/build-pets.sh                 # every pet in pets/
+#   macos/build-pets.sh ninja moona     # just these
 #
 # Try them in the app with:  build/DeskPet.app/Contents/MacOS/DeskPet --pets build/pets --pet <id>
 set -e

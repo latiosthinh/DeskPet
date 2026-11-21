@@ -10,8 +10,8 @@ name = "DeskPet"
 path = "src/main.rs"
 
 [dependencies]
-petkit = { path = "../sdk/petkit" }
-deskpet-host = { path = "../host" }
+petkit = { path = "../shared/petkit" }
+deskpet-host = { path = "../shared/host" }
 
 [dependencies.windows-sys]
 version = "0.59"

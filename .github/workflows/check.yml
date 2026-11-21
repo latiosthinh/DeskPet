@@ -5,7 +5,7 @@ name: Build check
 
 on:
   push:
-    paths: ["mac/**", "windows/**", "host/**", "sdk/**", "pets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/check.yml"]
+    paths: ["macos/**", "windows/**", "shared/**", "pets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/check.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: mac/build.sh
+        run: macos/build.sh
       - name: Run the shared host's tests
         run: cargo test --release -p deskpet-host -p deskpet-mac
       - name: The app starts, runs a pet and keeps running

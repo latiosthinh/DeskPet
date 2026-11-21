@@ -6,7 +6,7 @@
 //
 // Every pet is a module (<id>.deskpet, WebAssembly), the same file the Windows app runs. Mochi,
 // Kage and Moona come with the app; more come from the DeskPet website. The shared Rust host
-// (mac/core, declared in mac/core/deskpet.h) runs the pet and draws it into a pixel buffer; this
+// (macos/core, declared in macos/core/deskpet.h) runs the pet and draws it into a pixel buffer; this
 // file is the Mac around it: the window, menu bar, mouse, reminders, settings and pet files.
 //
 // Drag the pet to move its home. Click it to pet it (or dismiss a reminder). Its face in the
@@ -247,7 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if defaults.object(forKey: "visible") != nil { visible = defaults.bool(forKey: "visible") }
 
         // `--pet <id>` starts with that pet for this run; `--pets <folder>` also loads the pets in a
-        // folder (mac/build.sh makes them in build/pets).
+        // folder (macos/build.sh makes them in build/pets).
         let args = CommandLine.arguments
         func value(_ flag: String) -> String? {
             guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }

@@ -10,5 +10,5 @@ name = "deskpet_mac"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-deskpet-host = { path = "../../host" }
-petkit = { path = "../../sdk/petkit" }
+deskpet-host = { path = "../../shared/host" }
+petkit = { path = "../../shared/petkit" }

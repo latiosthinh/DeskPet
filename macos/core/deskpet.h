@@ -1,4 +1,4 @@
-// The C interface to DeskPet's shared pet host (mac/core/src/lib.rs), for the Mac app.
+// The C interface to DeskPet's shared pet host (macos/core/src/lib.rs), for the Mac app.
 // It runs the same <id>.deskpet modules as the Windows app and draws them into the app's pixels.
 // Everything but dp_update runs on the main thread. Returned strings stay valid until the next
 // call that returns a string, so copy them straight away.
