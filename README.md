@@ -98,6 +98,13 @@ powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run -RunArgs --demo
 
 The app and the pets are one Cargo workspace at the top of the repo: `sdk/petkit` is the pet API and the behaviour every pet shares, and each pet is its own crate in `pets/<id>`, with one file per trick.
 
+Each pet is built as a sandboxed WebAssembly module, `<id>.deskpet`. The app has Mochi, Kage and Moona built in (`build.ps1` makes them first); the others are separate files:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\build-pets.ps1              # every pet, into build\pets
+build\DeskPet.exe --pets build\pets --pet witcher --tricks                    # try one without installing it
+```
+
 ## Making unlock codes (developer, Mac app only)
 
 Only the Mac app uses codes; the Windows app has none.

@@ -32,7 +32,7 @@ pub fn rgb(r: f64, g: f64, b: f64) -> Color {
 
 /// Colours for grid characters (ASCII only).
 #[derive(Clone, Copy)]
-pub struct Palette([Option<Color>; 128]);
+pub struct Palette(pub(crate) [Option<Color>; 128]);
 
 impl Palette {
     pub fn new(entries: &[(char, Color)]) -> Palette {

@@ -7,6 +7,8 @@ mod typing;
 pub(crate) use helpers::*;
 pub(crate) use petkit::prelude::*;
 
+petkit::export_pet!(pet);
+
 /// The whole pet: what it looks like, its tricks, and what it does while you type.
 pub fn pet() -> PetDef {
     PetDef::new(info())

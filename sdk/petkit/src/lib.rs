@@ -17,9 +17,12 @@ pub mod look;
 pub mod pet;
 pub mod random;
 pub mod stage;
+pub mod wire;
 
 #[doc(hidden)]
 pub mod engine;
+#[doc(hidden)]
+pub mod module;
 
 /// The version of this API. A module records the one it was built with, and the app refuses a module
 /// built against a newer major version than it knows.

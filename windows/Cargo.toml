@@ -11,21 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 petkit = { path = "../sdk/petkit" }
-pet-witcher = { path = "../pets/witcher" }
-pet-moona = { path = "../pets/moona" }
-pet-samurai = { path = "../pets/samurai" }
-pet-ninja = { path = "../pets/ninja" }
-pet-lunette = { path = "../pets/lunette" }
-pet-sirclank = { path = "../pets/sirclank" }
-pet-mossback = { path = "../pets/mossback" }
-pet-hexley = { path = "../pets/hexley" }
-pet-wispaling = { path = "../pets/wispaling" }
-pet-grumbo = { path = "../pets/grumbo" }
-pet-sprout = { path = "../pets/sprout" }
-pet-puddle = { path = "../pets/puddle" }
-pet-pip = { path = "../pets/pip" }
-pet-ember = { path = "../pets/ember" }
-pet-mochi = { path = "../pets/mochi" }
+wasmi = { version = "2.0.2", default-features = false, features = ["std", "validate", "auto-dispatch"] }
 
 [dependencies.windows-sys]
 version = "0.59"
