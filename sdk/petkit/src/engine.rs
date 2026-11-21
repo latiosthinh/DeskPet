@@ -90,8 +90,8 @@ pub struct About {
     pub description: String,
     pub author: String,
     pub version: String,
-    /// Titles and lengths of its tricks, in menu order.
-    pub tricks: Vec<(String, f64)>,
+    /// Its tricks, in menu order.
+    pub tricks: Vec<TrickAbout>,
     pub sweeps: bool,
     pub has_pastime: bool,
     /// Titles of the tricks a click and a right-click do, if they do one.
@@ -101,6 +101,17 @@ pub struct About {
     pub tallest: f64,
     /// The pet standing, eyes open, for icons: rows of colours (None is see-through).
     pub icon: Vec<Vec<Option<Color>>>,
+    /// Mistakes in its art ([`crate::pet::PetInfo::problems`]); petshot check reports them.
+    pub problems: Vec<String>,
+}
+
+/// One of a pet's tricks, for menus and the website.
+#[derive(Clone)]
+pub struct TrickAbout {
+    pub id: String,
+    pub title: String,
+    /// How long it lasts, in seconds.
+    pub seconds: f64,
 }
 
 /// A picture pet's frame, ready to draw.
@@ -613,13 +624,14 @@ impl Brain {
             description: p.description.to_string(),
             author: p.author.to_string(),
             version: p.version.to_string(),
-            tricks: self.tricks.iter().map(|t| (t.title().to_string(), t.duration())).collect(),
+            tricks: self.tricks.iter().map(|t| TrickAbout { id: t.id().to_string(), title: t.title().to_string(), seconds: t.duration() }).collect(),
             sweeps: p.sweeps,
             has_pastime: p.pastime.is_some(),
             click_trick: title(p.click_trick),
             right_click_trick: title(p.right_click_trick),
             tallest: p.tallest(),
             icon: rows.iter().map(|r| r.iter().map(|&c| p.palette.get(c)).collect()).collect(),
+            problems: p.problems(),
         }
     }
 }

@@ -6,7 +6,7 @@ pub struct PlantSelf;
 
 impl Trick for PlantSelf {
     fn id(&self) -> &'static str {
-        "plant_self"
+        "plant-self"
     }
     fn title(&self) -> &'static str {
         "Plant Itself"

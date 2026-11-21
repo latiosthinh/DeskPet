@@ -52,6 +52,7 @@ fn info() -> PetInfo {
         feet: ["...khk....khk...", ".....khkkhk....."],
         paw: b's',
         pastime: Some(Pastime::Flower),
+        description: "A calm samurai with a lightning quick draw, a proper bow and a tea ceremony between duels.",
         ..PetInfo::new("samurai", "Ronin the samurai", Category::Hero)
     }
 }

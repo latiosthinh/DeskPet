@@ -41,6 +41,7 @@ fn info() -> PetInfo {
         ],
         feet: ["..kbk.....kbk...", "....kbk.kbk....."],
         pastime: Some(Pastime::Flower),
+        description: "A gentle pebble giant who sprouts flowers, enjoys the rain and naps after any effort.",
         ..PetInfo::new("mossback", "Mossback the pebble giant", Category::Hero)
     }
 }

@@ -10,7 +10,7 @@ pub struct PopFood {
 
 impl Trick for PopFood {
     fn id(&self) -> &'static str {
-        "pop_food"
+        "pop-food"
     }
     fn title(&self) -> &'static str {
         "Pop Out a Snack"

@@ -6,7 +6,7 @@ pub struct HideInWater;
 
 impl Trick for HideInWater {
     fn id(&self) -> &'static str {
-        "hide_in_water"
+        "hide-in-water"
     }
     fn title(&self) -> &'static str {
         "Hide in the Water"

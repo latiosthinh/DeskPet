@@ -21,6 +21,8 @@ pub struct PetModule {
     tick: TypedFunc<u32, ()>,
     command: TypedFunc<u32, u32>,
     render: TypedFunc<(), u64>,
+    /// Optional: the message of the panic that stopped the module.
+    panic: Option<TypedFunc<(), u64>>,
 }
 
 fn err(what: &str) -> impl Fn(wasmi::Error) -> String + '_ {
@@ -61,10 +63,12 @@ impl PetModule {
             tick: instance.get_typed_func(&store, "deskpet_tick").map_err(|_| get("deskpet_tick"))?,
             command: instance.get_typed_func(&store, "deskpet_command").map_err(|_| get("deskpet_command"))?,
             render: instance.get_typed_func(&store, "deskpet_render").map_err(|_| get("deskpet_render"))?,
+            panic: instance.get_typed_func(&store, "deskpet_panic").ok(),
             store,
         };
         m.refuel()?;
-        new.call(&mut m.store, (now, seed)).map_err(err("pet"))?;
+        let started = new.call(&mut m.store, (now, seed));
+        started.map_err(|e| m.why(e))?;
         Ok(m)
     }
 
@@ -72,11 +76,28 @@ impl PetModule {
         self.store.set_fuel(FUEL).map_err(err("fuel"))
     }
 
+    /// Says why a call failed: the pet's panic message if it panicked, else what stopped it.
+    fn why(&mut self, e: wasmi::Error) -> String {
+        let message = self.panic.and_then(|f| {
+            self.store.set_fuel(FUEL).ok()?;
+            let at = f.call(&mut self.store, ()).ok()?;
+            let (start, len) = ((at >> 32) as usize, (at & 0xffff_ffff) as usize);
+            let bytes = self.memory.data(&self.store).get(start..start + len.min(2000))?;
+            Some(String::from_utf8_lossy(bytes).replace('\n', " "))
+        });
+        match message {
+            Some(m) if !m.is_empty() => format!("it panicked: {m}"),
+            _ if e.to_string().contains("fuel") => "it ran too long without finishing (a loop that never ends?)".into(),
+            _ => format!("it stopped: {e}"),
+        }
+    }
+
     /// Copies a request into the module's inbox; returns its length.
     fn send<T: Wire>(&mut self, v: &T) -> Result<u32, String> {
         let bytes = encode(v);
         self.refuel()?;
-        let at = self.inbox.call(&mut self.store, bytes.len() as u32).map_err(err("pet"))? as usize;
+        let r = self.inbox.call(&mut self.store, bytes.len() as u32);
+        let at = r.map_err(|e| self.why(e))? as usize;
         let mem = self.memory.data_mut(&mut self.store);
         mem.get_mut(at..at + bytes.len()).ok_or("pet gave a bad address")?.copy_from_slice(&bytes);
         Ok(bytes.len() as u32)
@@ -92,23 +113,27 @@ impl PetModule {
 
     pub fn about(&mut self) -> Result<About, String> {
         self.refuel()?;
-        let at = self.about.call(&mut self.store, ()).map_err(err("pet"))?;
+        let r = self.about.call(&mut self.store, ());
+        let at = r.map_err(|e| self.why(e))?;
         self.receive(at)
     }
 
     pub fn tick(&mut self, input: Input) -> Result<(), String> {
         let len = self.send(&input)?;
-        self.tick.call(&mut self.store, len).map_err(err("pet"))
+        let r = self.tick.call(&mut self.store, len);
+        r.map_err(|e| self.why(e))
     }
 
     pub fn command(&mut self, c: Command) -> Result<bool, String> {
         let len = self.send(&c)?;
-        Ok(self.command.call(&mut self.store, len).map_err(err("pet"))? != 0)
+        let r = self.command.call(&mut self.store, len);
+        Ok(r.map_err(|e| self.why(e))? != 0)
     }
 
     pub fn render(&mut self) -> Result<Render, String> {
         self.refuel()?;
-        let at = self.render.call(&mut self.store, ()).map_err(err("pet"))?;
+        let r = self.render.call(&mut self.store, ());
+        let at = r.map_err(|e| self.why(e))?;
         self.receive(at)
     }
 }

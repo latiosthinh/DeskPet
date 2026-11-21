@@ -41,6 +41,7 @@ fn info() -> PetInfo {
         ],
         feet: ["....kwk...kwk...", ".....kwk.kwk...."],
         pastime: Some(Pastime::Yoyo),
+        description: "A curious fox who lights fireworks, explores with a flashlight and toasts marshmallows by the fire.",
         ..PetInfo::new("ember", "Ember the fox", Category::Critter)
     }
 }

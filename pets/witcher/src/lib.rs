@@ -45,6 +45,7 @@ fn info() -> PetInfo {
         picture: Some(witcher()),
         click_trick: Some("orb"),
         right_click_trick: Some("whirl"),
+        description: "A sorcerer with three orbs circling overhead. Casts meteors, tornadoes, sun strikes and fire spirits.",
         ..PetInfo::new("witcher", "Orbis the witcher", Category::Legend)
     }
 }

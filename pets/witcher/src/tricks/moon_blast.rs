@@ -6,7 +6,7 @@ pub struct MoonBlast;
 
 impl Trick for MoonBlast {
     fn id(&self) -> &'static str {
-        "moon_blast"
+        "moon-blast"
     }
     fn title(&self) -> &'static str {
         "Moon Blast"

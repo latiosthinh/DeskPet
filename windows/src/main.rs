@@ -397,6 +397,7 @@ impl App {
         if self.view.failed.is_some() {
             // The pet's module broke: the first built-in pet takes over.
             let name = self.view.about.short_name.clone();
+            self.demo.clear(); // its queued tricks were that pet's
             self.switch_to(0);
             self.view.say(&format!("{name} ran into a problem"), 3.0);
         }
@@ -550,8 +551,8 @@ impl App {
             let mut tricks = Menu::new();
             tricks.add(MenuItem::new("Surprise Me", CMD_SURPRISE));
             tricks.separator();
-            for (i, (title, _)) in self.view.about.tricks.iter().enumerate() {
-                tricks.add(MenuItem::new(title, CMD_TRICK + i as u32));
+            for (i, trick) in self.view.about.tricks.iter().enumerate() {
+                tricks.add(MenuItem::new(&trick.title, CMD_TRICK + i as u32));
             }
             menu.submenu("Tricks", tricks);
         }
@@ -735,12 +736,14 @@ fn show_menu() {
     });
     match after {
         Some(After::LoginFailed) => sys::message_box("Couldn't change Open at Login.\n\nYou can add DeskPet yourself in Settings → Apps → Startup.", true),
-        Some(After::Remove(file, name)) if sys::ask(&format!("Remove {name}?\n\nYou can download it again from the DeskPet website.")) => match pets::remove(&file) {
-            Ok(()) => {
-                with_app(|a| a.reload(None));
+        Some(After::Remove(file, name)) if sys::ask(&format!("Remove {name}?\n\nYou can download it again from the DeskPet website.")) => {
+            match pets::remove(&file) {
+                Ok(()) => {
+                    with_app(|a| a.reload(None));
+                }
+                Err(e) => sys::message_box(&format!("Couldn't remove {name}: {e}."), true),
             }
-            Err(e) => sys::message_box(&format!("Couldn't remove {name}: {e}."), true),
-        },
+        }
         Some(After::Quit) => {
             with_app(|a| a.quit());
         }
@@ -975,8 +978,8 @@ fn main() {
         } else if pastime {
             q.push_back((9.0, Command::DemoPastime(8.0)));
         } else {
-            for (i, (_, seconds)) in about.tricks.iter().enumerate() {
-                q.push_back((seconds + 0.5, Command::Trick(i)));
+            for (i, trick) in about.tricks.iter().enumerate() {
+                q.push_back((trick.seconds + 0.5, Command::Trick(i)));
             }
         }
         app.next_demo = uptime() + 2.0;

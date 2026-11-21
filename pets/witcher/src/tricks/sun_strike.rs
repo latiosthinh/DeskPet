@@ -6,7 +6,7 @@ pub struct SunStrike;
 
 impl Trick for SunStrike {
     fn id(&self) -> &'static str {
-        "sun_strike"
+        "sun-strike"
     }
     fn title(&self) -> &'static str {
         "Sun Strike"

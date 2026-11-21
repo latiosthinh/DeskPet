@@ -6,7 +6,7 @@ pub struct GiveFlower;
 
 impl Trick for GiveFlower {
     fn id(&self) -> &'static str {
-        "give_flower"
+        "give-flower"
     }
     fn title(&self) -> &'static str {
         "Give You a Flower"

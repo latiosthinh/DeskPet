@@ -49,6 +49,7 @@ fn info() -> PetInfo {
         ],
         feet: ["...khk....khk...", ".....khkkhk....."],
         pastime: Some(Pastime::Yoyo),
+        description: "A wind-up knight who runs down, needs winding up again and never misses tea time.",
         ..PetInfo::new("sirclank", "Sir Clank", Category::Hero)
     }
 }

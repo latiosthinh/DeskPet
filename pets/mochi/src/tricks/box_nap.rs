@@ -6,7 +6,7 @@ pub struct BoxNap;
 
 impl Trick for BoxNap {
     fn id(&self) -> &'static str {
-        "box_nap"
+        "box-nap"
     }
     fn title(&self) -> &'static str {
         "Nap in a Box"

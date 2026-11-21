@@ -45,6 +45,7 @@ fn info() -> PetInfo {
         ],
         feet: ["...kook..kook...", "....kook.kook..."],
         pastime: Some(Pastime::Knit),
+        description: "A splashy penguin who swims, blows bubbles and hides in a puddle when you get too close.",
         ..PetInfo::new("pip", "Pip the penguin", Category::Critter)
     }
 }

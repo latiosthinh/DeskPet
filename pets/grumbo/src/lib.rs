@@ -41,6 +41,7 @@ fn info() -> PetInfo {
         ],
         feet: ["...kvk....kvk...", ".....kvkkvk....."],
         pastime: Some(Pastime::Juggle),
+        description: "A small warrior with a big helmet. Spins until dizzy and tries, really tries, to chop a log.",
         ..PetInfo::new("grumbo", "Grumbo the warrior", Category::Hero)
     }
 }

@@ -40,6 +40,7 @@ fn info() -> PetInfo {
         feet: ["..kwk.....kwk...", "....kwk.kwk....."],
         sweeps: true,
         pastime: Some(Pastime::Book),
+        description: "A sleepy little cat who naps on your taskbar, chases your cursor and sweeps up after you type.",
         ..PetInfo::new("mochi", "Mochi", Category::Critter)
     }
 }

@@ -38,6 +38,7 @@ fn info() -> PetInfo {
         sit_base: Some("......kk..kk...."),
         floats: true,
         pastime: Some(Pastime::Juggle),
+        description: "A floating little spirit who reaches for your pointer and gets tied up in its own thread.",
         ..PetInfo::new("wispaling", "Wisp-a-ling the spirit", Category::Hero)
     }
 }

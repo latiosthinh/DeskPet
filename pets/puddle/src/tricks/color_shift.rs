@@ -6,7 +6,7 @@ pub struct ColorShift;
 
 impl Trick for ColorShift {
     fn id(&self) -> &'static str {
-        "color_shift"
+        "color-shift"
     }
     fn title(&self) -> &'static str {
         "Change Colour"

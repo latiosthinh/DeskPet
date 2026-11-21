@@ -49,6 +49,7 @@ fn info() -> PetInfo {
         ],
         feet: ["..kwk.....kwk...", "....kwk.kwk....."],
         pastime: Some(Pastime::Flower),
+        description: "A tiny seedling who plants itself, grows up, chases butterflies and gives you flowers.",
         ..PetInfo::new("sprout", "Sprout the seedling", Category::Critter)
     }
 }

@@ -6,7 +6,7 @@ pub struct FlipEgg;
 
 impl Trick for FlipEgg {
     fn id(&self) -> &'static str {
-        "flip_egg"
+        "flip-egg"
     }
     fn title(&self) -> &'static str {
         "Flip an Egg"

@@ -41,6 +41,7 @@ fn info() -> PetInfo {
         ],
         feet: ["...khk....khk...", ".....khkkhk....."],
         pastime: Some(Pastime::Bubbles),
+        description: "An apprentice wizard whose spells mostly turn them into frogs and sheep. The book bites.",
         ..PetInfo::new("hexley", "Hexley the apprentice", Category::Hero)
     }
 }

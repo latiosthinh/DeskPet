@@ -6,7 +6,7 @@ pub struct IceCream;
 
 impl Trick for IceCream {
     fn id(&self) -> &'static str {
-        "ice_cream"
+        "ice-cream"
     }
     fn title(&self) -> &'static str {
         "Eat Ice Cream"

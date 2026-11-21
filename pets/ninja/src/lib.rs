@@ -43,6 +43,7 @@ fn info() -> PetInfo {
         ],
         feet: ["....kwk..kwk....", "......kwkkwk...."],
         pastime: Some(Pastime::Yoyo),
+        description: "A quiet ninja who vanishes in smoke, throws shuriken, makes clones and hides in a bush.",
         ..PetInfo::new("ninja", "Kage the ninja", Category::Hero)
     }
 }

@@ -133,6 +133,34 @@ impl PetInfo {
         }
     }
 
+    /// Mistakes in the art, in words (petshot check prints them): rows that aren't 16 characters,
+    /// characters missing from the palette, eyes outside the body.
+    pub fn problems(&self) -> Vec<String> {
+        let mut out = vec![];
+        if self.picture.is_some() {
+            return out;
+        }
+        let named = self.body.iter().enumerate().map(|(i, r)| (format!("body row {i}"), *r));
+        let feet = self.feet.iter().enumerate().map(|(i, r)| (format!("feet row {i}"), *r));
+        for (what, row) in named.chain(feet).chain(self.sit_base.map(|r| ("sit_base".to_string(), r))) {
+            if row.len() != 16 {
+                out.push(format!("{what} is {} characters long; rows are 16: \"{row}\"", row.len()));
+            }
+            for c in row.bytes().filter(|&c| c != b'.' && self.palette.get(c).is_none()) {
+                out.push(format!("{what} uses '{}', which isn't in the palette", c as char));
+            }
+        }
+        if self.palette.get(b'k').is_none() {
+            out.push("the palette needs 'k', the outline colour (eyes are drawn in it)".into());
+        }
+        if self.eye_cols.iter().any(|&c| !(1..15).contains(&c)) {
+            out.push(format!("eye_cols {:?} must be columns 1 to 14", self.eye_cols));
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
     /// "Ember the fox" → "Ember"; "Sir Clank" stays whole.
     pub fn short_name(&self) -> &'static str {
         self.name.split(" the ").next().unwrap_or(self.name)
@@ -158,7 +186,7 @@ impl PetInfo {
     pub fn rows(&self, eyes: Eyes) -> [[u8; 16]; 13] {
         let mut grid = [[b'.'; 16]; 13];
         for (r, row) in self.body.iter().enumerate() {
-            grid[r].copy_from_slice(&row.as_bytes()[..16]);
+            put_row(&mut grid[r], row);
         }
         for &c in &self.eye_cols {
             match eyes {
@@ -194,9 +222,9 @@ impl PetInfo {
         }
         let mut drop = 0;
         match pose {
-            Pose::Stand(step) => out[n].copy_from_slice(self.feet[step % 2].as_bytes()),
+            Pose::Stand(step) => put_row(&mut out[n], self.feet[step % 2]),
             Pose::Sit => match self.sit_base {
-                Some(base) => out[n].copy_from_slice(base.as_bytes()),
+                Some(base) => put_row(&mut out[n], base),
                 None => drop = 1,
             },
         }
@@ -218,7 +246,8 @@ impl PetInfo {
 /// - [`look`](Trick::look) says what to draw right now. Keep it free of side effects: it may be called
 ///   more than once a frame, or not at all.
 pub trait Trick {
-    /// Short id, unique within the pet: "smoke".
+    /// Short id, unique within the pet: "smoke", "box-nap". Lowercase letters, digits and `-`; the
+    /// website names the trick's GIF after it.
     fn id(&self) -> &'static str;
     /// Shown in the Tricks menu: "Smoke Bomb".
     fn title(&self) -> &'static str;
@@ -273,5 +302,13 @@ impl PetDef {
     pub fn decorate(mut self, f: fn(&Stage, &mut Look)) -> PetDef {
         self.decorate = Some(f);
         self
+    }
+}
+
+/// Copies an art row into a 16-wide row; a row of the wrong length is cut or padded rather than
+/// crashing the pet (`PetInfo::problems` reports it).
+fn put_row(dest: &mut [u8; 16], row: &str) {
+    for (d, s) in dest.iter_mut().zip(row.bytes().chain(std::iter::repeat(b'.'))) {
+        *d = s;
     }
 }

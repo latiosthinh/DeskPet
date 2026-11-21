@@ -57,6 +57,7 @@ fn info() -> PetInfo {
         sit_base: Some("..kkkkkkkkkkkk.."),
         paw: b'c',
         pastime: Some(Pastime::Book),
+        description: "A wobbly slime who changes colour, splits in two to play and always has a snack inside.",
         ..PetInfo::new("puddle", "Puddle the slime", Category::Critter)
     }
 }

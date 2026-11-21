@@ -13,6 +13,8 @@ thread_local! {
     static BRAIN: RefCell<Option<Brain>> = const { RefCell::new(None) };
     static INBOX: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     static OUTBOX: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    /// The last panic's message, for the app to show when a call fails.
+    static PANIC: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 /// `API_VERSION` as one number: major in the high 16 bits.
@@ -22,6 +24,15 @@ pub fn api() -> u32 {
 }
 
 pub fn new(mut def: PetDef, version: &'static str, now: f64, seed: u64) {
+    // A panic stops the module (WebAssembly can't unwind); keep its message so the app and petshot
+    // can say what went wrong instead of just "unreachable".
+    std::panic::set_hook(Box::new(|info| {
+        PANIC.with(|p| {
+            if let Ok(mut p) = p.try_borrow_mut() {
+                *p = info.to_string();
+            }
+        })
+    }));
     def.info.version = version;
     crate::random::seed(seed);
     BRAIN.with(|b| *b.borrow_mut() = Some(Brain::new(def, now)));
@@ -72,6 +83,14 @@ pub fn render() -> u64 {
     reply(&with_brain(|b| b.render()))
 }
 
+/// The last panic's message (UTF-8, empty if none) as `(address << 32) | length`.
+pub fn panic_message() -> u64 {
+    PANIC.with(|p| {
+        let p = p.borrow();
+        (p.as_ptr() as u64) << 32 | p.len() as u64
+    })
+}
+
 /// Makes a pet crate a DeskPet module: `petkit::export_pet!(pet);` with `pub fn pet() -> PetDef`.
 /// Only does anything when building for WebAssembly (`--target wasm32-unknown-unknown`).
 #[macro_export]
@@ -107,6 +126,10 @@ macro_rules! export_pet {
             #[no_mangle]
             pub extern "C" fn deskpet_render() -> u64 {
                 m::render()
+            }
+            #[no_mangle]
+            pub extern "C" fn deskpet_panic() -> u64 {
+                m::panic_message()
             }
         }
     };

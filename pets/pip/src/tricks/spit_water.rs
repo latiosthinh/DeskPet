@@ -6,7 +6,7 @@ pub struct SpitWater;
 
 impl Trick for SpitWater {
     fn id(&self) -> &'static str {
-        "spit_water"
+        "spit-water"
     }
     fn title(&self) -> &'static str {
         "Spit Water"

@@ -33,6 +33,7 @@ fn info() -> PetInfo {
         wake_trick: Some("moonlight"),
         click_trick: Some("glaive"),
         right_click_trick: Some("moonlight"),
+        description: "A moon knight riding a black panther. Throws her glaive, splits in three and calls down the moonlight.",
         ..PetInfo::new("moona", "Moona the moon knight", Category::Legend)
     }
 }

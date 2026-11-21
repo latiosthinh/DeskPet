@@ -3,7 +3,7 @@
 //! Pet authors never use this directly.
 
 use crate::art::{Color, Palette};
-use crate::engine::{About, Command, Input, PictureFrame, Reminder, Render};
+use crate::engine::{About, Command, Input, PictureFrame, Reminder, Render, TrickAbout};
 use crate::look::{FreeSprite, Look, Particle, Prop, Pt, Twin};
 use crate::pet::Category;
 use std::cell::RefCell;
@@ -215,6 +215,7 @@ fields!(Twin { frame, center_x, scale, y_offset, facing_left });
 fields!(Look { frame, palette, y_offset, scale, props, free, back, x_offset, twin, beam });
 fields!(Particle { text, color, size, x, y, vx, vy, life, max_life, ay });
 fields!(PictureFrame { rows, anchor, px });
+fields!(TrickAbout { id, title, seconds });
 fields!(Input { dt, now, idle, key_idle, mouse });
 #[rustfmt::skip]
 fields!(Render {
@@ -224,7 +225,7 @@ fields!(Render {
 #[rustfmt::skip]
 fields!(About {
     id, name, short_name, category, description, author, version, tricks, sweeps, has_pastime,
-    click_trick, right_click_trick, tallest, icon,
+    click_trick, right_click_trick, tallest, icon, problems,
 });
 
 impl Wire for (f64, f64, f64, f64) {

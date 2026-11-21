@@ -34,6 +34,7 @@ fn info() -> PetInfo {
         ],
         feet: ["....kwk....kwk..", "......kwkkwk...."],
         pastime: Some(Pastime::Knit),
+        description: "A moon rabbit who pounds rice cakes, wishes on shooting stars and naps in a crescent moon.",
         ..PetInfo::new("lunette", "Lunette the moon rabbit", Category::Hero)
     }
 }

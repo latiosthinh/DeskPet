@@ -10,7 +10,7 @@ pub struct ChaseButterfly {
 
 impl Trick for ChaseButterfly {
     fn id(&self) -> &'static str {
-        "chase_butterfly"
+        "chase-butterfly"
     }
     fn title(&self) -> &'static str {
         "Chase a Butterfly"

@@ -6,7 +6,7 @@ pub struct GrowUp;
 
 impl Trick for GrowUp {
     fn id(&self) -> &'static str {
-        "grow_up"
+        "grow-up"
     }
     fn title(&self) -> &'static str {
         "Grow Up"
