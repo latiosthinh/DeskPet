@@ -1,0 +1,438 @@
+[
+  {
+    "id": "mochi",
+    "name": "Mochi",
+    "category": "critter",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A sleepy little cat who naps on your taskbar, chases your cursor and sweeps up after you type.",
+    "builtin": true,
+    "tricks": [
+      {
+        "id": "yarn",
+        "title": "Play with Yarn"
+      },
+      {
+        "id": "box-nap",
+        "title": "Nap in a Box"
+      },
+      {
+        "id": "laser",
+        "title": "Chase a Laser Dot"
+      },
+      {
+        "id": "fishing",
+        "title": "Go Fishing"
+      }
+    ],
+    "file_size": null
+  },
+  {
+    "id": "ember",
+    "name": "Ember the fox",
+    "category": "critter",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A curious fox who lights fireworks, explores with a flashlight and toasts marshmallows by the fire.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "firework",
+        "title": "Light Fireworks"
+      },
+      {
+        "id": "flashlight",
+        "title": "Explore with a Flashlight"
+      },
+      {
+        "id": "flip-egg",
+        "title": "Flip an Egg"
+      },
+      {
+        "id": "campfire",
+        "title": "Toast a Marshmallow"
+      }
+    ],
+    "file_size": 130911
+  },
+  {
+    "id": "pip",
+    "name": "Pip the penguin",
+    "category": "critter",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A splashy penguin who swims, blows bubbles and hides in a puddle when you get too close.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "hide-in-water",
+        "title": "Hide in the Water"
+      },
+      {
+        "id": "spit-water",
+        "title": "Spit Water"
+      },
+      {
+        "id": "swim",
+        "title": "Go for a Swim"
+      },
+      {
+        "id": "bubbles",
+        "title": "Blow Bubbles"
+      }
+    ],
+    "file_size": 131445
+  },
+  {
+    "id": "puddle",
+    "name": "Puddle the slime",
+    "category": "critter",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A wobbly slime who changes colour, splits in two to play and always has a snack inside.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "ice-cream",
+        "title": "Eat Ice Cream"
+      },
+      {
+        "id": "twin",
+        "title": "Split in Two and Play"
+      },
+      {
+        "id": "color-shift",
+        "title": "Change Colour"
+      },
+      {
+        "id": "pop-food",
+        "title": "Pop Out a Snack"
+      }
+    ],
+    "file_size": 133522
+  },
+  {
+    "id": "sprout",
+    "name": "Sprout the seedling",
+    "category": "critter",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A tiny seedling who plants itself, grows up, chases butterflies and gives you flowers.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "give-flower",
+        "title": "Give You a Flower"
+      },
+      {
+        "id": "shower",
+        "title": "Take a Shower"
+      },
+      {
+        "id": "plant-self",
+        "title": "Plant Itself"
+      },
+      {
+        "id": "grow-up",
+        "title": "Grow Up"
+      },
+      {
+        "id": "chase-butterfly",
+        "title": "Chase a Butterfly"
+      }
+    ],
+    "file_size": 132792
+  },
+  {
+    "id": "grumbo",
+    "name": "Grumbo the warrior",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A small warrior with a big helmet. Spins until dizzy and tries, really tries, to chop a log.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "spin",
+        "title": "Spin Until Dizzy"
+      },
+      {
+        "id": "helmet",
+        "title": "Helmet Slips Down"
+      },
+      {
+        "id": "chop",
+        "title": "Chop a Log (Try To)"
+      }
+    ],
+    "file_size": 128847
+  },
+  {
+    "id": "wispaling",
+    "name": "Wisp-a-ling the spirit",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A floating little spirit who reaches for your pointer and gets tied up in its own thread.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "thread",
+        "title": "Reach for the Pointer"
+      },
+      {
+        "id": "knot",
+        "title": "Get Tied in a Knot"
+      },
+      {
+        "id": "moth",
+        "title": "Attract a Moth"
+      }
+    ],
+    "file_size": 130584
+  },
+  {
+    "id": "hexley",
+    "name": "Hexley the apprentice",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "An apprentice wizard whose spells mostly turn them into frogs and sheep. The book bites.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "frog",
+        "title": "Turn into a Frog"
+      },
+      {
+        "id": "sheep",
+        "title": "Turn into a Sheep"
+      },
+      {
+        "id": "book",
+        "title": "Read a Biting Book"
+      }
+    ],
+    "file_size": 128280
+  },
+  {
+    "id": "mossback",
+    "name": "Mossback the pebble giant",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A gentle pebble giant who sprouts flowers, enjoys the rain and naps after any effort.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "toss",
+        "title": "Toss a Rock, Then Nap"
+      },
+      {
+        "id": "bloom",
+        "title": "Sprout a Flower"
+      },
+      {
+        "id": "rain",
+        "title": "Enjoy a Little Rain"
+      }
+    ],
+    "file_size": 128500
+  },
+  {
+    "id": "sirclank",
+    "name": "Sir Clank",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A wind-up knight who runs down, needs winding up again and never misses tea time.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "wind",
+        "title": "Run Down and Wind Up"
+      },
+      {
+        "id": "spring",
+        "title": "Sneeze a Spring"
+      },
+      {
+        "id": "bell",
+        "title": "Tea-Time Alarm"
+      }
+    ],
+    "file_size": 129321
+  },
+  {
+    "id": "lunette",
+    "name": "Lunette the moon rabbit",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A moon rabbit who pounds rice cakes, wishes on shooting stars and naps in a crescent moon.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "rice",
+        "title": "Pound Rice Cakes"
+      },
+      {
+        "id": "wish",
+        "title": "Wish on a Shooting Star"
+      },
+      {
+        "id": "nap",
+        "title": "Nap in a Crescent Moon"
+      }
+    ],
+    "file_size": 129633
+  },
+  {
+    "id": "ninja",
+    "name": "Kage the ninja",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A quiet ninja who vanishes in smoke, throws shuriken, makes clones and hides in a bush.",
+    "builtin": true,
+    "tricks": [
+      {
+        "id": "smoke",
+        "title": "Smoke Bomb"
+      },
+      {
+        "id": "shuriken",
+        "title": "Throw Shuriken"
+      },
+      {
+        "id": "hide",
+        "title": "Hide in a Bush"
+      },
+      {
+        "id": "clones",
+        "title": "Clone Trick"
+      },
+      {
+        "id": "flip",
+        "title": "Backflips"
+      },
+      {
+        "id": "meditate",
+        "title": "Meditate"
+      }
+    ],
+    "file_size": null
+  },
+  {
+    "id": "samurai",
+    "name": "Ronin the samurai",
+    "category": "hero",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A calm samurai with a lightning quick draw, a proper bow and a tea ceremony between duels.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "draw",
+        "title": "Quick Draw"
+      },
+      {
+        "id": "bow",
+        "title": "Bow"
+      },
+      {
+        "id": "bamboo",
+        "title": "Cut the Bamboo"
+      },
+      {
+        "id": "tea",
+        "title": "Tea Ceremony"
+      },
+      {
+        "id": "spin",
+        "title": "Whirlwind Slash"
+      },
+      {
+        "id": "fly",
+        "title": "Catch a Fly"
+      }
+    ],
+    "file_size": 133961
+  },
+  {
+    "id": "moona",
+    "name": "Moona the moon knight",
+    "category": "legend",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A moon knight riding a black panther. Throws her glaive, splits in three and calls down the moonlight.",
+    "builtin": true,
+    "tricks": [
+      {
+        "id": "pounce",
+        "title": "Pounce"
+      },
+      {
+        "id": "glaive",
+        "title": "Throw the Glaive"
+      },
+      {
+        "id": "triplicate",
+        "title": "Triplicate"
+      },
+      {
+        "id": "moonlight",
+        "title": "Call the Moonlight"
+      }
+    ],
+    "file_size": null
+  },
+  {
+    "id": "witcher",
+    "name": "Orbis the witcher",
+    "category": "legend",
+    "author": "DeskPet",
+    "version": "1.0.0",
+    "description": "A sorcerer with three orbs circling overhead. Casts meteors, tornadoes, sun strikes and fire spirits.",
+    "builtin": false,
+    "tricks": [
+      {
+        "id": "orb",
+        "title": "Cast an Orb"
+      },
+      {
+        "id": "whirl",
+        "title": "Whirl the Orbs"
+      },
+      {
+        "id": "weigh",
+        "title": "Weigh the Orbs"
+      },
+      {
+        "id": "vanish",
+        "title": "Vanish"
+      },
+      {
+        "id": "sun-strike",
+        "title": "Sun Strike"
+      },
+      {
+        "id": "tornado",
+        "title": "Tornado"
+      },
+      {
+        "id": "meteor",
+        "title": "Meteor"
+      },
+      {
+        "id": "moon-blast",
+        "title": "Moon Blast"
+      },
+      {
+        "id": "spirits",
+        "title": "Call the Fire Spirits"
+      }
+    ],
+    "file_size": 217282
+  }
+]
