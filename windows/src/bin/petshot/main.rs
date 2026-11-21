@@ -7,28 +7,22 @@
 
 // The app's own module host and drawing code, so pets look exactly as they do on the taskbar.
 #[allow(dead_code)]
-#[path = "../../canvas.rs"]
-mod canvas;
-#[allow(dead_code)]
-#[path = "../../module.rs"]
-mod module;
-#[allow(dead_code)]
 #[path = "../../net.rs"]
 mod net;
-#[allow(dead_code)]
-#[path = "../../pet.rs"]
-mod pet;
 #[allow(dead_code)]
 #[path = "../../pets.rs"]
 mod pets;
 #[allow(dead_code)]
 #[path = "../../sys.rs"]
 mod sys;
+#[allow(dead_code)]
+#[path = "../../text.rs"]
+mod text;
 
 mod gif;
 
-use canvas::{Canvas, TextCache};
-use pet::PetView;
+use deskpet_host::canvas::{Canvas, TextCache};
+use deskpet_host::pet::PetView;
 use petkit::art::{prop_palette, Palette, PET_SIZE, PROP_ROOM};
 use petkit::engine::{About, Command, Input, Reminder};
 use petkit::look::pt;
@@ -303,7 +297,7 @@ fn gifs(file: &Path, out: &Path) -> Result<(), String> {
     let bytes = std::fs::read(file).map_err(|e| format!("can't read {}: {e}", file.display()))?;
     let about = pets::describe(&bytes)?;
     std::fs::create_dir_all(out).map_err(|e| e.to_string())?;
-    let mut text = TextCache::new();
+    let mut text = TextCache::new(Box::new(text::GdiText::new()));
 
     // The big one: saying hello and walking about.
     let mut jobs: Vec<(String, Vec<Command>, f64)> = vec![("hero".into(), vec![Command::Hello, Command::DemoWalk], 6.0)];

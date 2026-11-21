@@ -1,0 +1,10 @@
+[package]
+name = "deskpet-host"
+version = "1.2.0"
+edition = "2021"
+description = "Runs and draws DeskPet pet modules: the part the Windows and Mac apps share"
+publish = false
+
+[dependencies]
+petkit = { path = "../sdk/petkit" }
+wasmi = { version = "2.0.2", default-features = false, features = ["std", "validate", "auto-dispatch"] }

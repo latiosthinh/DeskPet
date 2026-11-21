@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["sdk/petkit", "pets/*", "windows"]
+members = ["sdk/petkit", "pets/*", "host", "mac/core", "windows"]
 exclude = ["pets/_template"]
 
 [profile.release]

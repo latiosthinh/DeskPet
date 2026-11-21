@@ -9,16 +9,15 @@
 
 #![windows_subsystem = "windows"]
 
-mod canvas;
-mod module;
 mod net;
-mod pet;
 mod pets;
 mod settings;
 mod sys;
+mod text;
 
-use canvas::{Canvas, TextCache};
-use pet::PetView;
+use deskpet_host::canvas::{Canvas, TextCache};
+use deskpet_host::catalog::icon_pixels;
+use deskpet_host::pet::PetView;
 use petkit::art::{Color, PET_SIZE, PROP_ROOM};
 use petkit::engine::{About, Command, Input, Reminder};
 use petkit::look::pt;
@@ -157,42 +156,8 @@ fn with_app<T>(f: impl FnOnce(&mut App) -> T) -> Option<T> {
     })
 }
 
-/// The pet in its own colours, cropped to its drawn pixels and centred in a `size`×`size` square (ARGB).
-/// Uses a whole number of device pixels per art pixel when that fills the square well, so it stays crisp.
-fn pet_pixels(pet: &About, size: i32) -> Vec<u32> {
-    let all = &pet.icon;
-    let width = all[0].len();
-    let used: Vec<usize> = (0..all.len()).filter(|&r| all[r].iter().any(|c| c.is_some())).collect();
-    let rows = &all[used[0]..=*used.last().unwrap()];
-    let cols_used: Vec<usize> = (0..width).filter(|&c| rows.iter().any(|r| r[c].is_some())).collect();
-    let c0 = cols_used[0];
-    let cols = cols_used.last().unwrap() - c0 + 1;
-
-    let n = size as f64;
-    let fit = n / cols.max(rows.len()) as f64;
-    let k = if fit.floor() >= 1.0 && fit.floor() / fit >= 0.8 { fit.floor() } else { fit };
-    let ox = ((n - cols as f64 * k) / 2.0).round();
-    let oy = ((n - rows.len() as f64 * k) / 2.0).round();
-
-    let mut px = vec![0u32; (size * size) as usize];
-    for (r, row) in rows.iter().enumerate() {
-        for c in 0..cols {
-            let Some(color) = row[c0 + c] else { continue };
-            let argb = (color.a as u32) << 24 | (color.r as u32) << 16 | (color.g as u32) << 8 | color.b as u32;
-            let (x0, x1) = ((ox + c as f64 * k).round() as i32, (ox + (c + 1) as f64 * k).round() as i32);
-            let (y0, y1) = ((oy + r as f64 * k).round() as i32, (oy + (r + 1) as f64 * k).round() as i32);
-            for y in y0.max(0)..y1.min(size) {
-                for x in x0.max(0)..x1.min(size) {
-                    px[(y * size + x) as usize] = argb;
-                }
-            }
-        }
-    }
-    px
-}
-
 fn pet_icon(pet: &About, size: i32) -> HICON {
-    sys::icon_from_pixels(&pet_pixels(pet, size), size)
+    sys::icon_from_pixels(&icon_pixels(pet, size), size)
 }
 
 /// A fresh seed for a pet's random numbers.
@@ -257,7 +222,7 @@ impl App {
             drag_start_mouse_x: 0,
             drag_start_x: 0,
             dib: None,
-            text: TextCache::new(),
+            text: TextCache::new(Box::new(text::GdiText::new())),
             last_frame: Vec::new(),
             last_pos: (0, 0, 0, 0),
             timer_ms: 0,
@@ -535,7 +500,7 @@ impl App {
                 pets.separator(); // the list is grouped by category
             }
             let current = p.about.id == self.view.about.id;
-            let bmp = sys::bitmap_from_pixels(&pet_pixels(&p.about, icon), icon);
+            let bmp = sys::bitmap_from_pixels(&icon_pixels(&p.about, icon), icon);
             bitmaps.push(bmp);
             pets.add(MenuItem { checked: current, bold: current, bitmap: bmp, ..MenuItem::new(&p.about.name, CMD_PET + i as u32) });
         }
@@ -768,15 +733,11 @@ fn install_waiting() {
 
 /// Queues pet files to install; non-pet files are ignored.
 fn queue_install(paths: impl IntoIterator<Item = String>) {
-    let pets: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).filter(|p| is_pet_file(p)).collect();
+    let pets: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).filter(|p| pets::is_pet_file(p)).collect();
     if !pets.is_empty() {
         TO_INSTALL.with(|q| q.borrow_mut().extend(pets));
         unsafe { PostMessageW(OWNER.with(Cell::get), WM_INSTALL, 0, 0) };
     }
-}
-
-fn is_pet_file(p: &Path) -> bool {
-    p.extension().is_some_and(|x| x.eq_ignore_ascii_case("deskpet"))
 }
 
 // MARK: Window procedures
@@ -901,7 +862,7 @@ fn main() {
     // folder (build-pets.ps1 makes them in build\pets). A pet file (double-clicked) is installed.
     let args: Vec<String> = std::env::args().skip(1).collect();
     let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(String::as_str);
-    let pet_files: Vec<String> = args.iter().filter(|a| is_pet_file(Path::new(a)) && Some(a.as_str()) != value("--pets")).cloned().collect();
+    let pet_files: Vec<String> = args.iter().filter(|a| pets::is_pet_file(Path::new(a)) && Some(a.as_str()) != value("--pets")).cloned().collect();
 
     let Some(_single) = sys::single_instance() else {
         // Already running: hand it the pet files.

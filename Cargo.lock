@@ -28,10 +28,26 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 name = "deskpet"
 version = "1.2.0"
 dependencies = [
+ "deskpet-host",
  "embed-resource",
  "petkit",
- "wasmi",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "deskpet-host"
+version = "1.2.0"
+dependencies = [
+ "petkit",
+ "wasmi",
+]
+
+[[package]]
+name = "deskpet-mac"
+version = "1.2.0"
+dependencies = [
+ "deskpet-host",
+ "petkit",
 ]
 
 [[package]]

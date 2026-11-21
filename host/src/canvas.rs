@@ -1,10 +1,10 @@
 //! Drawing into a 32 bpp premultiplied BGRA buffer, in the Mac version's coordinates:
 //! points (DIPs) with y pointing up from the bottom of the pen. Everything is converted to device
 //! pixels here; rectangle edges are rounded to whole pixels so art pixels never leave seams.
-//! Shapes are antialiased in software. Text is rendered once by GDI into a coverage mask and cached.
+//! Shapes are antialiased in software. Text is rendered once by the app's [`TextRaster`] into a
+//! coverage mask and cached.
 
 use petkit::art::Color;
-use crate::sys;
 use std::collections::HashMap;
 
 pub struct Canvas<'a> {
@@ -263,31 +263,38 @@ impl<'a> Canvas<'a> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// The two kinds of text pets show. Each app picks its own system fonts for them.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Font {
-    /// Segoe UI Symbol, bold: particle glyphs.
-    Symbol,
-    /// Segoe UI Semibold: speech bubbles and labels.
-    Ui,
+    /// Particle glyphs (♥, z, ✦…): bold, from a font with symbols (Segoe UI Symbol, the Mac system font).
+    Symbol = 0,
+    /// Speech bubbles and labels: semibold UI text.
+    Ui = 1,
 }
 
+/// One line of text as coverage: `w`×`h` bytes, top row first, 255 where the text is solid.
 pub struct Mask {
     pub w: i32,
     pub h: i32,
     pub cov: Vec<u8>,
 }
 
-/// Renders text with GDI (white on black, greyscale antialiasing) and keeps the result as an
-/// alpha mask, so each string is only rasterised once.
+/// Renders one line of text, white on black, with greyscale antialiasing. `px` is the font size in
+/// device pixels; the mask is the size of the line box (as tall as the font's line, as wide as the
+/// text). Each app implements it with its system's text drawing (GDI on Windows, AppKit on the Mac).
+pub trait TextRaster {
+    fn render(&mut self, text: &str, font: Font, px: i32) -> Mask;
+}
+
+/// Keeps each rendered string as a mask, so it is only rasterised once.
 pub struct TextCache {
     masks: HashMap<(String, Font, i32), Mask>,
-    fonts: HashMap<(Font, i32), sys::Font>,
-    scratch: Option<sys::Dib>,
+    raster: Box<dyn TextRaster>,
 }
 
 impl TextCache {
-    pub fn new() -> TextCache {
-        TextCache { masks: HashMap::new(), fonts: HashMap::new(), scratch: None }
+    pub fn new(raster: Box<dyn TextRaster>) -> TextCache {
+        TextCache { masks: HashMap::new(), raster }
     }
 
     pub fn mask(&mut self, text: &str, font: Font, px: i32) -> &Mask {
@@ -296,41 +303,12 @@ impl TextCache {
             if self.masks.len() > 256 {
                 self.masks.clear();
             }
-            let m = self.render(text, font, px.max(1));
+            let mut m = self.raster.render(text, font, px.max(1));
+            if m.w <= 0 || m.h <= 0 || m.cov.len() != (m.w * m.h) as usize {
+                m = Mask { w: 1, h: 1, cov: vec![0] }; // a bad mask draws nothing rather than reading out of bounds
+            }
             self.masks.insert(key.clone(), m);
         }
         &self.masks[&key]
-    }
-
-    fn render(&mut self, text: &str, font: Font, px: i32) -> Mask {
-        let f = self
-            .fonts
-            .entry((font, px))
-            .or_insert_with(|| match font {
-                Font::Symbol => sys::Font::new("Segoe UI Symbol", px, 700),
-                Font::Ui => sys::Font::new("Segoe UI", px, 600),
-            })
-            .handle();
-        let (w, h) = sys::text_extent(f, text);
-        let (w, h) = (w.max(1), h.max(1));
-        let need_new = match &self.scratch {
-            Some(d) => d.w < w || d.h < h,
-            None => true,
-        };
-        if need_new {
-            self.scratch = Some(sys::Dib::new(w.max(64), h.max(32)));
-        }
-        let dib = self.scratch.as_mut().unwrap();
-        let stride = dib.w;
-        let pixels = dib.draw_text(f, text, w, h);
-        let mut cov = vec![0u8; (w * h) as usize];
-        for y in 0..h {
-            for x in 0..w {
-                let p = pixels[(y * stride + x) as usize];
-                let (r, g, b) = ((p >> 16) & 0xFF, (p >> 8) & 0xFF, p & 0xFF);
-                cov[(y * w + x) as usize] = r.max(g).max(b) as u8;
-            }
-        }
-        Mask { w, h, cov }
     }
 }

@@ -148,9 +148,9 @@ function homePage() {
   const body = `<section class="hero">
   <div class="hero-text">
     <h1>Tiny pixel pets that live on your desktop.</h1>
-    <p class="lead">They walk along your taskbar, nap when you're busy, cheer when you type and do little tricks when you're not looking.</p>
+    <p class="lead">They live beside your Dock or on your taskbar, nap when you're busy, cheer when you type and do little tricks when you're not looking.</p>
     <p><a class="btn" href="${INSTALLER}">Download DeskPet</a></p>
-    <p class="small">Free for Windows. Comes with ${esc(listText(builtinNames))}. Every other pet is a free one-click add-on below.</p>
+    <p class="small">Free for Mac and Windows. Comes with ${esc(listText(builtinNames))}. Every other pet is a free one-click add-on below.</p>
   </div>
   <div class="hero-pets" aria-hidden="true">${trio}</div>
 </section>
@@ -177,7 +177,7 @@ function petPage(p) {
 
   const steps = p.builtin
     ? `<ol class="steps">
-    <li><a href="${INSTALLER}">Download DeskPet</a>, unzip it and run <b>DeskPet.exe</b>.</li>
+    <li><a href="${INSTALLER}">Download DeskPet</a>: the <b>.dmg</b> for a Mac (drag DeskPet to Applications), or the <b>windows.zip</b> (unzip it and run DeskPet.exe).</li>
     <li>${esc(p.name)} is already inside: pick ${esc(p.name.split(' the ')[0])} from the DeskPet menu.</li>
   </ol>`
     : `<ol class="steps">

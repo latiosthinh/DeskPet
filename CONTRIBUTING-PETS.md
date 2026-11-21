@@ -40,6 +40,18 @@ powershell -ExecutionPolicy Bypass -File windows\check-pet.ps1 bean -Gifs
 
    `-Gifs` also writes the website's GIFs to `build\gifs\bean`, one per trick plus `hero.gif`.
 
+The same `.deskpet` file runs in the Mac and the Windows app, so you only build it once. On a Mac, with
+[Rust](https://rustup.rs) and the Xcode command line tools, copy `pets/_template` to `pets/bean` (replace
+`__ID__`, `__NAME__` and `__AUTHOR__` in its `Cargo.toml` and `src/lib.rs`), then try it in the app:
+
+```bash
+mac/build.sh                     # once, to build the app
+mac/build-pets.sh bean
+build/DeskPet.app/Contents/MacOS/DeskPet --pets build/pets --pet bean --tricks
+```
+
+The checker and the GIF maker (`check-pet.ps1`) run on Windows; a pull request runs them for you.
+
 ## What's in a pet
 
 ```
