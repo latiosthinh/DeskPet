@@ -30,6 +30,13 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File windows\build.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build every pet, run the tests
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File windows\build-pets.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --release -p petkit -p deskpet
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Make codes
         shell: pwsh
         run: |

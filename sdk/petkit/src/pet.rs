@@ -66,8 +66,9 @@ pub struct PetInfo {
     pub description: &'static str,
     /// Who made it, for the website's credit line.
     pub author: &'static str,
-    /// The module's version; the app updates an installed pet when the website has a newer one.
-    pub version: u32,
+    /// The pet's version, "1.2.0". `export_pet!` sets it from the crate's `Cargo.toml`, so bump it
+    /// there; the app updates an installed pet when the website has a newer one.
+    pub version: &'static str,
     /// Colours for the body's characters. 'k' (outline) is also used for props.
     pub palette: Palette,
     /// The 16×16 body without eyes and feet: 13 rows of 16 characters, '.' is see-through.
@@ -111,7 +112,7 @@ impl PetInfo {
             category,
             description: "",
             author: "DeskPet",
-            version: 1,
+            version: "1.0.0",
             palette: Palette::new(&[]),
             body: [EMPTY_ROW; 13],
             feet: [EMPTY_ROW; 2],

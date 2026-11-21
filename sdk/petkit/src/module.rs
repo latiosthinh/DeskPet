@@ -21,7 +21,8 @@ pub fn api() -> u32 {
     major << 16 | minor
 }
 
-pub fn new(def: PetDef, now: f64, seed: u64) {
+pub fn new(mut def: PetDef, version: &'static str, now: f64, seed: u64) {
+    def.info.version = version;
     crate::random::seed(seed);
     BRAIN.with(|b| *b.borrow_mut() = Some(Brain::new(def, now)));
 }
@@ -85,7 +86,7 @@ macro_rules! export_pet {
             }
             #[no_mangle]
             pub extern "C" fn deskpet_new(now: f64, seed: u64) {
-                m::new(super::$make(), now, seed)
+                m::new(super::$make(), env!("CARGO_PKG_VERSION"), now, seed)
             }
             #[no_mangle]
             pub extern "C" fn deskpet_inbox(len: u32) -> u32 {

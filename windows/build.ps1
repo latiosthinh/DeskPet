@@ -16,8 +16,7 @@ $build = Join-Path $root 'build'
 New-Item -ItemType Directory -Force $build | Out-Null
 
 # The built-in pets (one per category) are modules too; the exe embeds them from build\pets.
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build-pets.ps1') -Pets mochi, ninja, moona
-if ($LASTEXITCODE -ne 0) { throw 'build-pets.ps1 failed' }
+& (Join-Path $PSScriptRoot "build-pets.ps1") -Pets mochi, ninja, moona
 
 Get-Process DeskPet -ErrorAction SilentlyContinue | Stop-Process -Force
 # cargo reads .cargo\config.toml (static C runtime) at the workspace root, so it runs from there.

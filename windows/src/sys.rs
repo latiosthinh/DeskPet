@@ -26,8 +26,22 @@ impl Font {
     pub fn new(face: &str, px: i32, weight: i32) -> Font {
         let face = wide(face);
         let h = unsafe {
-            CreateFontW(-px, 0, 0, 0, weight, 0, 0, 0, DEFAULT_CHARSET as u32, OUT_TT_PRECIS as u32, CLIP_DEFAULT_PRECIS as u32,
-                        ANTIALIASED_QUALITY as u32, (DEFAULT_PITCH | FF_DONTCARE) as u32, face.as_ptr())
+            CreateFontW(
+                -px,
+                0,
+                0,
+                0,
+                weight,
+                0,
+                0,
+                0,
+                DEFAULT_CHARSET as u32,
+                OUT_TT_PRECIS as u32,
+                CLIP_DEFAULT_PRECIS as u32,
+                ANTIALIASED_QUALITY as u32,
+                (DEFAULT_PITCH | FF_DONTCARE) as u32,
+                face.as_ptr(),
+            )
         };
         Font(h)
     }
@@ -243,11 +257,72 @@ pub fn cursor() -> (i32, i32) {
     (p.x, p.y)
 }
 
-
 pub fn message_box(text: &str, warning: bool) {
     let t = wide(text);
     let c = wide("DeskPet");
     unsafe { MessageBoxW(null_mut(), t.as_ptr(), c.as_ptr(), if warning { MB_ICONWARNING } else { MB_ICONINFORMATION } | MB_TOPMOST) };
+}
+
+/// A yes/no question; true for yes.
+pub fn ask(text: &str) -> bool {
+    let t = wide(text);
+    let c = wide("DeskPet");
+    unsafe { MessageBoxW(null_mut(), t.as_ptr(), c.as_ptr(), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TOPMOST) == IDYES }
+}
+
+/// Opens a web page in the default browser.
+pub fn open_url(url: &str) {
+    let (verb, u) = (wide("open"), wide(url));
+    unsafe { ShellExecuteW(null_mut(), verb.as_ptr(), u.as_ptr(), null(), null(), SW_SHOWNORMAL) };
+}
+
+/// Tells Explorer the file types changed, so `.deskpet` files get their icon.
+pub fn file_types_changed() {
+    unsafe { SHChangeNotify(SHCNE_ASSOCCHANGED as i32, SHCNF_IDLIST, null(), null()) };
+}
+
+// MARK: Pet files
+
+/// Marks a WM_COPYDATA that carries the path of a pet file to install.
+pub const COPY_PET_FILE: usize = 0xDE5C;
+
+/// Hands a pet file to the DeskPet that is already running (whose owner window is `class`).
+pub fn send_pet_file(class: &str, path: &str) -> bool {
+    use windows_sys::Win32::System::DataExchange::COPYDATASTRUCT;
+    let (c, p) = (wide(class), wide(path));
+    unsafe {
+        let hwnd = FindWindowW(c.as_ptr(), null());
+        if hwnd.is_null() {
+            return false;
+        }
+        let data = COPYDATASTRUCT { dwData: COPY_PET_FILE, cbData: (p.len() * 2) as u32, lpData: p.as_ptr() as *mut c_void };
+        let mut result = 0;
+        SendMessageTimeoutW(hwnd, WM_COPYDATA, 0, &data as *const _ as LPARAM, SMTO_ABORTIFHUNG, 5000, &mut result) != 0
+    }
+}
+
+/// The path a WM_COPYDATA carries, if it is a pet file's.
+pub unsafe fn received_pet_file(lp: LPARAM) -> Option<String> {
+    let data = &*(lp as *const windows_sys::Win32::System::DataExchange::COPYDATASTRUCT);
+    if data.dwData != COPY_PET_FILE || data.lpData.is_null() || data.cbData > 64 * 1024 {
+        return None;
+    }
+    let chars = std::slice::from_raw_parts(data.lpData as *const u16, data.cbData as usize / 2);
+    Some(String::from_utf16_lossy(chars).trim_end_matches('\0').to_string())
+}
+
+/// The files dropped on a window (WM_DROPFILES).
+pub unsafe fn dropped_files(drop: HDROP) -> Vec<String> {
+    let n = DragQueryFileW(drop, u32::MAX, null_mut(), 0);
+    let files = (0..n)
+        .map(|i| {
+            let mut buf = vec![0u16; DragQueryFileW(drop, i, null_mut(), 0) as usize + 1];
+            let len = DragQueryFileW(drop, i, buf.as_mut_ptr(), buf.len() as u32) as usize;
+            String::from_utf16_lossy(&buf[..len])
+        })
+        .collect();
+    DragFinish(drop);
+    files
 }
 
 // MARK: Screen and DPI
@@ -274,7 +349,11 @@ pub fn primary_screen() -> ScreenInfo {
 
 pub fn small_icon_size(dpi: u32) -> i32 {
     let v = unsafe { GetSystemMetricsForDpi(SM_CXSMICON, dpi) };
-    if v > 0 { v } else { (16 * dpi as i32) / 96 }
+    if v > 0 {
+        v
+    } else {
+        (16 * dpi as i32) / 96
+    }
 }
 
 // MARK: Input
@@ -437,9 +516,7 @@ impl Menu {
         let mut info: MENUITEMINFOW = unsafe { std::mem::zeroed() };
         info.fMask = MIIM_ID | MIIM_STRING | MIIM_STATE | MIIM_FTYPE | if item.bitmap.is_null() { 0 } else { MIIM_BITMAP };
         info.fType = if item.radio { MFT_RADIOCHECK } else { MFT_STRING };
-        info.fState = (if item.checked { MFS_CHECKED } else { 0 })
-            | (if item.enabled { 0 } else { MFS_DISABLED })
-            | (if item.bold { MFS_DEFAULT } else { 0 });
+        info.fState = (if item.checked { MFS_CHECKED } else { 0 }) | (if item.enabled { 0 } else { MFS_DISABLED }) | (if item.bold { MFS_DEFAULT } else { 0 });
         info.wID = item.id;
         info.dwTypeData = text.as_mut_ptr();
         info.hbmpItem = item.bitmap;

@@ -11,6 +11,7 @@
 
 mod canvas;
 mod module;
+mod net;
 mod pet;
 mod pets;
 mod settings;
@@ -26,6 +27,7 @@ use pets::Entry;
 use settings::LoginState;
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 use std::ptr::{null, null_mut};
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -47,6 +49,10 @@ const MEALS: [(Reminder, &str, u32); 2] = [(Reminder::Lunch, "lunch", 12 * 60), 
 const FRAME_MS: u32 = 33;
 const HIDDEN_MS: u32 = 250;
 
+// Messages to the owner window.
+const WM_PETS_UPDATED: u32 = WM_APP + 2;
+const WM_INSTALL: u32 = WM_APP + 3;
+
 // Menu command ids.
 const CMD_SHOW: u32 = 1;
 const CMD_SURPRISE: u32 = 3;
@@ -57,9 +63,11 @@ const CMD_MEALS: u32 = 7;
 const CMD_BREAKS: u32 = 8;
 const CMD_LOGIN: u32 = 9;
 const CMD_QUIT: u32 = 10;
-const CMD_PET: u32 = 100;
+const CMD_GET_PETS: u32 = 11;
+const CMD_REMOVE: u32 = 12;
 const CMD_TRICK: u32 = 200;
 const CMD_RANGE: u32 = 300;
+const CMD_PET: u32 = 1000;
 
 fn uptime() -> f64 {
     static START: OnceLock<Instant> = OnceLock::new();
@@ -70,11 +78,15 @@ fn uptime() -> f64 {
 enum After {
     Nothing,
     LoginFailed,
+    /// Ask before removing an installed pet: its file and name.
+    Remove(PathBuf, String),
     Quit,
 }
 
 struct App {
     pets: Vec<Entry>,
+    /// The folder given with `--pets`, so the list can be re-read.
+    extra: Option<PathBuf>,
     view: PetView,
     pet_hwnd: HWND,
     owner: HWND,
@@ -132,6 +144,9 @@ struct App {
 thread_local! {
     static APP: RefCell<Option<App>> = const { RefCell::new(None) };
     static TASKBAR_CREATED: Cell<u32> = const { Cell::new(0) };
+    static OWNER: Cell<HWND> = const { Cell::new(null_mut()) };
+    /// Pet files waiting to be installed (dropped, double-clicked or handed over by a second DeskPet).
+    static TO_INSTALL: RefCell<VecDeque<PathBuf>> = const { RefCell::new(VecDeque::new()) };
 }
 
 /// Runs `f` with the app, unless it isn't made yet or is already in use further up the stack.
@@ -192,8 +207,9 @@ fn start_pet(pets: &[Entry], i: usize) -> PetView {
 
 impl App {
     /// `wanted`: a pet id to start with instead of the saved one (`--pet`).
-    fn new(pets: Vec<Entry>, wanted: Option<&str>, pet_hwnd: HWND, owner: HWND) -> App {
+    fn new(extra: Option<PathBuf>, wanted: Option<&str>, pet_hwnd: HWND, owner: HWND) -> App {
         let now = uptime();
+        let pets = pets::catalog(extra.as_deref());
         let saved_id = settings::get_string("pet").unwrap_or_else(|| "mochi".into());
         let id = wanted.unwrap_or(&saved_id);
         let pet = pets.iter().position(|p| p.about.id.eq_ignore_ascii_case(id)).unwrap_or(0);
@@ -202,6 +218,7 @@ impl App {
         App {
             view: start_pet(&pets, pet),
             pets,
+            extra,
             pet_hwnd,
             owner,
             x: 0,
@@ -513,10 +530,19 @@ impl App {
 
         let mut pets = Menu::new();
         for (i, p) in self.pets.iter().enumerate() {
+            if i > 0 && p.about.category != self.pets[i - 1].about.category {
+                pets.separator(); // the list is grouped by category
+            }
             let current = p.about.id == self.view.about.id;
             let bmp = sys::bitmap_from_pixels(&pet_pixels(&p.about, icon), icon);
             bitmaps.push(bmp);
             pets.add(MenuItem { checked: current, bold: current, bitmap: bmp, ..MenuItem::new(&p.about.name, CMD_PET + i as u32) });
+        }
+        pets.separator();
+        pets.add(MenuItem::new("Get More Pets…", CMD_GET_PETS));
+        let remove = self.current().file.as_ref().map(|_| format!("Remove {}", self.view.about.name));
+        if let Some(remove) = &remove {
+            pets.add(MenuItem::new(remove, CMD_REMOVE));
         }
         menu.submenu("Pet", pets);
 
@@ -615,6 +641,12 @@ impl App {
                 }
             }
             CMD_QUIT => return After::Quit,
+            CMD_GET_PETS => sys::open_url(&net::site()),
+            CMD_REMOVE => {
+                if let Some(file) = &self.current().file {
+                    return After::Remove(file.clone(), self.view.about.name.clone());
+                }
+            }
             _ if (CMD_PET..CMD_PET + self.pets.len() as u32).contains(&id) => {
                 self.switch_to((id - CMD_PET) as usize);
             }
@@ -644,6 +676,23 @@ impl App {
         settings::set_string("pet", &self.view.about.id);
         self.update_tray_icon();
         self.view.command(Command::Hello);
+    }
+
+    /// The catalog entry of the pet on screen.
+    fn current(&self) -> &Entry {
+        self.pets.iter().find(|p| p.about.id == self.view.about.id).unwrap_or(&self.pets[0])
+    }
+
+    /// Re-reads the pet list after pets were added, removed or updated. Shows pet `show` if given;
+    /// otherwise restarts the pet on screen if its file changed, or swaps in the first pet if it's gone.
+    fn reload(&mut self, show: Option<&str>) {
+        self.pets = pets::catalog(self.extra.as_deref());
+        let id = show.unwrap_or(&self.view.about.id).to_string();
+        match self.pets.iter().position(|p| p.about.id == id) {
+            Some(i) if show.is_some() || self.pets[i].about.version != self.view.about.version => self.switch_to(i),
+            Some(_) => {}
+            None => self.switch_to(0),
+        }
     }
 
     fn quit(&mut self) {
@@ -686,11 +735,45 @@ fn show_menu() {
     });
     match after {
         Some(After::LoginFailed) => sys::message_box("Couldn't change Open at Login.\n\nYou can add DeskPet yourself in Settings → Apps → Startup.", true),
+        Some(After::Remove(file, name)) if sys::ask(&format!("Remove {name}?\n\nYou can download it again from the DeskPet website.")) => match pets::remove(&file) {
+            Ok(()) => {
+                with_app(|a| a.reload(None));
+            }
+            Err(e) => sys::message_box(&format!("Couldn't remove {name}: {e}."), true),
+        },
         Some(After::Quit) => {
             with_app(|a| a.quit());
         }
         _ => {}
     }
+}
+
+/// Installs the pet files waiting in `TO_INSTALL` and shows the last one.
+fn install_waiting() {
+    while let Some(path) = TO_INSTALL.with(|q| q.borrow_mut().pop_front()) {
+        match pets::install(&path) {
+            Ok(id) => {
+                with_app(|a| a.reload(Some(&id)));
+            }
+            Err(e) => {
+                let name = path.file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned());
+                sys::message_box(&format!("Couldn't add the pet {name}: {e}."), true);
+            }
+        }
+    }
+}
+
+/// Queues pet files to install; non-pet files are ignored.
+fn queue_install(paths: impl IntoIterator<Item = String>) {
+    let pets: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).filter(|p| is_pet_file(p)).collect();
+    if !pets.is_empty() {
+        TO_INSTALL.with(|q| q.borrow_mut().extend(pets));
+        unsafe { PostMessageW(OWNER.with(Cell::get), WM_INSTALL, 0, 0) };
+    }
+}
+
+fn is_pet_file(p: &Path) -> bool {
+    p.extension().is_some_and(|x| x.eq_ignore_ascii_case("deskpet"))
 }
 
 // MARK: Window procedures
@@ -753,6 +836,11 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
             with_app(|a| a.screens_changed());
             return 0;
         }
+        WM_DROPFILES => {
+            // A pet file dropped on the pet.
+            queue_install(sys::dropped_files(wp as _));
+            return 0;
+        }
         _ => {}
     }
     DefWindowProcW(hwnd, msg, wp, lp)
@@ -760,6 +848,24 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
 
 unsafe extern "system" fn owner_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LRESULT {
     match msg {
+        WM_COPYDATA => {
+            // A second DeskPet (from double-clicking a pet file) hands the file over.
+            return match sys::received_pet_file(lp) {
+                Some(path) => {
+                    queue_install([path]);
+                    1
+                }
+                None => 0,
+            };
+        }
+        WM_INSTALL => {
+            install_waiting();
+            return 0;
+        }
+        WM_PETS_UPDATED => {
+            with_app(|a| a.reload(None));
+            return 0;
+        }
         WM_TIMER => {
             with_app(|a| a.tick());
             return 0;
@@ -788,9 +894,20 @@ unsafe extern "system" fn owner_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARA
 }
 
 fn main() {
+    // `--pet <id>` starts with that pet for this run; `--pets <folder>` also loads the pets in a
+    // folder (build-pets.ps1 makes them in build\pets). A pet file (double-clicked) is installed.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(String::as_str);
+    let pet_files: Vec<String> = args.iter().filter(|a| is_pet_file(Path::new(a)) && Some(a.as_str()) != value("--pets")).cloned().collect();
+
     let Some(_single) = sys::single_instance() else {
+        // Already running: hand it the pet files.
+        for f in &pet_files {
+            let full = std::fs::canonicalize(f).map_or(f.clone(), |p| p.to_string_lossy().trim_start_matches(r"\\?\").to_string());
+            sys::send_pet_file("DeskPetOwner", &full);
+        }
         return;
-    }; // already running
+    };
     sys::allow_dark_menus();
     uptime();
     TASKBAR_CREATED.with(|t| t.set(sys::taskbar_created_message()));
@@ -820,12 +937,11 @@ fn main() {
         (owner, pet)
     };
 
-    // `--pet <id>` starts with that pet for this run; `--pets <folder>` also loads the pets in a
-    // folder (build-pets.ps1 makes them in build\pets).
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(String::as_str);
-    let pets = pets::catalog(value("--pets").map(std::path::Path::new));
-    let mut app = App::new(pets, value("--pet"), pet_hwnd, owner);
+    OWNER.with(|o| o.set(owner));
+    unsafe { windows_sys::Win32::UI::Shell::DragAcceptFiles(pet_hwnd, TRUE) };
+    pets::register_file_type();
+
+    let mut app = App::new(value("--pets").map(PathBuf::from), value("--pet"), pet_hwnd, owner);
     app.layout();
     let r = &app.view.r;
     let middle = (r.min_pet_x + r.max_pet_x) / 2.0;
@@ -871,6 +987,19 @@ fn main() {
     with_app(|a| {
         a.set_shown(show);
         a.set_timer(if show { FRAME_MS } else { HIDDEN_MS });
+    });
+    queue_install(pet_files);
+
+    // Installed pets are kept up to date from the website: shortly after starting, then once a day.
+    let owner_id = owner as isize;
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(20));
+        loop {
+            if !pets::update().is_empty() {
+                unsafe { PostMessageW(owner_id as HWND, WM_PETS_UPDATED, 0, 0) };
+            }
+            std::thread::sleep(std::time::Duration::from_secs(24 * 60 * 60));
+        }
     });
 
     unsafe {

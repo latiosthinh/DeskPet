@@ -89,7 +89,7 @@ pub struct About {
     pub category: Category,
     pub description: String,
     pub author: String,
-    pub version: u32,
+    pub version: String,
     /// Titles and lengths of its tricks, in menu order.
     pub tricks: Vec<(String, f64)>,
     pub sweeps: bool,
@@ -612,7 +612,7 @@ impl Brain {
             category: p.category,
             description: p.description.to_string(),
             author: p.author.to_string(),
-            version: p.version,
+            version: p.version.to_string(),
             tricks: self.tricks.iter().map(|t| (t.title().to_string(), t.duration())).collect(),
             sweeps: p.sweeps,
             has_pastime: p.pastime.is_some(),

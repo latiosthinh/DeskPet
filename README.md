@@ -74,7 +74,8 @@ The Windows version (in `windows/`) has the same pets, tricks, typing activities
 - **Open at Login** adds DeskPet to your startup apps. If you turn it off in **Task Manager → Startup apps**, the menu shows a dot instead of a tick; choosing it turns it back on.
 - The pet hides while a fullscreen app, game or presentation is in front.
 - Speech bubbles show little pixel pictures instead of emoji.
-- Every pet is free on Windows; there are no codes.
+- Every pet is free on Windows; there are no codes. Mochi, Kage and Moona come with the app. Get the others one at a time from the DeskPet website (**Pet → Get More Pets…**): double-click a downloaded `.deskpet` file, or drop it on your pet. **Pet → Remove** takes an added pet away again.
+- Added pets live in `%LOCALAPPDATA%\DeskPet\pets`, and the app keeps them up to date from the website (it checks shortly after it starts, then once a day).
 - Settings are kept in the registry under `HKCU\Software\DeskPet`.
 
 ### Install
@@ -82,7 +83,7 @@ The Windows version (in `windows/`) has the same pets, tricks, typing activities
 1. Download `DeskPet-<version>-windows.zip` from the latest release and unzip it anywhere, for example into `%LOCALAPPDATA%\Programs\DeskPet`.
 2. Run `DeskPet.exe`. It isn't signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
 
-It needs nothing else: it's a single native exe of about 375 KB, written in Rust. It uses about 2 MB of private memory and around 1–2% of one CPU core while the pet moves, and almost nothing while it sits still.
+It needs nothing else: it's a single native exe of about 1.5 MB, written in Rust. It uses about 8 MB of private memory and around 1–2% of one CPU core while the pet moves, and almost nothing while it sits still.
 
 ### Build from source
 
@@ -104,6 +105,8 @@ Each pet is built as a sandboxed WebAssembly module, `<id>.deskpet`. The app has
 powershell -ExecutionPolicy Bypass -File windows\build-pets.ps1              # every pet, into build\pets
 build\DeskPet.exe --pets build\pets --pet witcher --tricks                    # try one without installing it
 ```
+
+`DESKPET_SITE` points the app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `site/` locally.
 
 ## Making unlock codes (developer, Mac app only)
 
