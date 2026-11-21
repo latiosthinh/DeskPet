@@ -82,5 +82,8 @@ test.describe("without JavaScript", () => {
     await expect(page.locator("main .support-content")).toContainText(
       "Thank you for keeping DeskPet free for everyone.",
     );
+    await expect(page.locator(".fine-print")).toHaveText(
+      "Prefer to help another way? Make a pet or share the project.",
+    );
   });
 });
