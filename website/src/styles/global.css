@@ -487,6 +487,7 @@
   .pet-card-media {
     position: relative;
     aspect-ratio: 16 / 10;
+    background: #f1e3c8;
   }
 
   .pet-card-media img {
@@ -494,7 +495,9 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    background: #f1e3c8;
     object-fit: contain;
+    object-position: center;
   }
 
   .hero-stage {
@@ -524,18 +527,34 @@
   .download-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: stretch;
     gap: 0.6rem;
   }
 
   .download-row .btn {
     min-width: 12.5rem;
     flex: 1 1 12.5rem;
-    justify-content: flex-start;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.1rem;
     text-align: left;
+    white-space: nowrap;
+  }
+
+  .os-label {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .os-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    white-space: nowrap;
   }
 
   .os-sub {
-    display: block;
     font-size: 0.75rem;
     font-weight: 600;
     opacity: 0.85;
@@ -554,18 +573,8 @@
   }
 
   .fig .pet-frame {
-    position: relative;
-    aspect-ratio: 16 / 10;
     border-radius: 0.55rem;
     border: 1px solid var(--line);
-  }
-
-  .fig .pet-frame img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
   }
 
   .fig figcaption {

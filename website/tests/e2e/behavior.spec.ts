@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { expectNoHorizontalOverflow, gotoThemed, loadAllImages } from "../helpers";
 
 const RELEASE = "https://github.com/latiosthinh/DeskPet/releases/latest";
@@ -174,40 +174,183 @@ test("trick GIFs animate when visible and pause individually", async ({ page }) 
   await expect(figure.locator("figcaption")).toContainText(/\d+(\.\d)?s/);
 });
 
-test("trick frames contain the whole poster without clipping", async ({ page }) => {
-  await gotoThemed(page, "/pets/ember/", "light");
+test("gallery frames show every pet's full artwork on a matching background", async ({ page }) => {
+  await gotoThemed(page, "/", "light", { reducedMotion: true });
+  await loadAllImages(page);
+  const cards = page.locator(".gallery-grid a.card");
+  await expect(cards).toHaveCount(15);
+
+  for (let index = 0; index < (await cards.count()); index++) {
+    const card = cards.nth(index);
+    await card.scrollIntoViewIfNeeded();
+    const result = await card.locator(".pet-card-media").evaluate((frame) => {
+      const image = frame.querySelector("img")!;
+      const style = getComputedStyle(image);
+      return {
+        frameWidth: frame.clientWidth,
+        frameHeight: frame.clientHeight,
+        ratio: frame.clientWidth / frame.clientHeight,
+        fit: style.objectFit,
+        position: style.objectPosition,
+        frameBackground: getComputedStyle(frame).backgroundColor,
+        imageBackground: style.backgroundColor,
+        loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
+      };
+    });
+
+    expect(result.loaded, `card ${index} image did not load`).toBe(true);
+    expect(result.fit, `card ${index} clips the full artwork`).toBe("contain");
+    expect(result.position, `card ${index} is not centred`).toMatch(/50% 50%|center/);
+    expect(result.ratio, `card ${index} frame is not 16:10`).toBeCloseTo(16 / 10, 2);
+    expect(result.frameBackground, `card ${index} frame background mismatch`).toBe(
+      "rgb(241, 227, 200)",
+    );
+    expect(result.imageBackground, `card ${index} image background mismatch`).toBe(
+      "rgb(241, 227, 200)",
+    );
+  }
+});
+
+test("trick frames follow each clip's natural aspect ratio, poster and GIF", async ({ page }) => {
+  await gotoThemed(page, "/pets/ember/", "light", { reducedMotion: true });
   await loadAllImages(page);
   const figures = page.locator('section[aria-labelledby="tricks"] figure');
+  await expect(figures).toHaveCount(4);
 
   for (let index = 0; index < (await figures.count()); index++) {
     const figure = figures.nth(index);
+    const media = figure.locator("[data-anim]");
+    const image = media.locator("img");
     await figure.scrollIntoViewIfNeeded();
-    const result = await figure.locator("[data-anim]").evaluate((frame) => {
-      const image = frame.querySelector("img")!;
-      const frameBox = frame.getBoundingClientRect();
-      const imageBox = image.getBoundingClientRect();
-      return {
-        contained:
-          imageBox.left >= frameBox.left - 1 &&
-          imageBox.top >= frameBox.top - 1 &&
-          imageBox.right <= frameBox.right + 1 &&
-          imageBox.bottom <= frameBox.bottom + 1,
-        fit: getComputedStyle(image).objectFit,
-        loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
-        ratio: frameBox.width / frameBox.height,
-      };
-    });
-    expect(result.contained, `figure ${index} clips its image`).toBe(true);
-    expect(result.fit).toBe("contain");
-    expect(result.loaded).toBe(true);
-    expect(result.ratio).toBeCloseTo(16 / 10, 2);
+    await expect(image).toHaveAttribute("src", /\.png$/);
+    await checkTrickGeometry(media, index, "poster");
+
+    await figure.locator("[data-anim-toggle]").click();
+    await expect(image).toHaveAttribute("src", /\.gif$/);
+    await loadAllImages(page);
+    await checkTrickGeometry(media, index, "GIF");
   }
+});
+
+async function checkTrickGeometry(frame: Locator, index: number, state: string) {
+  const result = await frame.evaluate((element) => {
+    const image = element.querySelector("img")!;
+    const frameBox = element.getBoundingClientRect();
+    const imageBox = image.getBoundingClientRect();
+    return {
+      frameWidth: element.clientWidth,
+      frameHeight: element.clientHeight,
+      frameRatio: element.clientWidth / element.clientHeight,
+      imageWidth: imageBox.width,
+      imageHeight: imageBox.height,
+      imageRatio: imageBox.width / imageBox.height,
+      naturalRatio: image.naturalWidth / image.naturalHeight,
+      fit: getComputedStyle(image).objectFit,
+      contained:
+        imageBox.left >= frameBox.left - 1 &&
+        imageBox.top >= frameBox.top - 1 &&
+        imageBox.right <= frameBox.right + 1 &&
+        imageBox.bottom <= frameBox.bottom + 1,
+      loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
+    };
+  });
+
+  expect(result.loaded, `figure ${index} ${state} did not load`).toBe(true);
+  expect(result.contained, `figure ${index} ${state} clips its image`).toBe(true);
+  expect(result.fit, `figure ${index} ${state} is letterboxed`).not.toBe("contain");
+  expect(
+    Math.abs(result.frameRatio - result.naturalRatio),
+    `figure ${index} ${state} frame is fixed`,
+  ).toBeLessThanOrEqual(0.02);
+  expect(result.imageRatio, `figure ${index} ${state} is distorted`).toBeCloseTo(
+    result.naturalRatio,
+    2,
+  );
+  expect(Math.abs(result.imageWidth - result.frameWidth)).toBeLessThanOrEqual(1);
+  expect(Math.abs(result.imageHeight - result.frameHeight)).toBeLessThanOrEqual(1);
+}
+
+test("download labels are single-line and buttons share a height in every OS state", async ({
+  page,
+}) => {
+  const widths = [320, 375, 1024, 1280, 1440, 1920];
+
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+
+    const mac = page.locator('a[data-os-link="mac"]');
+    const win = page.locator('a[data-os-link="windows"]');
+    await expect(mac).toHaveAccessibleName(/Download for macOS/);
+    await expect(win).toHaveAccessibleName(/Download for Windows/);
+
+    for (const os of ["mac", "windows", "other"] as const) {
+      await page.locator("html").evaluate((element, value) => {
+        element.dataset.os = value;
+      }, os);
+
+      const heights: number[] = [];
+      for (const link of [mac, win]) {
+        const label = link.locator(".os-label");
+        const meta = link.locator(".os-meta");
+        const box = await link.boundingBox();
+        const labelBox = await label.boundingBox();
+        const metaBox = await meta.boundingBox();
+        const lines = await label.evaluate((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          return range.getClientRects().length;
+        });
+
+        expect(box, `${os} ${width}px button has no box`).not.toBeNull();
+        expect(labelBox, `${os} ${width}px label has no box`).not.toBeNull();
+        expect(metaBox, `${os} ${width}px meta has no box`).not.toBeNull();
+        expect(lines, `${os} ${width}px label wrapped`).toBe(1);
+        expect(
+          metaBox!.y,
+          `${os} ${width}px meta is not on the second line`,
+        ).toBeGreaterThanOrEqual(labelBox!.y + labelBox!.height - 1);
+        heights.push(box!.height);
+      }
+
+      expect(
+        Math.abs(heights[0] - heights[1]),
+        `${os} ${width}px buttons have different heights`,
+      ).toBeLessThanOrEqual(1);
+
+      if (os === "other") {
+        await expect(mac.locator(".os-flag")).toBeHidden();
+        await expect(win.locator(".os-flag")).toBeHidden();
+      } else {
+        const active = os === "windows" ? win : mac;
+        await expect(active.locator(".os-flag")).toBeVisible();
+        const subBox = await active.locator(".os-sub").boundingBox();
+        const flagBox = await active.locator(".os-flag").boundingBox();
+        expect(subBox, `${os} ${width}px extension has no box`).not.toBeNull();
+        expect(flagBox, `${os} ${width}px recommendation has no box`).not.toBeNull();
+        expect(
+          Math.abs(subBox!.y + subBox!.height / 2 - (flagBox!.y + flagBox!.height / 2)),
+          `${os} ${width}px recommendation is not beside the extension`,
+        ).toBeLessThanOrEqual(2);
+      }
+
+      await expectNoHorizontalOverflow(page);
+    }
+  }
+});
+
+test("footer and donation use honest privacy wording", async ({ page }) => {
+  await gotoThemed(page, "/", "light");
+  const donate = page.locator('section[aria-labelledby="donate"]');
+  await expect(page.locator("footer")).toContainText("no ads, no cookies and no accounts");
+  await expect(donate).toContainText("no ads, no cookies and no accounts");
+  await expect(page.getByText(/tracking/i)).toHaveCount(0);
 });
 
 test("inline text keeps its spaces at element boundaries", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   await expect(
-    page.getByText(/no tracking\. If DeskPet made your desk a little happier/),
+    page.getByText(/no cookies and no accounts\. If DeskPet made your desk a little happier/),
   ).toBeVisible();
 
   await gotoThemed(page, "/contribute/", "light");
