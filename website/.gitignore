@@ -1,8 +1,16 @@
-.wrangler/
+﻿.wrangler/
 node_modules/
 .dev.vars
+dist/
+.astro/
+qa/
+test-results/
+playwright-report/
 
-# Made before each deploy by `petshot site` (GIFs, modules) and `node build.mjs` (pages, CSS,
-# placeholders); see README. Only the owner's donation QR code is kept here.
+# Build-time data written by scripts/prepare-assets.mjs from pets.json and the GIFs.
+src/data/pets.generated.json
+
+# Made before each deploy by `petshot site` (GIFs, modules), then prepare-assets (posters,
+# Open Graph images, fallback art); see README. Only the owner's donation QR code is kept here.
 public/*
 !public/donate-qr.png

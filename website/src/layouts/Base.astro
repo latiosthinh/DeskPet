@@ -1,0 +1,245 @@
+---
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE, absoluteUrl } from '../lib/site';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  image?: string;
+  type?: 'website' | 'article';
+  schema?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  path,
+  image = '/og-default.png',
+  type = 'website',
+  schema,
+  noindex,
+} = Astro.props;
+const canonical = absoluteUrl(path);
+const ogImage = absoluteUrl(image);
+const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : null;
+const favicon =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%235b3df5' d='M1 1h1v1h1v1h2V2h1V1h1v6H1z'/%3E%3Cpath fill='%23f3efff' d='M2 3h4v3H2z'/%3E%3Cpath fill='%23241d3a' d='M3 4h1v1H3zm2 0h1v1H5z'/%3E%3C/svg%3E";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+        var stored = null;
+        try {
+          stored = localStorage.getItem('deskpet-theme');
+        } catch (error) {
+          stored = null;
+        }
+        var dark = stored
+          ? stored === 'dark'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) root.classList.add('dark');
+        root.dataset.theme = dark ? 'dark' : 'light';
+        var platform =
+          (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        root.dataset.os = /mac/i.test(platform)
+          ? 'mac'
+          : /win/i.test(platform)
+            ? 'windows'
+            : 'other';
+      })();
+    </script>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : null}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={favicon} />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f4ff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100e17" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content={`${SITE.name} pixel pets`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {schemaJson ? <script type="application/ld+json" set:html={schemaJson} /> : null}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">
+      Skip to content
+    </a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      const root = document.documentElement;
+      const themeButton = document.querySelector('[data-theme-toggle]');
+      const globalButton = document.querySelector('[data-anim-global]');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      const animated = Array.from(document.querySelectorAll('[data-anim]'));
+      const visible = new Set();
+      const userPaused = new WeakSet();
+      let globalPaused = false;
+
+      function storedTheme() {
+        try {
+          return localStorage.getItem('deskpet-theme');
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function paintTheme(dark) {
+        root.classList.toggle('dark', dark);
+        root.dataset.theme = dark ? 'dark' : 'light';
+        if (themeButton) {
+          themeButton.setAttribute(
+            'aria-label',
+            dark ? 'Switch to light theme' : 'Switch to dark theme',
+          );
+          themeButton.setAttribute('aria-pressed', String(dark));
+        }
+      }
+
+      paintTheme(root.classList.contains('dark'));
+
+      themeButton?.addEventListener('click', () => {
+        const dark = !root.classList.contains('dark');
+        paintTheme(dark);
+        try {
+          localStorage.setItem('deskpet-theme', dark ? 'dark' : 'light');
+        } catch (error) {
+          /* private mode: the choice still lasts for this page */
+        }
+      });
+
+      darkScheme.addEventListener('change', (event) => {
+        if (!storedTheme()) paintTheme(event.matches);
+      });
+
+      function imageOf(element) {
+        return element.querySelector('img');
+      }
+
+      function buttonOf(element) {
+        return element.parentElement?.querySelector('[data-anim-toggle]') ?? null;
+      }
+
+      function labelButton(element, playing) {
+        const button = buttonOf(element);
+        if (!button) return;
+        const name = element.dataset.name || 'animation';
+        button.dataset.playing = String(playing);
+        button.setAttribute('aria-label', playing ? `Pause ${name}` : `Play ${name}`);
+        const text = button.querySelector('[data-label]');
+        if (text) text.textContent = playing ? 'Pause' : 'Play';
+      }
+
+      function play(element, force = false) {
+        if ((!force && reduceMotion.matches) || globalPaused || userPaused.has(element)) return;
+        const image = imageOf(element);
+        if (!image || !image.dataset.gif) return;
+        if (image.getAttribute('src') !== image.dataset.gif) image.src = image.dataset.gif;
+        element.dataset.playing = 'true';
+        labelButton(element, true);
+      }
+
+      function still(element) {
+        const image = imageOf(element);
+        if (!image || !image.dataset.poster) return;
+        if (image.getAttribute('src') !== image.dataset.poster) image.src = image.dataset.poster;
+        element.dataset.playing = 'false';
+        labelButton(element, false);
+      }
+
+      function refreshGlobal() {
+        if (!globalButton) return;
+        globalButton.setAttribute('aria-pressed', String(globalPaused));
+        globalButton.setAttribute(
+          'aria-label',
+          globalPaused ? 'Play all animations' : 'Pause all animations',
+        );
+      }
+
+      refreshGlobal();
+
+      globalButton?.addEventListener('click', () => {
+        globalPaused = !globalPaused;
+        refreshGlobal();
+        if (globalPaused) {
+          for (const element of animated) still(element);
+        } else {
+          for (const element of animated) {
+            if (visible.has(element)) play(element, true);
+          }
+        }
+      });
+
+      for (const element of animated) {
+        labelButton(element, false);
+        buttonOf(element)?.addEventListener('click', () => {
+          if (element.dataset.playing === 'true') {
+            userPaused.add(element);
+            still(element);
+          } else {
+            userPaused.delete(element);
+            play(element, true);
+          }
+        });
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const element = entry.target;
+            if (entry.isIntersecting) {
+              visible.add(element);
+              if (element.dataset.auto !== 'manual') play(element);
+            } else {
+              visible.delete(element);
+              if (element.dataset.playing === 'true') still(element);
+            }
+          }
+        },
+        { rootMargin: '160px 0px' },
+      );
+
+      for (const element of animated) observer.observe(element);
+
+      for (const element of animated) {
+        if (element.dataset.auto === 'eager' && !reduceMotion.matches) play(element);
+      }
+
+      reduceMotion.addEventListener('change', (event) => {
+        if (event.matches) {
+          for (const element of animated) still(element);
+        } else {
+          for (const element of animated) {
+            if (visible.has(element)) play(element);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

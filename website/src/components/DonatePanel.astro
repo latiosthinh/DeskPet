@@ -1,0 +1,33 @@
+---
+import { qr } from '../lib/site';
+
+interface Props {
+  name?: string;
+}
+
+const { name = 'DeskPet' } = Astro.props;
+---
+
+<section
+  class="panel my-8 flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:gap-6"
+  aria-labelledby="donate"
+>
+  <img
+    class="h-40 w-40 shrink-0 rounded-lg border-2 border-line bg-white p-2 [image-rendering:pixelated]"
+    src={qr.src}
+    width={qr.width}
+    height={qr.height}
+    alt="Donation QR code. Scan it to support DeskPet."
+    loading="lazy"
+    decoding="async"
+  />
+  <div>
+    <h2 id="donate" class="m-0 text-2xl font-extrabold">
+      Support DeskPet
+    </h2>
+    <p class="mt-2 mb-0 text-muted">
+      DeskPet and every pet here are free, with no ads and no tracking. If {name} made your desk a
+      little happier, you can chip in by scanning the code. It keeps new pets coming.
+    </p>
+  </div>
+</section>

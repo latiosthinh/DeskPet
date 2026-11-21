@@ -1,0 +1,182 @@
+---
+import AnimatedMedia from '../components/AnimatedMedia.astro';
+import DonatePanel from '../components/DonatePanel.astro';
+import DownloadButtons from '../components/DownloadButtons.astro';
+import PetCard from '../components/PetCard.astro';
+import Base from '../layouts/Base.astro';
+import {
+  SITE,
+  absoluteUrl,
+  builtinShortNames,
+  categories,
+  listText,
+  petImageAlt,
+  pets,
+  petsById,
+  petsInCategory,
+} from '../lib/site';
+
+const heroPet = petsById.get('mochi') ?? pets[0];
+const description =
+  'Free pixel pets that live on your desktop. Pick a pet, watch its tricks and add it to DeskPet in one click.';
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'DeskPet',
+    alternateName: 'DeskPet pixel pets',
+    description,
+    url: SITE.url,
+    downloadUrl: SITE.release,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'macOS, Windows',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    image: absoluteUrl('/og-default.png'),
+    screenshot: absoluteUrl('/og-default.png'),
+    sameAs: [SITE.repo],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    url: SITE.url,
+    description,
+  },
+];
+---
+
+<Base
+  title="DeskPet — tiny pixel pets for your desktop"
+  description={description}
+  path="/"
+  schema={schema}
+>
+  <section class="hero-glow border-b border-line">
+    <div class="wrap grid items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:py-20">
+      <div>
+        <p class="chip">Free · macOS + Windows</p>
+        <h1 class="mt-4 text-4xl font-extrabold sm:text-5xl lg:text-6xl">
+          Tiny pixel pets that live on your desktop.
+        </h1>
+        <p class="mt-5 max-w-xl text-lg text-muted">
+          They live beside your Dock or on your taskbar, nap when you're busy, cheer when you type
+          and do little tricks when you're not looking.
+        </p>
+        <div class="mt-7">
+          <DownloadButtons />
+        </div>
+        <p class="mt-6 text-sm text-muted">
+          Comes with {listText(builtinShortNames)}. Every other pet is a free one-click add-on
+          below.
+        </p>
+      </div>
+
+      <div class="hero-stage">
+        <div class="panel p-4 sm:p-5">
+          <AnimatedMedia
+            media={heroPet.hero}
+            alt={petImageAlt(heroPet)}
+            name={`${heroPet.name} the cat`}
+            eager
+            frameClass="rounded-xl border border-line"
+          />
+          <p class="mt-3 mb-0 text-sm text-muted">
+            <strong class="text-ink">{heroPet.name}</strong> comes with the app and is always ready
+            for a little dance.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap py-12 sm:py-16" aria-labelledby="what">
+    <h2 id="what" class="text-3xl font-extrabold">
+      A tiny friend, always at the edge
+    </h2>
+    <ul class="mt-6 grid list-none gap-4 p-0 sm:grid-cols-3">
+      <li class="panel p-5">
+        <span class="chip">Lives beside you</span>
+        <h3 class="mt-3 text-xl font-bold">Dock or taskbar</h3>
+        <p class="mt-2 mb-0 text-muted">
+          DeskPet sits quietly at the edge of your screen, walks around a little and stays out of
+          the way while you work.
+        </p>
+      </li>
+      <li class="panel p-5">
+        <span class="chip">Little tricks</span>
+        <h3 class="mt-3 text-xl font-bold">Reacts to you</h3>
+        <p class="mt-2 mb-0 text-muted">
+          Pets nap when you're busy, cheer while you type and have a trick for every mood. Each one
+          is hand-drawn pixel art.
+        </p>
+      </li>
+      <li class="panel p-5">
+        <span class="chip">Always free</span>
+        <h3 class="mt-3 text-xl font-bold">One-click add-ons</h3>
+        <p class="mt-2 mb-0 text-muted">
+          Every pet is a small <code>.deskpet</code> file that works on Mac and Windows. Download
+          one, open it, and it joins your desk.
+        </p>
+      </li>
+    </ul>
+  </section>
+
+  <section class="wrap py-4 sm:py-8" aria-labelledby="gallery">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h2 id="gallery" class="text-3xl font-extrabold">
+          The whole shelf
+        </h2>
+        <p class="mt-2 max-w-2xl text-muted">
+          Grouped by size and swagger. Built-in pets come with the app; everything else is a free
+          download.
+        </p>
+      </div>
+      <p class="m-0 text-sm text-muted">{pets.length} pets</p>
+    </div>
+
+    {categories.map((category) => {
+      const list = petsInCategory(category.id);
+      if (!list.length) return null;
+      return (
+        <section class="mt-10" aria-labelledby={`g-${category.id}`}>
+          <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h3 id={`g-${category.id}`} class="text-2xl font-extrabold">
+              {category.title}
+            </h3>
+            <p class="m-0 text-muted">{category.blurb}</p>
+          </div>
+          <ul class="gallery-grid mt-4 list-none p-0">
+            {list.map((pet) => (
+              <li>
+                <PetCard pet={pet} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })}
+  </section>
+
+  <div class="wrap">
+    <DonatePanel />
+  </div>
+
+  <section class="wrap py-8" aria-labelledby="make">
+    <div class="panel flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 id="make" class="m-0 text-2xl font-extrabold">
+          Make your own pet
+        </h2>
+        <p class="mt-2 mb-0 text-muted">
+          Pets are small modules anyone can build. Draw one, give it tricks and share it here.
+        </p>
+      </div>
+      <a class="btn btn-secondary shrink-0" href="/contribute/">
+        How to make a pet
+      </a>
+    </div>
+  </section>
+</Base>
