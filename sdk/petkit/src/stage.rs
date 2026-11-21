@@ -136,12 +136,7 @@ impl Stage {
             let (w, h) = self.pet.size();
             return (self.pet_center_x() - w / 2.0, 0.0, w, h);
         }
-        (
-            self.pet_x + PIXEL,
-            0.0,
-            PET_SIZE - 2.0 * PIXEL,
-            PET_SIZE - 2.0 * PIXEL,
-        )
+        (self.pet_x + PIXEL, 0.0, PET_SIZE - 2.0 * PIXEL, PET_SIZE - 2.0 * PIXEL)
     }
     pub fn pet_center_x(&self) -> f64 {
         self.pet_x + PET_SIZE / 2.0
@@ -152,12 +147,7 @@ impl Stage {
     }
     /// Centre x in points of a sprite column, honouring which way the pet faces.
     pub fn center_x(&self, col: f64) -> f64 {
-        self.pet_x
-            + (if self.facing_left {
-                15.5 - col
-            } else {
-                col + 0.5
-            }) * PIXEL
+        self.pet_x + (if self.facing_left { 15.5 - col } else { col + 0.5 }) * PIXEL
     }
     /// A velocity range pointing the way the pet faces.
     pub fn forward(&self, a: f64, b: f64) -> (f64, f64) {
@@ -239,29 +229,8 @@ impl Stage {
     /// A particle (a symbol such as "♥" or "✦") at `at`, moving with a velocity picked from the ranges,
     /// fading out over `life` seconds; `ay` is gravity (negative falls).
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn_full(
-        &mut self,
-        text: &'static str,
-        color: Color,
-        at: Pt,
-        size: f64,
-        vx: (f64, f64),
-        vy: (f64, f64),
-        life: f64,
-        ay: f64,
-    ) {
-        self.particles.push(Particle {
-            text,
-            color,
-            size,
-            x: at.x,
-            y: at.y,
-            vx: rand(vx.0, vx.1),
-            vy: rand(vy.0, vy.1),
-            life,
-            max_life: life,
-            ay,
-        });
+    pub fn spawn_full(&mut self, text: &'static str, color: Color, at: Pt, size: f64, vx: (f64, f64), vy: (f64, f64), life: f64, ay: f64) {
+        self.particles.push(Particle { text, color, size, x: at.x, y: at.y, vx: rand(vx.0, vx.1), vy: rand(vy.0, vy.1), life, max_life: life, ay });
     }
     /// A particle that floats up and fades.
     pub fn spawn(&mut self, text: &'static str, color: Color, at: Pt, size: f64) {
@@ -270,20 +239,8 @@ impl Stage {
     /// `count` particles floating up from above the pet's head.
     pub fn spawn_above_head(&mut self, text: &'static str, color: Color, count: usize, life: f64) {
         for _ in 0..count {
-            let at = pt(
-                self.pet_center_x() + rand(-14.0, 10.0),
-                self.pet.size().1.max(PET_SIZE) - 14.0 + rand(-4.0, 4.0),
-            );
-            self.spawn_full(
-                text,
-                color,
-                at,
-                14.0,
-                (-10.0, 10.0),
-                (22.0, 36.0),
-                life,
-                0.0,
-            );
+            let at = pt(self.pet_center_x() + rand(-14.0, 10.0), self.pet.size().1.max(PET_SIZE) - 14.0 + rand(-4.0, 4.0));
+            self.spawn_full(text, color, at, 14.0, (-10.0, 10.0), (22.0, 36.0), life, 0.0);
         }
     }
     /// Walks toward x at `speed` points per second, turning to face it; true on arrival.
@@ -312,41 +269,24 @@ impl Stage {
 
     /// The pet sitting, blinking now and then: the starting point for most looks.
     pub fn look(&self) -> Look {
-        Look::new(
-            self.pet.frame(self.blink_eyes(), Pose::Sit),
-            self.pet.palette,
-        )
+        Look::new(self.pet.frame(self.blink_eyes(), Pose::Sit), self.pet.palette)
     }
     /// A grid placed relative to the pet: its left edge `dx` art pixels from the sprite's left edge
     /// (mirrored when the pet faces left) and its bottom `up` art pixels above the ground. Kept
     /// inside the pen. Drawn in prop colours ([`crate::art::prop_palette`]).
     pub fn placed(&self, grid: &[&str], dx: f64, up: f64) -> FreeSprite {
         let width = grid.first().map_or(0, |r| r.len()) as f64 * PIXEL;
-        let x = if self.facing_left {
-            self.pet_x + PET_SIZE - dx * PIXEL - width
-        } else {
-            self.pet_x + dx * PIXEL
-        };
+        let x = if self.facing_left { self.pet_x + PET_SIZE - dx * PIXEL - width } else { self.pet_x + dx * PIXEL };
         let x = x.max(0.0).min((self.width - width).max(0.0));
-        let grid = if self.facing_left {
-            grid.iter().map(|r| r.chars().rev().collect()).collect()
-        } else {
-            rows(grid)
-        };
+        let grid = if self.facing_left { grid.iter().map(|r| r.chars().rev().collect()).collect() } else { rows(grid) };
         free(grid, x, up * PIXEL, PIXEL)
     }
     /// A copy of a 16×16 frame placed like [`placed`](Stage::placed), drawn in the pet's own colours
     /// (Kage's clones).
     pub fn frame_copy(&self, frame: &Frame, dx: f64, up: f64) -> FreeSprite {
-        let lines: Vec<String> = frame
-            .iter()
-            .map(|r| r.iter().map(|&b| b as char).collect())
-            .collect();
+        let lines: Vec<String> = frame.iter().map(|r| r.iter().map(|&b| b as char).collect()).collect();
         let refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
-        FreeSprite {
-            own_colors: true,
-            ..self.placed(&refs, dx, up)
-        }
+        FreeSprite { own_colors: true, ..self.placed(&refs, dx, up) }
     }
     /// How high a held book sits: a pet that doesn't crouch to sit holds it lower, below its eyes.
     pub fn book_lift(&self) -> f64 {

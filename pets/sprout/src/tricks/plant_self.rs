@@ -18,16 +18,7 @@ impl Trick for PlantSelf {
     fn step(&mut self, cx: &mut Stage, t: f64, _dt: f64) {
         if (t < 1.0 || (t > 7.5 && t < 8.3)) && cx.every(1, 0.08) {
             let at = pt(cx.pet_center_x() + rand(-26.0, 20.0), 8.0);
-            cx.spawn_full(
-                "·",
-                sys_color::PLAIN_BROWN,
-                at,
-                16.0,
-                (-40.0, 40.0),
-                (30.0, 60.0),
-                0.7,
-                -150.0,
-            );
+            cx.spawn_full("·", sys_color::PLAIN_BROWN, at, 16.0, (-40.0, 40.0), (30.0, 60.0), 0.7, -150.0);
         }
         if t > 8.0 && cx.once(1) {
             cx.say("!", 1.0);
@@ -55,11 +46,7 @@ impl Trick for PlantSelf {
             0.0
         };
         look.y_offset = y;
-        let e = if t > 2.5 && t < 7.5 {
-            Eyes::Closed
-        } else {
-            Eyes::Open
-        };
+        let e = if t > 2.5 && t < 7.5 { Eyes::Closed } else { Eyes::Open };
         look.frame = p.frame(e, Pose::Stand(if t < 1.0 { cx.step_of(0.15) } else { 0 }));
         if t < 9.2 {
             look.props.push(prop(rows(SOIL), -2.0, 0.0));

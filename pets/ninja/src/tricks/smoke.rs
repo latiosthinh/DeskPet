@@ -31,14 +31,7 @@ impl Trick for Smoke {
         let mut look = cx.look();
         // Holds up a smoke bomb, vanishes in a cloud of smoke, and pops up somewhere else.
         let gone = (SMOKE_GONE..SMOKE_BACK).contains(&t);
-        look.frame = if gone {
-            [[b'.'; 16]; 16]
-        } else {
-            p.frame(
-                if t > SMOKE_BACK { Eyes::Happy } else { eyes },
-                Pose::Stand(0),
-            )
-        };
+        look.frame = if gone { [[b'.'; 16]; 16] } else { p.frame(if t > SMOKE_BACK { Eyes::Happy } else { eyes }, Pose::Stand(0)) };
         if t < SMOKE_GONE - 0.2 {
             look.props = vec![prop(rows(NINJA_BOMB), 14.0, 6.0 + beat)];
         }

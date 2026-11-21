@@ -26,22 +26,8 @@ impl Font {
     pub fn new(face: &str, px: i32, weight: i32) -> Font {
         let face = wide(face);
         let h = unsafe {
-            CreateFontW(
-                -px,
-                0,
-                0,
-                0,
-                weight,
-                0,
-                0,
-                0,
-                DEFAULT_CHARSET as u32,
-                OUT_TT_PRECIS as u32,
-                CLIP_DEFAULT_PRECIS as u32,
-                ANTIALIASED_QUALITY as u32,
-                (DEFAULT_PITCH | FF_DONTCARE) as u32,
-                face.as_ptr(),
-            )
+            CreateFontW(-px, 0, 0, 0, weight, 0, 0, 0, DEFAULT_CHARSET as u32, OUT_TT_PRECIS as u32, CLIP_DEFAULT_PRECIS as u32,
+                        ANTIALIASED_QUALITY as u32, (DEFAULT_PITCH | FF_DONTCARE) as u32, face.as_ptr())
         };
         Font(h)
     }
@@ -104,16 +90,10 @@ pub fn create_dib(w: i32, h: i32) -> (HBITMAP, *mut u32) {
             biClrUsed: 0,
             biClrImportant: 0,
         },
-        bmiColors: [RGBQUAD {
-            rgbBlue: 0,
-            rgbGreen: 0,
-            rgbRed: 0,
-            rgbReserved: 0,
-        }],
+        bmiColors: [RGBQUAD { rgbBlue: 0, rgbGreen: 0, rgbRed: 0, rgbReserved: 0 }],
     };
     let mut bits: *mut c_void = null_mut();
-    let bmp =
-        unsafe { CreateDIBSection(null_mut(), &info, DIB_RGB_COLORS, &mut bits, null_mut(), 0) };
+    let bmp = unsafe { CreateDIBSection(null_mut(), &info, DIB_RGB_COLORS, &mut bits, null_mut(), 0) };
     (bmp, bits as *mut u32)
 }
 
@@ -123,14 +103,7 @@ impl Dib {
             let dc = CreateCompatibleDC(null_mut());
             let (bitmap, bits) = create_dib(w, h);
             let old = SelectObject(dc, bitmap);
-            Dib {
-                dc,
-                bitmap,
-                old,
-                bits,
-                w,
-                h,
-            }
+            Dib { dc, bitmap, old, bits, w, h }
         }
     }
 
@@ -142,12 +115,7 @@ impl Dib {
     pub fn draw_text(&mut self, font: HFONT, text: &str, w: i32, h: i32) -> &[u32] {
         let t: Vec<u16> = text.encode_utf16().collect();
         unsafe {
-            let rect = RECT {
-                left: 0,
-                top: 0,
-                right: w,
-                bottom: h,
-            };
+            let rect = RECT { left: 0, top: 0, right: w, bottom: h };
             FillRect(self.dc, &rect, GetStockObject(BLACK_BRUSH) as HBRUSH);
             let old = SelectObject(self.dc, font);
             SetTextColor(self.dc, 0x00FF_FFFF);
@@ -174,17 +142,9 @@ impl Drop for Dib {
 /// `dirty` (in DIB pixels) limits the copy to the part that changed.
 pub fn update_layered(hwnd: HWND, dib: &Dib, x: i32, y: i32, dirty: Option<RECT>) {
     let dst = POINT { x, y };
-    let size = SIZE {
-        cx: dib.w,
-        cy: dib.h,
-    };
+    let size = SIZE { cx: dib.w, cy: dib.h };
     let src = POINT { x: 0, y: 0 };
-    let blend = BLENDFUNCTION {
-        BlendOp: AC_SRC_OVER as u8,
-        BlendFlags: 0,
-        SourceConstantAlpha: 255,
-        AlphaFormat: AC_SRC_ALPHA as u8,
-    };
+    let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: 255, AlphaFormat: AC_SRC_ALPHA as u8 };
     let info = UPDATELAYEREDWINDOWINFO {
         cbSize: std::mem::size_of::<UPDATELAYEREDWINDOWINFO>() as u32,
         hdcDst: null_mut(),
@@ -214,13 +174,7 @@ pub fn icon_from_pixels(pixels: &[u32], size: i32) -> HICON {
         let color = bitmap_from_pixels(pixels, size);
         let zeros = vec![0u8; (((size + 15) / 16) * 2 * size) as usize]; // AND mask: all drawn from colour + alpha
         let mask = CreateBitmap(size, size, 1, 1, zeros.as_ptr() as *const c_void);
-        let info = ICONINFO {
-            fIcon: TRUE,
-            xHotspot: 0,
-            yHotspot: 0,
-            hbmMask: mask,
-            hbmColor: color,
-        };
+        let info = ICONINFO { fIcon: TRUE, xHotspot: 0, yHotspot: 0, hbmMask: mask, hbmColor: color };
         let icon = CreateIconIndirect(&info);
         DeleteObject(color);
         DeleteObject(mask);
@@ -276,17 +230,7 @@ pub fn set_click_through(hwnd: HWND, through: bool) {
 }
 
 pub fn keep_on_top(hwnd: HWND) {
-    unsafe {
-        SetWindowPos(
-            hwnd,
-            HWND_TOPMOST,
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-        )
-    };
+    unsafe { SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
 }
 
 pub fn show(hwnd: HWND, visible: bool) {
@@ -299,21 +243,11 @@ pub fn cursor() -> (i32, i32) {
     (p.x, p.y)
 }
 
+
 pub fn message_box(text: &str, warning: bool) {
     let t = wide(text);
     let c = wide("DeskPet");
-    unsafe {
-        MessageBoxW(
-            null_mut(),
-            t.as_ptr(),
-            c.as_ptr(),
-            if warning {
-                MB_ICONWARNING
-            } else {
-                MB_ICONINFORMATION
-            } | MB_TOPMOST,
-        )
-    };
+    unsafe { MessageBoxW(null_mut(), t.as_ptr(), c.as_ptr(), if warning { MB_ICONWARNING } else { MB_ICONINFORMATION } | MB_TOPMOST) };
 }
 
 // MARK: Screen and DPI
@@ -334,38 +268,25 @@ pub fn primary_screen() -> ScreenInfo {
         if GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &mut dx, &mut dy) != 0 || dx == 0 {
             dx = 96;
         }
-        ScreenInfo {
-            work: info.rcWork,
-            dpi: dx,
-        }
+        ScreenInfo { work: info.rcWork, dpi: dx }
     }
 }
 
 pub fn small_icon_size(dpi: u32) -> i32 {
     let v = unsafe { GetSystemMetricsForDpi(SM_CXSMICON, dpi) };
-    if v > 0 {
-        v
-    } else {
-        (16 * dpi as i32) / 96
-    }
+    if v > 0 { v } else { (16 * dpi as i32) / 96 }
 }
 
 // MARK: Input
 
 /// Seconds since the last keyboard or mouse input anywhere in the session, and the raw tick stamp.
 pub fn last_input() -> (f64, u32) {
-    let mut info = LASTINPUTINFO {
-        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
-        dwTime: 0,
-    };
+    let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
     unsafe {
         if GetLastInputInfo(&mut info) == 0 {
             return (0.0, 0);
         }
-        (
-            GetTickCount().wrapping_sub(info.dwTime) as f64 / 1000.0,
-            info.dwTime,
-        )
+        (GetTickCount().wrapping_sub(info.dwTime) as f64 / 1000.0, info.dwTime)
     }
 }
 
@@ -373,8 +294,7 @@ pub fn last_input() -> (f64, u32) {
 /// everything except mouse buttons and modifier keys on their own.
 pub fn typing_key_down() -> bool {
     (0x08..=0xFEi32).any(|vk| {
-        let modifier =
-            (0x10..=0x12).contains(&vk) || (0xA0..=0xA5).contains(&vk) || vk == 0x5B || vk == 0x5C;
+        let modifier = (0x10..=0x12).contains(&vk) || (0xA0..=0xA5).contains(&vk) || vk == 0x5B || vk == 0x5C;
         !modifier && unsafe { GetAsyncKeyState(vk) } as u16 & 0x8001 != 0
     })
 }
@@ -404,10 +324,7 @@ pub fn fullscreen_app_in_front() -> bool {
 pub fn local_time() -> ((u16, u16, u16), u32) {
     let mut t: SYSTEMTIME = unsafe { std::mem::zeroed() };
     unsafe { GetLocalTime(&mut t) };
-    (
-        (t.wYear, t.wMonth, t.wDay),
-        t.wHour as u32 * 60 + t.wMinute as u32,
-    )
+    ((t.wYear, t.wMonth, t.wDay), t.wHour as u32 * 60 + t.wMinute as u32)
 }
 
 // MARK: Registry (HKCU)
@@ -416,30 +333,12 @@ pub fn reg_get_string(subkey: &str, name: &str) -> Option<String> {
     let (k, n) = (wide(subkey), wide(name));
     let mut len: u32 = 0;
     unsafe {
-        if RegGetValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            RRF_RT_REG_SZ,
-            null_mut(),
-            null_mut(),
-            &mut len,
-        ) != 0
-        {
+        if RegGetValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), RRF_RT_REG_SZ, null_mut(), null_mut(), &mut len) != 0 {
             return None;
         }
         let mut buf = vec![0u16; (len as usize / 2) + 1];
         let mut len2 = (buf.len() * 2) as u32;
-        if RegGetValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            RRF_RT_REG_SZ,
-            null_mut(),
-            buf.as_mut_ptr() as *mut c_void,
-            &mut len2,
-        ) != 0
-        {
+        if RegGetValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), RRF_RT_REG_SZ, null_mut(), buf.as_mut_ptr() as *mut c_void, &mut len2) != 0 {
             return None;
         }
         let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
@@ -451,17 +350,7 @@ pub fn reg_get_dword(subkey: &str, name: &str) -> Option<u32> {
     let (k, n) = (wide(subkey), wide(name));
     let mut v: u32 = 0;
     let mut len = 4u32;
-    let r = unsafe {
-        RegGetValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            RRF_RT_REG_DWORD,
-            null_mut(),
-            &mut v as *mut u32 as *mut c_void,
-            &mut len,
-        )
-    };
+    let r = unsafe { RegGetValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), RRF_RT_REG_DWORD, null_mut(), &mut v as *mut u32 as *mut c_void, &mut len) };
     (r == 0).then_some(v)
 }
 
@@ -469,46 +358,18 @@ pub fn reg_get_binary_first_byte(subkey: &str, name: &str) -> Option<u8> {
     let (k, n) = (wide(subkey), wide(name));
     let mut buf = [0u8; 64];
     let mut len = buf.len() as u32;
-    let r = unsafe {
-        RegGetValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            RRF_RT_REG_BINARY,
-            null_mut(),
-            buf.as_mut_ptr() as *mut c_void,
-            &mut len,
-        )
-    };
+    let r = unsafe { RegGetValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), RRF_RT_REG_BINARY, null_mut(), buf.as_mut_ptr() as *mut c_void, &mut len) };
     (r == 0 && len > 0).then_some(buf[0])
 }
 
 pub fn reg_set_string(subkey: &str, name: &str, value: &str) -> bool {
     let (k, n, v) = (wide(subkey), wide(name), wide(value));
-    unsafe {
-        RegSetKeyValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            REG_SZ,
-            v.as_ptr() as *const c_void,
-            (v.len() * 2) as u32,
-        ) == 0
-    }
+    unsafe { RegSetKeyValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), REG_SZ, v.as_ptr() as *const c_void, (v.len() * 2) as u32) == 0 }
 }
 
 pub fn reg_set_dword(subkey: &str, name: &str, value: u32) -> bool {
     let (k, n) = (wide(subkey), wide(name));
-    unsafe {
-        RegSetKeyValueW(
-            HKEY_CURRENT_USER,
-            k.as_ptr(),
-            n.as_ptr(),
-            REG_DWORD,
-            &value as *const u32 as *const c_void,
-            4,
-        ) == 0
-    }
+    unsafe { RegSetKeyValueW(HKEY_CURRENT_USER, k.as_ptr(), n.as_ptr(), REG_DWORD, &value as *const u32 as *const c_void, 4) == 0 }
 }
 
 pub fn reg_delete(subkey: &str, name: &str) {
@@ -556,24 +417,13 @@ pub struct MenuItem<'a> {
 
 impl<'a> MenuItem<'a> {
     pub fn new(text: &'a str, id: u32) -> MenuItem<'a> {
-        MenuItem {
-            text,
-            id,
-            checked: false,
-            enabled: true,
-            bold: false,
-            radio: false,
-            bitmap: null_mut(),
-        }
+        MenuItem { text, id, checked: false, enabled: true, bold: false, radio: false, bitmap: null_mut() }
     }
 }
 
 impl Menu {
     pub fn new() -> Menu {
-        Menu {
-            handle: unsafe { CreatePopupMenu() },
-            count: 0,
-        }
+        Menu { handle: unsafe { CreatePopupMenu() }, count: 0 }
     }
 
     fn insert(&mut self, info: &mut MENUITEMINFOW) {
@@ -585,20 +435,8 @@ impl Menu {
     pub fn add(&mut self, item: MenuItem) {
         let mut text = wide(&item.text.replace('&', "&&"));
         let mut info: MENUITEMINFOW = unsafe { std::mem::zeroed() };
-        info.fMask = MIIM_ID
-            | MIIM_STRING
-            | MIIM_STATE
-            | MIIM_FTYPE
-            | if item.bitmap.is_null() {
-                0
-            } else {
-                MIIM_BITMAP
-            };
-        info.fType = if item.radio {
-            MFT_RADIOCHECK
-        } else {
-            MFT_STRING
-        };
+        info.fMask = MIIM_ID | MIIM_STRING | MIIM_STATE | MIIM_FTYPE | if item.bitmap.is_null() { 0 } else { MIIM_BITMAP };
+        info.fType = if item.radio { MFT_RADIOCHECK } else { MFT_STRING };
         info.fState = (if item.checked { MFS_CHECKED } else { 0 })
             | (if item.enabled { 0 } else { MFS_DISABLED })
             | (if item.bold { MFS_DEFAULT } else { 0 });
@@ -630,14 +468,7 @@ impl Menu {
         let (x, y) = cursor();
         unsafe {
             SetForegroundWindow(owner);
-            let id = TrackPopupMenuEx(
-                self.handle,
-                TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_RETURNCMD | TPM_NONOTIFY,
-                x,
-                y,
-                owner,
-                null(),
-            );
+            let id = TrackPopupMenuEx(self.handle, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_RETURNCMD | TPM_NONOTIFY, x, y, owner, null());
             PostMessageW(owner, WM_NULL, 0, 0);
             id as u32
         }

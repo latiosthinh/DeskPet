@@ -38,26 +38,15 @@ pub fn copy_centers(cx: &Stage) -> [f64; 2] {
 /// Where Moona's thrown glaive is (pen points, its centre), `q` of the way round its loop: out
 /// ahead of her, high on the way out and lower on the way back, then into her hand.
 pub fn glaive_at(cx: &Stage, q: f64) -> (f64, f64) {
-    let (anchor, px) = cx
-        .pet
-        .picture
-        .as_ref()
-        .map_or((0.0, 1.0), |p| (p.anchors[0], p.px));
+    let (anchor, px) = cx.pet.picture.as_ref().map_or((0.0, 1.0), |p| (p.anchors[0], p.px));
     let dir = if cx.facing_left { -1.0 } else { 1.0 };
     let hand_x = cx.pet_center_x() + dir * (MOONA_HAND.0 - anchor) * px;
     let hand_y = MOONA_HAND.1 * px;
-    let room = if cx.facing_left {
-        hand_x - 14.0
-    } else {
-        cx.width - 14.0 - hand_x
-    };
+    let room = if cx.facing_left { hand_x - 14.0 } else { cx.width - 14.0 - hand_x };
     let rx = (room / 2.0).clamp(18.0, 70.0);
     let th = q.clamp(0.0, 1.0) * 2.0 * PI;
     let rise = if th < PI { 30.0 } else { 12.0 };
-    (
-        hand_x + dir * rx * (1.0 - th.cos()),
-        hand_y + rise * th.sin(),
-    )
+    (hand_x + dir * rx * (1.0 - th.cos()), hand_y + rise * th.sin())
 }
 
 pub fn glaive_copy(cx: &Stage, &(x, y, angle, faint): &(f64, f64, f64, bool)) -> FreeSprite {
@@ -69,10 +58,7 @@ pub fn glaive_sprite(cx: &Stage, x: f64, y: f64, angle: f64, faint: bool) -> Fre
     let px = cx.pet.picture.as_ref().map_or(PIXEL / 2.0, |p| p.px);
     let grid = crescent(angle, 7.0, faint);
     let half = grid.len() as f64 * px / 2.0;
-    FreeSprite {
-        own_colors: true,
-        ..free(grid, x - half, y - half, px)
-    }
+    FreeSprite { own_colors: true, ..free(grid, x - half, y - half, px) }
 }
 
 /// A shaft of moonlight `width` cells wide centred on x, reaching `reach` of the way down from
@@ -105,17 +91,11 @@ pub fn moonbeam(cx: &Stage, x: f64, width: usize, reach: f64, faint: bool) -> Fr
     let grid: Rows = (0..rows_n)
         .map(|r| {
             let dim = if r * 10 < rows_n * 3 { 1 } else { 0 };
-            across
-                .iter()
-                .map(|&l| levels[l.saturating_sub(dim)])
-                .collect()
+            across.iter().map(|&l| levels[l.saturating_sub(dim)]).collect()
         })
         .collect();
     let left = x - width as f64 * px / 2.0;
-    FreeSprite {
-        own_colors: true,
-        ..free(grid, left, cx.height - rows_n as f64 * px, px)
-    }
+    FreeSprite { own_colors: true, ..free(grid, left, cx.height - rows_n as f64 * px, px) }
 }
 
 /// Where the i-th narrow moonbeam strikes: spread over the pen, clear of Moona herself.
@@ -141,11 +121,7 @@ pub fn picture_copy(cx: &Stage, frame: usize, center_x: f64) -> FreeSprite {
     };
     let grid = &pic.frames[frame];
     let w = grid[0].len() as f64;
-    let anchor = if cx.facing_left {
-        w - pic.anchors[frame]
-    } else {
-        pic.anchors[frame]
-    };
+    let anchor = if cx.facing_left { w - pic.anchors[frame] } else { pic.anchors[frame] };
     let rows: Rows = grid
         .iter()
         .map(|r| {
@@ -157,31 +133,18 @@ pub fn picture_copy(cx: &Stage, frame: usize, center_x: f64) -> FreeSprite {
             }
         })
         .collect();
-    FreeSprite {
-        own_colors: true,
-        ..free(rows, center_x - anchor * pic.px, 0.0, pic.px)
-    }
+    FreeSprite { own_colors: true, ..free(rows, center_x - anchor * pic.px, 0.0, pic.px) }
 }
 
 /// A glaive whirling round a figure centred on x, on a flat ring at chest height: its trail and
 /// itself, split into the parts behind the figure and in front. `phase` keeps the three apart.
-pub fn whirl(
-    cx: &Stage,
-    x: f64,
-    t: f64,
-    phase: f64,
-) -> (Vec<(f64, f64, f64, bool)>, Vec<(f64, f64, f64, bool)>) {
+pub fn whirl(cx: &Stage, x: f64, t: f64, phase: f64) -> (Vec<(f64, f64, f64, bool)>, Vec<(f64, f64, f64, bool)>) {
     let rx = cx.pet.size().0 * 0.55;
     let (mut behind, mut front) = (vec![], vec![]);
     for (lag, faint) in [(0.06, true), (0.03, true), (0.0, false)] {
         let tt = t - lag - TRI_SPIN;
         let a = phase * 2.1 + tt * 7.0 + 2.0 * tt * tt.min(1.0); // speeds up as it gets going
-        let g = (
-            x + rx * a.cos(),
-            50.0 + 12.0 * a.sin(),
-            (t - lag) * 17.0,
-            faint,
-        );
+        let g = (x + rx * a.cos(), 50.0 + 12.0 * a.sin(), (t - lag) * 17.0, faint);
         if a.sin() > 0.0 {
             behind.push(g)
         } else {

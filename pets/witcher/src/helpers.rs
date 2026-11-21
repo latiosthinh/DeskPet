@@ -75,11 +75,7 @@ pub fn meteor(t: f64, falling: bool) -> Rows {
                         return '7';
                     }
                     // The flames: along the way back (up-left when falling, straight up when rolling).
-                    let (ux, uy) = if falling {
-                        (-0.707, -0.707)
-                    } else {
-                        (0.0, -1.0)
-                    };
+                    let (ux, uy) = if falling { (-0.707, -0.707) } else { (0.0, -1.0) };
                     let u = dx * ux + dy * uy;
                     let v = (dx * uy - dy * ux).abs();
                     let len = if falling { 18.0 } else { 9.0 };
@@ -118,10 +114,7 @@ pub fn moon_slash(size: f64, faint: bool) -> Rows {
     let r = 17.0 * size;
     let (inner, back) = (r * 0.95, r * 0.35);
     let x0 = r * 0.35 + 1.0; // the circle's centre column: the tips reach a little behind it
-    let (w, h) = (
-        (x0 + r + 3.0).ceil() as usize,
-        (2.0 * r + 4.0).ceil() as usize,
-    );
+    let (w, h) = ((x0 + r + 3.0).ceil() as usize, (2.0 * r + 4.0).ceil() as usize);
     let my = (h as f64 - 1.0) / 2.0;
     (0..h)
         .map(|y| {
@@ -152,10 +145,7 @@ pub fn moon_slash(size: f64, faint: bool) -> Rows {
 /// A grid drawn in the pet's own colours, centred on x with its bottom `bottom` points up.
 pub fn spell_sprite(grid: Rows, x: f64, bottom: f64, px: f64, _mirrored: bool) -> FreeSprite {
     let w = grid.first().map_or(0, |r| r.chars().count()) as f64 * px;
-    FreeSprite {
-        own_colors: true,
-        ..free(grid, x - w / 2.0, bottom, px)
-    }
+    FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, bottom, px) }
 }
 
 /// A whirlwind `h` cells tall: a funnel wide at the top and narrow at the ground, its stripes
@@ -188,14 +178,7 @@ pub fn tornado(t: f64, h: usize, dying: bool) -> Rows {
 
 /// A shaft of light `width` cells wide centred on x, reaching `reach` of the way down from the
 /// top of the pen, brightest down the middle: `levels` from none to brightest.
-pub fn light_shaft(
-    cx: &Stage,
-    x: f64,
-    width: usize,
-    reach: f64,
-    levels: [char; 5],
-    faint: bool,
-) -> FreeSprite {
+pub fn light_shaft(cx: &Stage, x: f64, width: usize, reach: f64, levels: [char; 5], faint: bool) -> FreeSprite {
     let px = PIXEL / 2.0;
     let rows_n = ((cx.height / px).ceil() * reach).round().max(1.0) as usize;
     let mid = (width as f64 - 1.0) / 2.0;
@@ -221,40 +204,19 @@ pub fn light_shaft(
     let grid: Rows = (0..rows_n)
         .map(|r| {
             let dim = if r * 10 < rows_n * 3 { 1 } else { 0 };
-            across
-                .iter()
-                .map(|&l| levels[l.saturating_sub(dim)])
-                .collect()
+            across.iter().map(|&l| levels[l.saturating_sub(dim)]).collect()
         })
         .collect();
-    FreeSprite {
-        own_colors: true,
-        ..free(
-            grid,
-            x - width as f64 * px / 2.0,
-            cx.height - rows_n as f64 * px,
-            px,
-        )
-    }
+    FreeSprite { own_colors: true, ..free(grid, x - width as f64 * px / 2.0, cx.height - rows_n as f64 * px, px) }
 }
 
 /// One of his orbs (0 orange, 1 blue, 2 pink) centred at (x, y); a see-through one for its trail.
 pub fn orb_sprite(cx: &Stage, kind: usize, x: f64, y: f64, faint: bool) -> FreeSprite {
     let px = cx.pet.picture.as_ref().map_or(PIXEL / 2.0, |p| p.px);
     let trail = ['S', 'T', 'U'][kind % 3];
-    let grid: Rows = WITCHER_ORBS[kind % 3]
-        .iter()
-        .map(|r| {
-            r.chars()
-                .map(|ch| if faint && ch != '.' { trail } else { ch })
-                .collect()
-        })
-        .collect();
+    let grid: Rows = WITCHER_ORBS[kind % 3].iter().map(|r| r.chars().map(|ch| if faint && ch != '.' { trail } else { ch }).collect()).collect();
     let (w, h) = (grid[0].len() as f64 * px, grid.len() as f64 * px);
-    FreeSprite {
-        own_colors: true,
-        ..free(grid, x - w / 2.0, y - h / 2.0, px)
-    }
+    FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, y - h / 2.0, px) }
 }
 
 /// Where his moon slash is at time `t` of the trick: from his hand straight out to the edge of the pen.
@@ -275,10 +237,7 @@ pub fn spirit_xs(cx: &Stage, t: f64) -> [f64; 2] {
     let c = cx.pet_center_x();
     let w = cx.pet.size().0;
     let (lo, hi) = (12.0, (cx.width - 12.0).max(13.0));
-    [
-        (c - w * 0.62 + 8.0 * (t * 1.3).sin()).clamp(lo, hi),
-        (c + w * 0.62 + 8.0 * (t * 1.1 + 2.0).sin()).clamp(lo, hi),
-    ]
+    [(c - w * 0.62 + 8.0 * (t * 1.3).sin()).clamp(lo, hi), (c + w * 0.62 + 8.0 * (t * 1.1 + 2.0).sin()).clamp(lo, hi)]
 }
 
 /// Where a cast orb is (pen points, its centre), `q` of the way along its flight: from his hand,
@@ -288,11 +247,7 @@ pub fn witcher_hand(cx: &Stage, q: f64) -> (f64, f64) {
     let dir = if cx.facing_left { -1.0 } else { 1.0 };
     let hand_x = cx.pet_center_x() + dir * WITCHER_HAND.0 * px;
     let hand_y = WITCHER_HAND.1 * px;
-    let room = if cx.facing_left {
-        hand_x - 14.0
-    } else {
-        cx.width - 14.0 - hand_x
-    };
+    let room = if cx.facing_left { hand_x - 14.0 } else { cx.width - 14.0 - hand_x };
     let reach = room.clamp(30.0, 150.0);
     let q = q.clamp(0.0, 1.0);
     (hand_x + dir * reach * q, hand_y - 22.0 * q * q)

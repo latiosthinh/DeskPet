@@ -30,16 +30,7 @@ impl Trick for HideInWater {
         if t > 7.9 && cx.once(3) {
             for _ in 0..10 {
                 let at = pt(cx.pet_center_x() - 4.0, 10.0);
-                cx.spawn_full(
-                    "•",
-                    blue,
-                    at,
-                    10.0,
-                    (-55.0, 55.0),
-                    (35.0, 75.0),
-                    0.9,
-                    -170.0,
-                );
+                cx.spawn_full("•", blue, at, 10.0, (-55.0, 55.0), (35.0, 75.0), 0.9, -170.0);
             }
         }
     }

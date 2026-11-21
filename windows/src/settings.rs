@@ -12,9 +12,7 @@ pub fn set_string(name: &str, value: &str) {
     sys::reg_set_string(KEY, name, value);
 }
 pub fn get_bool(name: &str, fallback: bool) -> bool {
-    sys::reg_get_dword(KEY, name)
-        .map(|v| v != 0)
-        .unwrap_or(fallback)
+    sys::reg_get_dword(KEY, name).map(|v| v != 0).unwrap_or(fallback)
 }
 pub fn set_bool(name: &str, value: bool) {
     sys::reg_set_dword(KEY, name, value as u32);

@@ -23,11 +23,7 @@ impl Trick for Spirits {
         let p = &cx.pet;
         let mut look = cx.look();
         // Two little fire spirits spring up beside him, bob about, spit a few sparks and go out.
-        look.frame = if t < 0.6 {
-            Picture::marker_index(WITCHER_CAST)
-        } else {
-            p.frame(if t > SPIRITS_GO { Eyes::Happy } else { eyes }, Pose::Sit)
-        };
+        look.frame = if t < 0.6 { Picture::marker_index(WITCHER_CAST) } else { p.frame(if t > SPIRITS_GO { Eyes::Happy } else { eyes }, Pose::Sit) };
         let dir = if cx.facing_left { -1.0 } else { 1.0 };
         let px = cx.pet.picture.as_ref().map_or(1.6, |p| p.px);
         for (k, x) in spirit_xs(cx, t).into_iter().enumerate() {
@@ -40,13 +36,7 @@ impl Trick for Spirits {
                 let spit = (t - SPIRITS_COME - 1.2 - k as f64 * 0.6) % 2.2;
                 if (0.0..0.6).contains(&spit) {
                     let sx = x + dir * (10.0 + 90.0 * spit);
-                    look.free.push(spell_sprite(
-                        rows(&[".67.", "6776", "6776", ".67."]),
-                        sx,
-                        12.0 + bob,
-                        px,
-                        false,
-                    ));
+                    look.free.push(spell_sprite(rows(&[".67.", "6776", "6776", ".67."]), sx, 12.0 + bob, px, false));
                 }
             }
             for at in [SPIRITS_COME - 0.1, SPIRITS_GO - 0.1] {

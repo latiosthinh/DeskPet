@@ -31,16 +31,9 @@ impl Trick for Wish {
             Eyes::Open
         };
         look.frame = p.frame(wish_eyes, Pose::Sit);
-        look.free = vec![
-            cx.placed(HERO_STAR, -3.0, 23.0),
-            cx.placed(HERO_STAR, 22.0, 26.0),
-        ];
+        look.free = vec![cx.placed(HERO_STAR, -3.0, 23.0), cx.placed(HERO_STAR, 22.0, 26.0)];
         if (2.0..4.0).contains(&t) {
-            look.free.push(cx.placed(
-                LUNETTE_COMET,
-                -8.0 + (t - 2.0) * 22.0,
-                (27.0 - (t - 2.0) * 4.5).round(),
-            ));
+            look.free.push(cx.placed(LUNETTE_COMET, -8.0 + (t - 2.0) * 22.0, (27.0 - (t - 2.0) * 4.5).round()));
         }
         if t >= 4.0 && beat > 0.0 {
             look.free.push(cx.placed(HERO_SPARK, 17.0, 17.0));

@@ -29,11 +29,7 @@ impl Trick for Triplicate {
         // whirling round themselves for a while, catch them, and the copies vanish.
         let spinning = (TRI_SPIN..TRI_CATCH).contains(&t);
         let frame = if spinning { MOONA_BARE } else { 2 }; // 2: standing still, glaive in hand
-        look.frame = if spinning {
-            Picture::marker_index(MOONA_BARE)
-        } else {
-            p.frame(if t >= TRI_CATCH { Eyes::Happy } else { eyes }, Pose::Sit)
-        };
+        look.frame = if spinning { Picture::marker_index(MOONA_BARE) } else { p.frame(if t >= TRI_CATCH { Eyes::Happy } else { eyes }, Pose::Sit) };
         let copies = copy_centers(cx);
         if (TRI_APPEAR..TRI_VANISH).contains(&t) {
             for (k, &x) in copies.iter().enumerate() {
@@ -57,8 +53,7 @@ impl Trick for Triplicate {
             if (at..at + 0.4).contains(&t) {
                 for &x in &copies {
                     look.free.push(free(rows(HERO_PUFF), x - 16.0, 8.0, PIXEL));
-                    look.free
-                        .push(free(rows(TWINKLE), x - 6.0, 46.0 + 20.0 * (t - at), PIXEL));
+                    look.free.push(free(rows(TWINKLE), x - 6.0, 46.0 + 20.0 * (t - at), PIXEL));
                 }
             }
         }

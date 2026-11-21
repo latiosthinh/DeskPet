@@ -29,16 +29,11 @@ impl Trick for Moonlight {
         // Raises her glaive and calls down the moon: a broad beam of light falls on her, and
         // narrow beams strike the ground all round, one after another.
         let raised = (MOON_UP..MOON_DOWN).contains(&t);
-        look.frame = if raised {
-            Picture::marker_index(MOONA_STORM)
-        } else {
-            p.frame(if t >= MOON_DOWN { Eyes::Happy } else { eyes }, Pose::Sit)
-        };
+        look.frame = if raised { Picture::marker_index(MOONA_STORM) } else { p.frame(if t >= MOON_DOWN { Eyes::Happy } else { eyes }, Pose::Sit) };
         if (MOON_UP..MOON_DOWN + 0.2).contains(&t) {
             let reach = ((t - MOON_UP) / 0.3).min(1.0);
             let width = 28 + 2 * beat as usize;
-            look.back
-                .push(moonbeam(cx, cx.pet_center_x(), width, reach, t > MOON_DOWN));
+            look.back.push(moonbeam(cx, cx.pet_center_x(), width, reach, t > MOON_DOWN));
         }
         for i in 0..MOONBEAMS {
             let age = t - (MOON_UP + 0.3 + i as f64 * 0.25);
@@ -46,12 +41,10 @@ impl Trick for Moonlight {
                 continue;
             }
             let x = moonbeam_x(cx, i);
-            look.free
-                .push(moonbeam(cx, x, 6, (age / 0.12).min(1.0), age > 0.4));
+            look.free.push(moonbeam(cx, x, 6, (age / 0.12).min(1.0), age > 0.4));
             if (0.12..0.4).contains(&age) {
                 look.free.push(free(rows(TWINKLE), x - 6.0, 0.0, PIXEL));
-                look.free
-                    .push(free(rows(HERO_PUFF), x - 8.0, 0.0, PIXEL / 2.0));
+                look.free.push(free(rows(HERO_PUFF), x - 8.0, 0.0, PIXEL / 2.0));
             }
         }
         look

@@ -11,18 +11,8 @@ pub struct TurnInto {
     pub critter: &'static [&'static str],
 }
 
-pub const FROG: TurnInto = TurnInto {
-    id: "frog",
-    title: "Turn into a Frog",
-    says: "ribbit?!",
-    critter: HERO_FROG,
-};
-pub const SHEEP: TurnInto = TurnInto {
-    id: "sheep",
-    title: "Turn into a Sheep",
-    says: "baa…",
-    critter: HERO_SHEEP,
-};
+pub const FROG: TurnInto = TurnInto { id: "frog", title: "Turn into a Frog", says: "ribbit?!", critter: HERO_FROG };
+pub const SHEEP: TurnInto = TurnInto { id: "sheep", title: "Turn into a Sheep", says: "baa…", critter: HERO_SHEEP };
 
 impl Trick for TurnInto {
     fn id(&self) -> &'static str {
@@ -41,14 +31,7 @@ impl Trick for TurnInto {
     fn look(&self, cx: &Stage, t: f64) -> Look {
         let beat = if (t * 5.0) as i64 % 2 == 1 { 1.0 } else { 0.0 }; // flips every 0.2 s
         let mut look = cx.look();
-        look.frame = cx.pet.frame(
-            if t >= 7.0 {
-                Eyes::Happy
-            } else {
-                cx.blink_eyes()
-            },
-            Pose::Stand(0),
-        );
+        look.frame = cx.pet.frame(if t >= 7.0 { Eyes::Happy } else { cx.blink_eyes() }, Pose::Stand(0));
         let hidden = [[b'.'; 16]; 16];
         if t < 2.0 {
             look.props = vec![prop(rows(HERO_WAND), 14.0, 4.0 + beat)];

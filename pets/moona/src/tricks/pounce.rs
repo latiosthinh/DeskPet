@@ -33,20 +33,10 @@ impl Trick for Pounce {
             look.frame = Picture::marker_index(MOONA_JUMP);
             look.y_offset = (8.0 * 4.0 * q * (1.0 - q)).round();
         } else {
-            look.frame = p.frame(
-                if t >= POUNCE_LAND + 0.4 {
-                    Eyes::Happy
-                } else {
-                    eyes
-                },
-                Pose::Sit,
-            );
+            look.frame = p.frame(if t >= POUNCE_LAND + 0.4 { Eyes::Happy } else { eyes }, Pose::Sit);
         }
         if (POUNCE_LAND..POUNCE_LAND + 0.45).contains(&t) {
-            look.free = vec![
-                cx.placed(HERO_PUFF, -14.0, 0.0),
-                cx.placed(HERO_PUFF, 22.0, 0.0),
-            ];
+            look.free = vec![cx.placed(HERO_PUFF, -14.0, 0.0), cx.placed(HERO_PUFF, 22.0, 0.0)];
         }
         look
     }

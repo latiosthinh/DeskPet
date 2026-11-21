@@ -18,16 +18,7 @@ impl Trick for GrowUp {
     fn step(&mut self, cx: &mut Stage, t: f64, _dt: f64) {
         if ((t > 0.5 && t < 3.0) || (t > 6.0 && t < 7.0)) && cx.every(1, 0.15) {
             let at = pt(cx.pet_center_x() + rand(-40.0, 34.0), rand(4.0, 70.0));
-            cx.spawn_full(
-                "✦",
-                sys_color::YELLOW,
-                at,
-                10.0,
-                (-4.0, 4.0),
-                (4.0, 12.0),
-                0.8,
-                0.0,
-            );
+            cx.spawn_full("✦", sys_color::YELLOW, at, 10.0, (-4.0, 4.0), (4.0, 12.0), 0.8, 0.0);
         }
         if t > 3.0 && cx.once(1) {
             cx.say("so big!", 2.0);

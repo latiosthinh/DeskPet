@@ -39,18 +39,12 @@ impl Trick for Draw {
         );
         if t < cut {
             let q = t / cut;
-            look.free.push(cx.placed(
-                SAMURAI_LEAF,
-                20.0 + (1.5 * (t * 3.0).sin()).round(),
-                (17.0 - 11.0 * q).round(),
-            ));
+            look.free.push(cx.placed(SAMURAI_LEAF, 20.0 + (1.5 * (t * 3.0).sin()).round(), (17.0 - 11.0 * q).round()));
         } else {
             let q = ((t - cut) / 1.2).min(1.0);
             let up = (6.0 * (1.0 - q)).round();
-            look.free
-                .push(cx.placed(SAMURAI_LEAF_L, 20.0 - (2.0 * q).round(), up));
-            look.free
-                .push(cx.placed(SAMURAI_LEAF_R, 22.0 + (2.0 * q).round(), up));
+            look.free.push(cx.placed(SAMURAI_LEAF_L, 20.0 - (2.0 * q).round(), up));
+            look.free.push(cx.placed(SAMURAI_LEAF_R, 22.0 + (2.0 * q).round(), up));
             if t < cut + 0.25 {
                 look.free.push(cx.placed(SAMURAI_SLASH, 13.0, 7.0));
             }

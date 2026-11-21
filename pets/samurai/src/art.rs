@@ -1,8 +1,6 @@
 //! Ronin the samurai's own pixel art.
 
-pub const SAMURAI_BAMBOO_BOTTOM: &[&str] = &[
-    "LGL", "LGL", "GGG", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL",
-];
+pub const SAMURAI_BAMBOO_BOTTOM: &[&str] = &["LGL", "LGL", "GGG", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL"];
 
 pub const SAMURAI_BAMBOO_TOP: &[&str] = &[".L.", "LGL", "LGL", "LGL", "GGG", "LGL", "LGL", "LGL"];
 

@@ -15,16 +15,7 @@ impl Trick for ColorShift {
     fn step(&mut self, cx: &mut Stage, _t: f64, _dt: f64) {
         if cx.every(1, 0.22) {
             let at = pt(cx.pet_center_x() + rand(-32.0, 26.0), rand(6.0, 50.0));
-            cx.spawn_full(
-                "✦",
-                sys_color::SPARKLES[rand_index(6)],
-                at,
-                10.0,
-                (-4.0, 4.0),
-                (4.0, 10.0),
-                0.8,
-                0.0,
-            );
+            cx.spawn_full("✦", sys_color::SPARKLES[rand_index(6)], at, 10.0, (-4.0, 4.0), (4.0, 10.0), 0.8, 0.0);
         }
     }
 

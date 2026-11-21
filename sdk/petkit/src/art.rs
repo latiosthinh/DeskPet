@@ -18,10 +18,7 @@ impl Color {
         Color { r, g, b, a }
     }
     pub fn with_alpha(self, a: f64) -> Color {
-        Color {
-            a: (a.clamp(0.0, 1.0) * 255.0).round() as u8,
-            ..self
-        }
+        Color { a: (a.clamp(0.0, 1.0) * 255.0).round() as u8, ..self }
     }
 }
 
@@ -150,18 +147,7 @@ impl Picture {
         let (width, height) = (frames[0].0[0].len(), frames[0].0.len());
         let anchors = frames.iter().map(|f| f.1).collect();
         let frames = frames.into_iter().map(|f| f.0).collect();
-        Picture {
-            frames,
-            anchors,
-            width,
-            height,
-            px,
-            idle_sits: false,
-            prop_shift: 0.0,
-            walk: vec![],
-            sleep: None,
-            eat: None,
-        }
+        Picture { frames, anchors, width, height, px, idle_sits: false, prop_shift: 0.0, walk: vec![], sleep: None, eat: None }
     }
 
     /// A marker frame for any frame by index (the extra poses come after the first nine).
@@ -173,11 +159,7 @@ impl Picture {
 
     /// Which frame a marker frame asks for.
     pub fn index_for(&self, marker: &Frame) -> usize {
-        let i = marker
-            .iter()
-            .flatten()
-            .find(|&&b| b >= PICTURE_MARK)
-            .map_or(0, |&b| (b - PICTURE_MARK) as usize);
+        let i = marker.iter().flatten().find(|&&b| b >= PICTURE_MARK).map_or(0, |&b| (b - PICTURE_MARK) as usize);
         i.min(self.frames.len() - 1)
     }
 
@@ -217,12 +199,7 @@ pub fn gait(grid: &[Vec<u8>], hip: usize, swing: f64, lift: usize) -> [Vec<Vec<u
             let (mut stack, mut cells) = (vec![(r, c)], Vec::new());
             while let Some((y, x)) = stack.pop() {
                 cells.push((y, x));
-                let near = [
-                    (y + 1, x),
-                    (y.wrapping_sub(1), x),
-                    (y, x + 1),
-                    (y, x.wrapping_sub(1)),
-                ];
+                let near = [(y + 1, x), (y.wrapping_sub(1), x), (y, x + 1), (y, x.wrapping_sub(1))];
                 for (y2, x2) in near {
                     if (hip..h).contains(&y2) && x2 < w && grid[y2][x2] != b'.' && !seen[y2][x2] {
                         seen[y2][x2] = true;
@@ -240,11 +217,7 @@ pub fn gait(grid: &[Vec<u8>], hip: usize, swing: f64, lift: usize) -> [Vec<Vec<u
     // Back to front: hind (back), hind (under), front (near), front (far). Pairs 0+2 and 1+3;
     // the far ones are drawn first so the near ones overlap them.
     let pair = |i: usize| if i % 2 == 0 { 0 } else { 2 };
-    let order: Vec<usize> = if legs.len() == 4 {
-        vec![0, 3, 1, 2]
-    } else {
-        (0..legs.len()).collect()
-    };
+    let order: Vec<usize> = if legs.len() == 4 { vec![0, 3, 1, 2] } else { (0..legs.len()).collect() };
     let phase = [(1.0, 0), (0.0, 0), (-1.0, 0), (0.0, 1)]; // (swing, lifted) through the cycle
     std::array::from_fn(|step| {
         let mut out = grid.to_vec();
@@ -304,24 +277,14 @@ pub mod props {
     pub fn broom(swish: bool) -> Rows {
         let mut out = rows(&["n......", ".n.....", "..n....", "...n..."]);
         for s in ["..kkk..", ".kyyyk.", "kyyyyyk"] {
-            out.push(if swish {
-                format!(".{}", &s[..s.len() - 1])
-            } else {
-                s.to_string()
-            });
+            out.push(if swish { format!(".{}", &s[..s.len() - 1]) } else { s.to_string() });
         }
         out
     }
 
     /// An open book held up in front.
     pub fn book(flip: bool) -> Rows {
-        rows(&[
-            ".kk.kk.",
-            if flip { "kiiksik" } else { "kiikiik" },
-            "kiikiik",
-            "kiikiik",
-            "krrrrrk",
-        ])
+        rows(&[".kk.kk.", if flip { "kiiksik" } else { "kiikiik" }, "kiikiik", "kiikiik", "krrrrrk"])
     }
 
     /// `left` goes from 1 (full) to 0 (empty).
@@ -366,35 +329,12 @@ pub fn rotated(frame: Frame, turns: usize) -> Frame {
 /// Little pictures shown in speech bubbles in place of the Mac version's emoji.
 /// Drawn at 2 pt per art pixel with `prop_palette`.
 pub mod bubble_icons {
-    pub const DROP: &[&str] = &[
-        "...k...", "..kck..", ".kccck.", "kcCccck", "kcCccck", "kccccck", ".kkkkk.",
-    ];
-    pub const RICE: &[&str] = &[
-        "..kkkkk..",
-        ".kiiiiik.",
-        "kiiiiiiik",
-        "kkkkkkkkk",
-        "koooooook",
-        ".koooook.",
-        "..kkkkk..",
-    ];
-    pub const STEW: &[&str] = &[
-        "..g...g..",
-        "...g...g.",
-        "..g...g..",
-        "kkkkkkkkk",
-        "dkoyoNokd",
-        ".kdddddk.",
-        ".kdddddk.",
-        "..kkkkk..",
-    ];
-    pub const STRETCH: &[&str] = &[
-        "k.....k", ".k.o.k.", "..kok..", "...k...", "...k...", "..k.k..", ".k...k.",
-    ];
+    pub const DROP: &[&str] = &["...k...", "..kck..", ".kccck.", "kcCccck", "kcCccck", "kccccck", ".kkkkk."];
+    pub const RICE: &[&str] = &["..kkkkk..", ".kiiiiik.", "kiiiiiiik", "kkkkkkkkk", "koooooook", ".koooook.", "..kkkkk.."];
+    pub const STEW: &[&str] = &["..g...g..", "...g...g.", "..g...g..", "kkkkkkkkk", "dkoyoNokd", ".kdddddk.", ".kdddddk.", "..kkkkk.."];
+    pub const STRETCH: &[&str] = &["k.....k", ".k.o.k.", "..kok..", "...k...", "...k...", "..k.k..", ".k...k."];
     pub const TULIP: &[&str] = &["..P..", ".PyP.", "..P..", "..G..", ".GG..", "..G.."];
-    pub const HEART: &[&str] = &[
-        ".PP.PP.", "PPPPPPP", "PPPPPPP", ".PPPPP.", "..PPP..", "...P...",
-    ];
+    pub const HEART: &[&str] = &[".PP.PP.", "PPPPPPP", "PPPPPPP", ".PPPPP.", "..PPP..", "...P..."];
 }
 
 /// Shifts the hue of the given palette keys (HSB, like NSColor), wrapping around.
@@ -432,15 +372,7 @@ pub fn hue_shifted(palette: &Palette, amount: f64, keys: &[char]) -> Palette {
             4 => (t, p, v),
             _ => (v, p, q),
         };
-        out.set(
-            key,
-            Some(Color::new(
-                (r * 255.0).round() as u8,
-                (g * 255.0).round() as u8,
-                (b * 255.0).round() as u8,
-                c.a,
-            )),
-        );
+        out.set(key, Some(Color::new((r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8, c.a)));
     }
     out
 }

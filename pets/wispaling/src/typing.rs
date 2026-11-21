@@ -11,8 +11,7 @@ impl Typing for Spool {
         look.props.push(prop(rows(HERO_THREAD_SPOOL), 15.0, 0.0));
         for i in 0..6 {
             let lift = 3.0 - (2.0 * (t * 7.0 + i as f64).sin()).round();
-            look.props
-                .push(prop(rows(HERO_SPARK), 12.0 + i as f64, lift));
+            look.props.push(prop(rows(HERO_SPARK), 12.0 + i as f64, lift));
         }
         look
     }

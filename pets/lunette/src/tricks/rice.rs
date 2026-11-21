@@ -27,11 +27,7 @@ impl Trick for Rice {
         look.frame = p.frame(if t < 5.0 { eyes } else { Eyes::Happy }, Pose::Stand(0));
         look.props = vec![prop(rows(LUNETTE_MORTAR), 14.0, 0.0)];
         if t < 5.0 {
-            look.props.push(prop(
-                rows(LUNETTE_MALLET),
-                14.0,
-                3.0 + ((t * 2.0) as i64 % 2) as f64 * 4.0,
-            ));
+            look.props.push(prop(rows(LUNETTE_MALLET), 14.0, 3.0 + ((t * 2.0) as i64 % 2) as f64 * 4.0));
         } else {
             look.props.push(prop(rows(LUNETTE_CAKE), 14.0, 5.0));
             if beat > 0.0 {

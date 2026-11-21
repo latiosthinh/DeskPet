@@ -26,10 +26,7 @@ impl Trick for Flashlight {
         let mut look = cx.look();
         look.frame = p.frame(eyes, Pose::Stand(0));
         look.props.push(prop(rows(FLASHLIGHT), 14.0, 5.0));
-        let origin = pt(
-            cx.center_x(18.0) + if cx.facing_left { -2.0 } else { 2.0 },
-            6.5 * PIXEL,
-        );
+        let origin = pt(cx.center_x(18.0) + if cx.facing_left { -2.0 } else { 2.0 }, 6.5 * PIXEL);
         look.beam = Some((origin, 0.05 + 0.22 * (t * 1.6).sin()));
         look
     }

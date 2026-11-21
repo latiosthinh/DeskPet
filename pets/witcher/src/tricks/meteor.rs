@@ -37,10 +37,7 @@ impl Trick for Meteor {
         let px = cx.pet.picture.as_ref().map_or(1.6, |p| p.px);
         if (METEOR_START..METEOR_LAND).contains(&t) {
             let q = (t - METEOR_START) / (METEOR_LAND - METEOR_START);
-            let (x, y) = (
-                land - dir * 90.0 * (1.0 - q),
-                8.0 + (cx.height - 30.0) * (1.0 - q),
-            );
+            let (x, y) = (land - dir * 90.0 * (1.0 - q), 8.0 + (cx.height - 30.0) * (1.0 - q));
             let grid = mirrored(meteor(t, true), cx.facing_left);
             look.free.push(spell_sprite(grid, x, y, px, cx.facing_left));
         }
@@ -67,22 +64,17 @@ impl Trick for Meteor {
                 continue;
             };
             let size = if i == 0 { px * 1.6 } else { px };
-            look.back
-                .push(spell_sprite(rows(grid), land + dir * s, 0.0, size, false));
+            look.back.push(spell_sprite(rows(grid), land + dir * s, 0.0, size, false));
         }
         if (METEOR_LAND..METEOR_END).contains(&t) {
             let q = (t - METEOR_LAND) / (METEOR_END - METEOR_LAND);
             let x = land + dir * METEOR_ROLL * (1.0 - (1.0 - q) * (1.0 - q));
             let grid = mirrored(meteor(t, false), cx.facing_left);
-            look.free
-                .push(spell_sprite(grid, x, 0.0, px, cx.facing_left));
+            look.free.push(spell_sprite(grid, x, 0.0, px, cx.facing_left));
             if t < METEOR_LAND + 0.5 {
-                look.free
-                    .push(free(rows(HERO_PUFF), land - 24.0, 0.0, PIXEL * 1.5));
-                look.free
-                    .push(free(rows(HERO_SPARK), land - 30.0, 18.0 + 40.0 * q, PIXEL));
-                look.free
-                    .push(free(rows(HERO_SPARK), land + 18.0, 24.0 + 40.0 * q, PIXEL));
+                look.free.push(free(rows(HERO_PUFF), land - 24.0, 0.0, PIXEL * 1.5));
+                look.free.push(free(rows(HERO_SPARK), land - 30.0, 18.0 + 40.0 * q, PIXEL));
+                look.free.push(free(rows(HERO_SPARK), land + 18.0, 24.0 + 40.0 * q, PIXEL));
             }
         }
         look

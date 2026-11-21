@@ -160,11 +160,7 @@ thread_local! {
 }
 
 fn keep_text(s: String) -> &'static str {
-    TEXTS.with(|t| {
-        *t.borrow_mut()
-            .entry(s.clone())
-            .or_insert_with(|| Box::leak(s.into_boxed_str()))
-    })
+    TEXTS.with(|t| *t.borrow_mut().entry(s.clone()).or_insert_with(|| Box::leak(s.into_boxed_str())))
 }
 
 impl Wire for &'static str {
@@ -179,10 +175,7 @@ impl Wire for &'static str {
 
 impl Wire for &'static [&'static str] {
     fn put(&self, w: &mut Vec<u8>) {
-        self.iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>()
-            .put(w);
+        self.iter().map(|s| s.to_string()).collect::<Vec<_>>().put(w);
     }
     fn get(r: &mut Reader) -> Option<Self> {
         let rows = Vec::<String>::get(r)?;
@@ -217,52 +210,12 @@ macro_rules! fields {
 fields!(Pt { x, y });
 fields!(Color { r, g, b, a });
 fields!(Prop { rows, col, lift });
-fields!(FreeSprite {
-    rows,
-    x,
-    y,
-    px,
-    own_colors
-});
-fields!(Twin {
-    frame,
-    center_x,
-    scale,
-    y_offset,
-    facing_left
-});
-fields!(Look {
-    frame,
-    palette,
-    y_offset,
-    scale,
-    props,
-    free,
-    back,
-    x_offset,
-    twin,
-    beam
-});
-fields!(Particle {
-    text,
-    color,
-    size,
-    x,
-    y,
-    vx,
-    vy,
-    life,
-    max_life,
-    ay
-});
+fields!(FreeSprite { rows, x, y, px, own_colors });
+fields!(Twin { frame, center_x, scale, y_offset, facing_left });
+fields!(Look { frame, palette, y_offset, scale, props, free, back, x_offset, twin, beam });
+fields!(Particle { text, color, size, x, y, vx, vy, life, max_life, ay });
 fields!(PictureFrame { rows, anchor, px });
-fields!(Input {
-    dt,
-    now,
-    idle,
-    key_idle,
-    mouse
-});
+fields!(Input { dt, now, idle, key_idle, mouse });
 #[rustfmt::skip]
 fields!(Render {
     look, picture, prop_shift, paw, pet_x, min_pet_x, max_pet_x, facing_left, pet_rect, head, width, range,
@@ -298,9 +251,7 @@ impl Wire for Category {
         w.push(*self as u8);
     }
     fn get(r: &mut Reader) -> Option<Self> {
-        [Category::Critter, Category::Hero, Category::Legend]
-            .get(u8::get(r)? as usize)
-            .copied()
+        [Category::Critter, Category::Hero, Category::Legend].get(u8::get(r)? as usize).copied()
     }
 }
 
@@ -309,14 +260,7 @@ impl Wire for Reminder {
         w.push(*self as u8);
     }
     fn get(r: &mut Reader) -> Option<Self> {
-        [
-            Reminder::Water,
-            Reminder::Lunch,
-            Reminder::Dinner,
-            Reminder::Stretch,
-        ]
-        .get(u8::get(r)? as usize)
-        .copied()
+        [Reminder::Water, Reminder::Lunch, Reminder::Dinner, Reminder::Stretch].get(u8::get(r)? as usize).copied()
     }
 }
 
@@ -324,11 +268,7 @@ impl Wire for Command {
     fn put(&self, w: &mut Vec<u8>) {
         use Command::*;
         match self {
-            Pen {
-                width,
-                height,
-                range,
-            } => {
+            Pen { width, height, range } => {
                 w.push(0);
                 [*width, *height, *range].put(w);
             }
@@ -383,11 +323,7 @@ impl Wire for Command {
         Some(match u8::get(r)? {
             0 => {
                 let [width, height, range] = <[f64; 3]>::get(r)?;
-                Pen {
-                    width,
-                    height,
-                    range,
-                }
+                Pen { width, height, range }
             }
             1 => PlaceAt(f64::get(r)?),
             2 => Say(String::get(r)?, f64::get(r)?),
@@ -397,9 +333,7 @@ impl Wire for Command {
             6 => Hello,
             7 => Remind(Reminder::get(r)?),
             8 => BeginDrag,
-            9 => EndDrag {
-                moved: bool::get(r)?,
-            },
+            9 => EndDrag { moved: bool::get(r)? },
             10 => RightClick,
             11 => StopRoaming,
             12 => HomeSaved,
@@ -419,11 +353,7 @@ mod tests {
     #[test]
     fn commands_round_trip() {
         for c in [
-            Command::Pen {
-                width: 1.0,
-                height: 2.0,
-                range: 3.0,
-            },
+            Command::Pen { width: 1.0, height: 2.0, range: 3.0 },
             Command::Say("hi".into(), 1.5),
             Command::EndDrag { moved: true },
             Command::Remind(Reminder::Dinner),

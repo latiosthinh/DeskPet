@@ -25,16 +25,7 @@ impl Trick for Firework {
         let p = t % 3.5;
         if p < 1.2 && cx.every(1, 0.08) {
             let at = pt(cx.center_x(17.0) - 4.0, 22.0);
-            cx.spawn_full(
-                "✦",
-                sys_color::ORANGE,
-                at,
-                9.0,
-                (-10.0, 10.0),
-                (4.0, 14.0),
-                0.45,
-                0.0,
-            );
+            cx.spawn_full("✦", sys_color::ORANGE, at, 9.0, (-10.0, 10.0), (4.0, 14.0), 0.45, 0.0);
         }
         if p >= 2.0 && self.burst_cycle != cycle {
             self.burst_cycle = cycle;
@@ -52,8 +43,7 @@ impl Trick for Firework {
         if ph < 1.2 {
             look.props.push(prop(rows(ROCKET), 16.0, 0.0));
         } else if ph < 2.0 {
-            look.props
-                .push(prop(rows(ROCKET), 16.0, (ph - 1.2) / 0.8 * 20.0));
+            look.props.push(prop(rows(ROCKET), 16.0, (ph - 1.2) / 0.8 * 20.0));
         }
         look
     }

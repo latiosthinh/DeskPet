@@ -32,13 +32,8 @@ impl Trick for Shuriken {
             let q = ((t - at) / 0.35).min(1.0);
             let (dx, up) = ([23.0, 24.0, 22.0][i], [6.0, 3.0, 4.0][i]);
             let spinning = q < 1.0;
-            let star = if spinning && cx.alt(0.05) {
-                NINJA_SHURIKEN_B
-            } else {
-                NINJA_SHURIKEN_A
-            };
-            look.free
-                .push(cx.placed(star, 14.0 + (dx - 14.0) * q, (8.0 + (up - 8.0) * q).round()));
+            let star = if spinning && cx.alt(0.05) { NINJA_SHURIKEN_B } else { NINJA_SHURIKEN_A };
+            look.free.push(cx.placed(star, 14.0 + (dx - 14.0) * q, (8.0 + (up - 8.0) * q).round()));
             if t < at + 0.15 {
                 look.x_offset = 1.0; // the flick
             }

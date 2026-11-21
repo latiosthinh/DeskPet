@@ -23,18 +23,12 @@ impl Trick for Clones {
         let p = &cx.pet;
         let mut look = cx.look();
         // Two copies of him pop up either side; all three hop in turn, then the copies vanish.
-        let turn = (CLONE_IN + 1.0..CLONE_OUT - 0.3)
-            .contains(&t)
-            .then(|| ((t / 0.25) as usize) % 3);
-        let f = p.frame(
-            if turn.is_some() { Eyes::Happy } else { eyes },
-            Pose::Stand(0),
-        );
+        let turn = (CLONE_IN + 1.0..CLONE_OUT - 0.3).contains(&t).then(|| ((t / 0.25) as usize) % 3);
+        let f = p.frame(if turn.is_some() { Eyes::Happy } else { eyes }, Pose::Stand(0));
         look.frame = f;
         if (CLONE_IN..CLONE_OUT).contains(&t) {
             for (k, dx) in [(0, -15.0), (2, 15.0)] {
-                look.back
-                    .push(cx.frame_copy(&f, dx, if turn == Some(k) { 3.0 } else { 0.0 }));
+                look.back.push(cx.frame_copy(&f, dx, if turn == Some(k) { 3.0 } else { 0.0 }));
             }
             if turn == Some(1) {
                 look.y_offset = 3.0;

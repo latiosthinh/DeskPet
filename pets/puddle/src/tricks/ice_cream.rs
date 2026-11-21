@@ -26,10 +26,7 @@ impl Trick for IceCream {
         let d = cx.duration();
         let p = &cx.pet;
         let mut look = cx.look();
-        look.frame = p.frame(
-            if cx.alt(0.5) { Eyes::Happy } else { Eyes::Open },
-            Pose::Sit,
-        );
+        look.frame = p.frame(if cx.alt(0.5) { Eyes::Happy } else { Eyes::Open }, Pose::Sit);
         look.props.push(prop(ice_cream(1.0 - t / d), 14.0, 3.0));
         look
     }

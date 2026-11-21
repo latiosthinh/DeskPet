@@ -10,8 +10,7 @@ impl Typing for Pebbles {
         // Mossback sorts pebbles into a little row.
         let beat = if cx.alt(0.2) { 0.0 } else { 1.0 };
         look.props.push(prop(rows(HERO_PEBBLES), 14.0, 0.0));
-        look.props
-            .push(prop(rows(HERO_ROCK), 14.0 + 5.0 * beat, 3.0 + 2.0 * beat));
+        look.props.push(prop(rows(HERO_ROCK), 14.0 + 5.0 * beat, 3.0 + 2.0 * beat));
         look
     }
 }

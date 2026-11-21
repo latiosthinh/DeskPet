@@ -40,13 +40,8 @@ impl Trick for Tea {
             if !sipping {
                 for k in 0..2 {
                     let q = (t * 0.8 + k as f64 * 0.5) % 1.0;
-                    let wisp = if (q * 4.0) as usize % 2 == 0 {
-                        SAMURAI_STEAM_A
-                    } else {
-                        SAMURAI_STEAM_B
-                    };
-                    look.free
-                        .push(cx.placed(wisp, 13.0 + k as f64 * 2.0, (4.0 + q * 5.0).round()));
+                    let wisp = if (q * 4.0) as usize % 2 == 0 { SAMURAI_STEAM_A } else { SAMURAI_STEAM_B };
+                    look.free.push(cx.placed(wisp, 13.0 + k as f64 * 2.0, (4.0 + q * 5.0).round()));
                 }
             }
         }

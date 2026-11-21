@@ -27,10 +27,7 @@ impl Trick for Helmet {
         look.frame = p.frame(if t >= 6.0 { Eyes::Happy } else { eyes }, Pose::Stand(0));
         if t > 1.0 && t < 6.0 {
             look.x_offset = beat;
-            look.props = vec![
-                prop(rows(HERO_HELMET), 1.0, 3.0),
-                prop(rows(HERO_AXE), 15.0, 0.0),
-            ];
+            look.props = vec![prop(rows(HERO_HELMET), 1.0, 3.0), prop(rows(HERO_AXE), 15.0, 0.0)];
         }
         look
     }

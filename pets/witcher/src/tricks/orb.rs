@@ -38,14 +38,8 @@ impl Trick for Orb {
         }
         if (ORB_LAND..ORB_LAND + 0.4).contains(&t) {
             let (x, y) = witcher_hand(cx, 1.0);
-            look.free
-                .push(free(rows(HERO_PUFF), x - 16.0, (y - 14.0).max(0.0), PIXEL));
-            look.free.push(free(
-                rows(TWINKLE),
-                x - 6.0,
-                y - 6.0 + 20.0 * (t - ORB_LAND),
-                PIXEL,
-            ));
+            look.free.push(free(rows(HERO_PUFF), x - 16.0, (y - 14.0).max(0.0), PIXEL));
+            look.free.push(free(rows(TWINKLE), x - 6.0, y - 6.0 + 20.0 * (t - ORB_LAND), PIXEL));
         }
         look
     }

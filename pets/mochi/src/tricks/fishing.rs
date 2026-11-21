@@ -39,8 +39,7 @@ impl Trick for Fishing {
         look.props.push(prop(rows(ROD), 13.0, 3.0));
         if ph > 2.0 && ph < 2.9 {
             let q = (ph - 2.0) / 0.9;
-            look.props
-                .push(prop(rows(FISH), 18.0, 3.0 + 9.0 * (PI * q).sin()));
+            look.props.push(prop(rows(FISH), 18.0, 3.0 + 9.0 * (PI * q).sin()));
         }
         look
     }

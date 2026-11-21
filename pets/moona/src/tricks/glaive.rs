@@ -37,18 +37,10 @@ impl Trick for Glaive {
             for (lag, faint) in [(0.07, true), (0.035, true), (0.0, false)] {
                 let q = ((t - lag - THROW_OUT) / (THROW_BACK - THROW_OUT)).max(0.0);
                 let (x, y) = glaive_at(cx, q);
-                look.free
-                    .push(glaive_sprite(cx, x, y, (t - lag) * 17.0, faint));
+                look.free.push(glaive_sprite(cx, x, y, (t - lag) * 17.0, faint));
             }
         } else {
-            look.frame = p.frame(
-                if t > THROW_BACK + 0.15 {
-                    Eyes::Happy
-                } else {
-                    eyes
-                },
-                Pose::Sit,
-            );
+            look.frame = p.frame(if t > THROW_BACK + 0.15 { Eyes::Happy } else { eyes }, Pose::Sit);
             if t < THROW_BACK + 0.25 {
                 let (x, y) = glaive_at(cx, 0.0);
                 look.free.push(free(rows(TWINKLE), x - 6.0, y - 6.0, PIXEL));

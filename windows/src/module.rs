@@ -4,10 +4,7 @@
 
 use petkit::engine::{About, Command, Input, Render};
 use petkit::wire::{decode, encode, Wire};
-use wasmi::{
-    Config, Engine, Instance, Linker, Memory, Module, Store, StoreLimits, StoreLimitsBuilder,
-    TypedFunc,
-};
+use wasmi::{Config, Engine, Instance, Linker, Memory, Module, Store, StoreLimits, StoreLimitsBuilder, TypedFunc};
 
 /// The pet API version this app speaks; a module built against a newer major version is refused.
 const API_MAJOR: u32 = petkit::API_VERSION.0;
@@ -44,50 +41,26 @@ impl PetModule {
         if module.imports().next().is_some() {
             return Err("this pet file asks for things pets aren't allowed".into());
         }
-        let mut store = Store::new(
-            &engine,
-            StoreLimitsBuilder::new()
-                .memory_size(MAX_MEMORY)
-                .instances(1)
-                .build(),
-        );
+        let mut store = Store::new(&engine, StoreLimitsBuilder::new().memory_size(MAX_MEMORY).instances(1).build());
         store.limiter(|limits| limits);
         store.set_fuel(FUEL).map_err(err("fuel"))?;
         let linker = <Linker<StoreLimits>>::new(&engine);
-        let instance: Instance = linker
-            .instantiate_and_start(&mut store, &module)
-            .map_err(err("couldn't start the pet"))?;
+        let instance: Instance = linker.instantiate_and_start(&mut store, &module).map_err(err("couldn't start the pet"))?;
 
         let get = |name: &str| format!("not a DeskPet pet file (no {name})");
-        let api = instance
-            .get_typed_func::<(), u32>(&store, "deskpet_api")
-            .map_err(|_| get("deskpet_api"))?;
+        let api = instance.get_typed_func::<(), u32>(&store, "deskpet_api").map_err(|_| get("deskpet_api"))?;
         let version = api.call(&mut store, ()).map_err(err("pet"))?;
         if version >> 16 > API_MAJOR {
             return Err("this pet needs a newer DeskPet; please update the app".into());
         }
-        let new = instance
-            .get_typed_func::<(f64, u64), ()>(&store, "deskpet_new")
-            .map_err(|_| get("deskpet_new"))?;
+        let new = instance.get_typed_func::<(f64, u64), ()>(&store, "deskpet_new").map_err(|_| get("deskpet_new"))?;
         let mut m = PetModule {
-            memory: instance
-                .get_memory(&store, "memory")
-                .ok_or_else(|| get("memory"))?,
-            inbox: instance
-                .get_typed_func(&store, "deskpet_inbox")
-                .map_err(|_| get("deskpet_inbox"))?,
-            about: instance
-                .get_typed_func(&store, "deskpet_about")
-                .map_err(|_| get("deskpet_about"))?,
-            tick: instance
-                .get_typed_func(&store, "deskpet_tick")
-                .map_err(|_| get("deskpet_tick"))?,
-            command: instance
-                .get_typed_func(&store, "deskpet_command")
-                .map_err(|_| get("deskpet_command"))?,
-            render: instance
-                .get_typed_func(&store, "deskpet_render")
-                .map_err(|_| get("deskpet_render"))?,
+            memory: instance.get_memory(&store, "memory").ok_or_else(|| get("memory"))?,
+            inbox: instance.get_typed_func(&store, "deskpet_inbox").map_err(|_| get("deskpet_inbox"))?,
+            about: instance.get_typed_func(&store, "deskpet_about").map_err(|_| get("deskpet_about"))?,
+            tick: instance.get_typed_func(&store, "deskpet_tick").map_err(|_| get("deskpet_tick"))?,
+            command: instance.get_typed_func(&store, "deskpet_command").map_err(|_| get("deskpet_command"))?,
+            render: instance.get_typed_func(&store, "deskpet_render").map_err(|_| get("deskpet_render"))?,
             store,
         };
         m.refuel()?;
@@ -103,14 +76,9 @@ impl PetModule {
     fn send<T: Wire>(&mut self, v: &T) -> Result<u32, String> {
         let bytes = encode(v);
         self.refuel()?;
-        let at = self
-            .inbox
-            .call(&mut self.store, bytes.len() as u32)
-            .map_err(err("pet"))? as usize;
+        let at = self.inbox.call(&mut self.store, bytes.len() as u32).map_err(err("pet"))? as usize;
         let mem = self.memory.data_mut(&mut self.store);
-        mem.get_mut(at..at + bytes.len())
-            .ok_or("pet gave a bad address")?
-            .copy_from_slice(&bytes);
+        mem.get_mut(at..at + bytes.len()).ok_or("pet gave a bad address")?.copy_from_slice(&bytes);
         Ok(bytes.len() as u32)
     }
 
@@ -118,9 +86,7 @@ impl PetModule {
     fn receive<T: Wire>(&self, at: u64) -> Result<T, String> {
         let (start, len) = ((at >> 32) as usize, (at & 0xffff_ffff) as usize);
         let mem = self.memory.data(&self.store);
-        let bytes = mem
-            .get(start..start + len)
-            .ok_or("pet gave a bad address")?;
+        let bytes = mem.get(start..start + len).ok_or("pet gave a bad address")?;
         decode(bytes).ok_or_else(|| "pet sent something this app can't read".into())
     }
 
@@ -137,11 +103,7 @@ impl PetModule {
 
     pub fn command(&mut self, c: Command) -> Result<bool, String> {
         let len = self.send(&c)?;
-        Ok(self
-            .command
-            .call(&mut self.store, len)
-            .map_err(err("pet"))?
-            != 0)
+        Ok(self.command.call(&mut self.store, len).map_err(err("pet"))? != 0)
     }
 
     pub fn render(&mut self) -> Result<Render, String> {

@@ -16,16 +16,9 @@ impl Trick for Bloom {
         let p = &cx.pet;
         let mut look = cx.look();
         // A flower pushes up through the moss while he sleeps, then folds away again.
-        look.frame = p.frame(
-            if t > 3.0 { Eyes::Happy } else { Eyes::Closed },
-            Pose::Stand(0),
-        );
+        look.frame = p.frame(if t > 3.0 { Eyes::Happy } else { Eyes::Closed }, Pose::Stand(0));
         if t > 1.0 && t < 7.0 {
-            look.props = vec![prop(
-                rows(HERO_FLOWER),
-                7.0,
-                (14.0 + (t - 1.0).min(3.0)).round(),
-            )];
+            look.props = vec![prop(rows(HERO_FLOWER), 7.0, (14.0 + (t - 1.0).min(3.0)).round())];
         }
         look
     }

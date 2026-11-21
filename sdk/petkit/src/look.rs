@@ -34,13 +34,7 @@ pub struct FreeSprite {
 }
 
 pub fn free(rows: Rows, x: f64, y: f64, px: f64) -> FreeSprite {
-    FreeSprite {
-        rows,
-        x,
-        y,
-        px,
-        own_colors: false,
-    }
+    FreeSprite { rows, x, y, px, own_colors: false }
 }
 
 /// A second copy of the pet (Puddle's twin), centred at `center_x`.
@@ -61,25 +55,14 @@ pub struct Look {
     pub props: Vec<Prop>,
     pub free: Vec<FreeSprite>,
     pub back: Vec<FreeSprite>, // drawn behind the pet
-    pub x_offset: f64, // art pixels forward (the way the pet faces), for jitters and recoils
+    pub x_offset: f64,         // art pixels forward (the way the pet faces), for jitters and recoils
     pub twin: Option<Twin>,
     pub beam: Option<(Pt, f64)>, // flashlight light
 }
 
 impl Look {
     pub fn new(frame: Frame, palette: Palette) -> Look {
-        Look {
-            frame,
-            palette,
-            y_offset: 0.0,
-            scale: 1.0,
-            props: vec![],
-            free: vec![],
-            back: vec![],
-            x_offset: 0.0,
-            twin: None,
-            beam: None,
-        }
+        Look { frame, palette, y_offset: 0.0, scale: 1.0, props: vec![], free: vec![], back: vec![], x_offset: 0.0, twin: None, beam: None }
     }
 }
 

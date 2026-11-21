@@ -51,8 +51,7 @@ impl Trick for Vanish {
         for at in [VANISH_GONE - 0.3, VANISH_BACK] {
             if (at..at + 0.5).contains(&t) {
                 let c = cx.pet_center_x();
-                look.free
-                    .push(free(rows(TWINKLE), c - 6.0, 40.0 + 30.0 * (t - at), PIXEL));
+                look.free.push(free(rows(TWINKLE), c - 6.0, 40.0 + 30.0 * (t - at), PIXEL));
             }
         }
         look

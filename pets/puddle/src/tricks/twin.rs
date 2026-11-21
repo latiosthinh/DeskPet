@@ -23,9 +23,7 @@ impl Trick for Split {
         let room_right = cx.width - (cx.pet_x + PET_SIZE);
         let room_left = cx.pet_x;
         let side = if room_right >= room_left { 1.0 } else { -1.0 };
-        self.twin_center_x = (cx.pet_center_x() + side * 68.0)
-            .max(PET_SIZE / 2.0)
-            .min(cx.width - PET_SIZE / 2.0);
+        self.twin_center_x = (cx.pet_center_x() + side * 68.0).max(PET_SIZE / 2.0).min(cx.width - PET_SIZE / 2.0);
     }
 
     fn step(&mut self, cx: &mut Stage, t: f64, _dt: f64) {
@@ -36,10 +34,7 @@ impl Trick for Split {
             cx.say("pop!", 1.0);
         }
         if t > 1.4 && cx.every(1, 1.1) {
-            let at = pt(
-                (cx.pet_center_x() + self.twin_center_x) / 2.0 - 4.0,
-                PET_SIZE - 8.0,
-            );
+            let at = pt((cx.pet_center_x() + self.twin_center_x) / 2.0 - 4.0, PET_SIZE - 8.0);
             cx.spawn("♪", pink, at, 13.0);
         }
         if t > d - 0.6 && cx.once(2) {
@@ -83,8 +78,7 @@ impl Trick for Split {
             let f = ((t - start - 0.9) / 1.2) % 2.0;
             let q = if f < 1.0 { f } else { 2.0 - f };
             let x = lerp(cx.pet_center_x(), self.twin_center_x, q) - 4.0;
-            look.free
-                .push(free(rows(BALL), x, 30.0 + 26.0 * (PI * q).sin(), PIXEL));
+            look.free.push(free(rows(BALL), x, 30.0 + 26.0 * (PI * q).sin(), PIXEL));
         }
         look
     }

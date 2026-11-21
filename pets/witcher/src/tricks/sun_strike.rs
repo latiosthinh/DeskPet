@@ -36,32 +36,14 @@ impl Trick for SunStrike {
         };
         if (SUN_CALL..SUN_HIT).contains(&t) {
             // A thin warning glimmer first.
-            look.free
-                .push(light_shaft(cx, x, 4, 1.0, ['.', '3', '3', '2', '2'], false));
+            look.free.push(light_shaft(cx, x, 4, 1.0, ['.', '3', '3', '2', '2'], false));
         } else if (SUN_HIT..SUN_END).contains(&t) {
             let reach = ((t - SUN_HIT) / 0.12).min(1.0);
-            look.free.push(light_shaft(
-                cx,
-                x,
-                16 + 2 * beat as usize,
-                reach,
-                ['.', '3', '2', '1', '@'],
-                t > SUN_END - 0.3,
-            ));
+            look.free.push(light_shaft(cx, x, 16 + 2 * beat as usize, reach, ['.', '3', '2', '1', '@'], t > SUN_END - 0.3));
             if t < SUN_HIT + 0.5 {
                 look.free.push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL));
-                look.free.push(free(
-                    rows(TWINKLE),
-                    x - 22.0,
-                    10.0 + 30.0 * (t - SUN_HIT),
-                    PIXEL,
-                ));
-                look.free.push(free(
-                    rows(TWINKLE),
-                    x + 10.0,
-                    16.0 + 30.0 * (t - SUN_HIT),
-                    PIXEL,
-                ));
+                look.free.push(free(rows(TWINKLE), x - 22.0, 10.0 + 30.0 * (t - SUN_HIT), PIXEL));
+                look.free.push(free(rows(TWINKLE), x + 10.0, 16.0 + 30.0 * (t - SUN_HIT), PIXEL));
             }
         }
         look

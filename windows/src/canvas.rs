@@ -3,8 +3,8 @@
 //! pixels here; rectangle edges are rounded to whole pixels so art pixels never leave seams.
 //! Shapes are antialiased in software. Text is rendered once by GDI into a coverage mask and cached.
 
-use crate::sys;
 use petkit::art::Color;
+use crate::sys;
 use std::collections::HashMap;
 
 pub struct Canvas<'a> {
@@ -95,12 +95,7 @@ impl<'a> Canvas<'a> {
 
     /// The rounded rectangle (points, y up) as device-pixel edges (left, top, right, bottom).
     fn device_rect(&self, x: f64, y: f64, w: f64, h: f64) -> (f64, f64, f64, f64) {
-        (
-            x * self.s,
-            self.h as f64 - (y + h) * self.s,
-            (x + w) * self.s,
-            self.h as f64 - y * self.s,
-        )
+        (x * self.s, self.h as f64 - (y + h) * self.s, (x + w) * self.s, self.h as f64 - y * self.s)
     }
 
     pub fn fill_round_rect(&mut self, x: f64, y: f64, w: f64, h: f64, radius: f64, c: Color) {
@@ -118,17 +113,7 @@ impl<'a> Canvas<'a> {
     }
 
     /// Strokes a rounded rectangle; `dash` is (on, off) lengths in points.
-    pub fn stroke_round_rect(
-        &mut self,
-        x: f64,
-        y: f64,
-        w: f64,
-        h: f64,
-        radius: f64,
-        c: Color,
-        width: f64,
-        dash: Option<(f64, f64)>,
-    ) {
+    pub fn stroke_round_rect(&mut self, x: f64, y: f64, w: f64, h: f64, radius: f64, c: Color, width: f64, dash: Option<(f64, f64)>) {
         let (l, t, r, b) = self.device_rect(x, y, w, h);
         let rad = (radius * self.s).min((r - l) / 2.0).min((b - t) / 2.0);
         let half = width * self.s / 2.0;
@@ -143,45 +128,25 @@ impl<'a> Canvas<'a> {
                 let a = start + if rad > 0.0 { d / rad } else { 0.0 };
                 (cx + rad * a.cos(), cy + rad * a.sin())
             };
-            if d < straight_w {
-                return (l + rad + d, t);
-            }
+            if d < straight_w { return (l + rad + d, t); }
             d -= straight_w;
-            if d < arc {
-                return corner(r - rad, t + rad, -std::f64::consts::FRAC_PI_2, d);
-            }
+            if d < arc { return corner(r - rad, t + rad, -std::f64::consts::FRAC_PI_2, d); }
             d -= arc;
-            if d < straight_h {
-                return (r, t + rad + d);
-            }
+            if d < straight_h { return (r, t + rad + d); }
             d -= straight_h;
-            if d < arc {
-                return corner(r - rad, b - rad, 0.0, d);
-            }
+            if d < arc { return corner(r - rad, b - rad, 0.0, d); }
             d -= arc;
-            if d < straight_w {
-                return (r - rad - d, b);
-            }
+            if d < straight_w { return (r - rad - d, b); }
             d -= straight_w;
-            if d < arc {
-                return corner(l + rad, b - rad, std::f64::consts::FRAC_PI_2, d);
-            }
+            if d < arc { return corner(l + rad, b - rad, std::f64::consts::FRAC_PI_2, d); }
             d -= arc;
-            if d < straight_h {
-                return (l, b - rad - d);
-            }
+            if d < straight_h { return (l, b - rad - d); }
             d -= straight_h;
             corner(l + rad, t + rad, std::f64::consts::PI, d)
         };
 
-        let (bx0, by0) = (
-            (l - half - 1.0).floor().max(0.0) as i32,
-            (t - half - 1.0).floor().max(0.0) as i32,
-        );
-        let (bx1, by1) = (
-            ((r + half + 2.0).ceil() as i32).min(self.w),
-            ((b + half + 2.0).ceil() as i32).min(self.h),
-        );
+        let (bx0, by0) = ((l - half - 1.0).floor().max(0.0) as i32, (t - half - 1.0).floor().max(0.0) as i32);
+        let (bx1, by1) = (((r + half + 2.0).ceil() as i32).min(self.w), ((b + half + 2.0).ceil() as i32).min(self.h));
         let (bw, bh) = (bx1 - bx0, by1 - by0);
         if bw <= 0 || bh <= 0 {
             return;
@@ -197,15 +162,9 @@ impl<'a> Canvas<'a> {
             if on {
                 let (sx, sy) = point(d);
                 let reach = half + 1.0;
-                for py in
-                    ((sy - reach).floor() as i32).max(by0)..((sy + reach).ceil() as i32).min(by1)
-                {
-                    for px in ((sx - reach).floor() as i32).max(bx0)
-                        ..((sx + reach).ceil() as i32).min(bx1)
-                    {
-                        let dist = ((px as f64 + 0.5 - sx).powi(2)
-                            + (py as f64 + 0.5 - sy).powi(2))
-                        .sqrt();
+                for py in ((sy - reach).floor() as i32).max(by0)..((sy + reach).ceil() as i32).min(by1) {
+                    for px in ((sx - reach).floor() as i32).max(bx0)..((sx + reach).ceil() as i32).min(bx1) {
+                        let dist = ((px as f64 + 0.5 - sx).powi(2) + (py as f64 + 0.5 - sy).powi(2)).sqrt();
                         let v = (half + 0.5 - dist).clamp(0.0, 1.0) as f32;
                         let cell = &mut cov[((py - by0) * bw + (px - bx0)) as usize];
                         if v > *cell {
@@ -227,16 +186,8 @@ impl<'a> Canvas<'a> {
     }
 
     /// Fills a triangle (device pixels), 4×4 supersampled. `shade` gives the colour at a device x.
-    fn fill_triangle_with(
-        &mut self,
-        a: (f64, f64),
-        b: (f64, f64),
-        c: (f64, f64),
-        shade: impl Fn(f64) -> Color,
-    ) {
-        let edge = |p: (f64, f64), q: (f64, f64), x: f64, y: f64| {
-            (q.0 - p.0) * (y - p.1) - (q.1 - p.1) * (x - p.0)
-        };
+    fn fill_triangle_with(&mut self, a: (f64, f64), b: (f64, f64), c: (f64, f64), shade: impl Fn(f64) -> Color) {
+        let edge = |p: (f64, f64), q: (f64, f64), x: f64, y: f64| (q.0 - p.0) * (y - p.1) - (q.1 - p.1) * (x - p.0);
         let area = edge(a, b, c.0, c.1);
         if area.abs() < 1e-9 {
             return;
@@ -250,14 +201,9 @@ impl<'a> Canvas<'a> {
                 let mut hits = 0;
                 for sy in 0..4 {
                     for sx in 0..4 {
-                        let (x, y) = (
-                            px as f64 + (sx as f64 + 0.5) / 4.0,
-                            py as f64 + (sy as f64 + 0.5) / 4.0,
-                        );
+                        let (x, y) = (px as f64 + (sx as f64 + 0.5) / 4.0, py as f64 + (sy as f64 + 0.5) / 4.0);
                         let (e0, e1, e2) = (edge(a, b, x, y), edge(b, c, x, y), edge(c, a, x, y));
-                        if (e0 >= 0.0 && e1 >= 0.0 && e2 >= 0.0)
-                            || (e0 <= 0.0 && e1 <= 0.0 && e2 <= 0.0)
-                        {
+                        if (e0 >= 0.0 && e1 >= 0.0 && e2 >= 0.0) || (e0 <= 0.0 && e1 <= 0.0 && e2 <= 0.0) {
                             hits += 1;
                         }
                     }
@@ -275,15 +221,7 @@ impl<'a> Canvas<'a> {
     }
 
     /// Light fading out across the triangle, from `start` at the near side to `end` at the far side.
-    pub fn fill_gradient_triangle(
-        &mut self,
-        a: (f64, f64),
-        b: (f64, f64),
-        c: (f64, f64),
-        start: Color,
-        end: Color,
-        reversed: bool,
-    ) {
+    pub fn fill_gradient_triangle(&mut self, a: (f64, f64), b: (f64, f64), c: (f64, f64), start: Color, end: Color, reversed: bool) {
         let lo = a.0.min(b.0).min(c.0) - 1.0;
         let hi = a.0.max(b.0).max(c.0) + 1.0;
         self.fill_triangle_with(a, b, c, |x| {
@@ -292,20 +230,13 @@ impl<'a> Canvas<'a> {
                 t = 1.0 - t;
             }
             let mix = |p: u8, q: u8| (p as f64 + (q as f64 - p as f64) * t).round() as u8;
-            Color::new(
-                mix(start.r, end.r),
-                mix(start.g, end.g),
-                mix(start.b, end.b),
-                mix(start.a, end.a),
-            )
+            Color::new(mix(start.r, end.r), mix(start.g, end.g), mix(start.b, end.b), mix(start.a, end.a))
         });
     }
 
     /// Size of a line of text, in points.
     pub fn measure(&mut self, text: &str, font: Font, size_pt: f64) -> (f64, f64) {
-        let m = self
-            .text
-            .mask(text, font, (size_pt * self.s).round() as i32);
+        let m = self.text.mask(text, font, (size_pt * self.s).round() as i32);
         (m.w as f64 / self.s, m.h as f64 / self.s)
     }
 
@@ -314,9 +245,7 @@ impl<'a> Canvas<'a> {
         let left = self.dx(x);
         let bottom = self.dy(y);
         let (cw, ch) = (self.w, self.h);
-        let m = self
-            .text
-            .mask(text, font, (size_pt * self.s).round() as i32);
+        let m = self.text.mask(text, font, (size_pt * self.s).round() as i32);
         let top = bottom - m.h;
         for my in 0..m.h {
             let y = top + my;
@@ -327,10 +256,7 @@ impl<'a> Canvas<'a> {
                 let x = left + mx;
                 let v = m.cov[(my * m.w + mx) as usize];
                 if v > 0 && x >= 0 && x < cw {
-                    blend(
-                        &mut self.buf[(y * cw + x) as usize],
-                        premul(c, v as f64 / 255.0),
-                    );
+                    blend(&mut self.buf[(y * cw + x) as usize], premul(c, v as f64 / 255.0));
                 }
             }
         }
@@ -361,11 +287,7 @@ pub struct TextCache {
 
 impl TextCache {
     pub fn new() -> TextCache {
-        TextCache {
-            masks: HashMap::new(),
-            fonts: HashMap::new(),
-            scratch: None,
-        }
+        TextCache { masks: HashMap::new(), fonts: HashMap::new(), scratch: None }
     }
 
     pub fn mask(&mut self, text: &str, font: Font, px: i32) -> &Mask {

@@ -29,11 +29,7 @@ impl Trick for GiveFlower {
         let p = &cx.pet;
         let mut look = cx.look();
         look.frame = p.frame(Eyes::Happy, Pose::Stand(0));
-        look.props.push(prop(
-            rows(FLOWER),
-            14.0,
-            if cx.alt(0.6) { 4.0 } else { 5.0 },
-        ));
+        look.props.push(prop(rows(FLOWER), 14.0, if cx.alt(0.6) { 4.0 } else { 5.0 }));
         look
     }
 }

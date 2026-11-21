@@ -34,10 +34,7 @@ impl Trick for Chop {
         } else {
             3.0
         };
-        look.props = vec![
-            prop(rows(HERO_LOG), 17.0, 0.0),
-            prop(rows(HERO_AXE), 15.0, lift),
-        ];
+        look.props = vec![prop(rows(HERO_LOG), 17.0, 0.0), prop(rows(HERO_AXE), 15.0, lift)];
         if t > 4.0 && t < 6.0 {
             look.y_offset = -beat;
         }

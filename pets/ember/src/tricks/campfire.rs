@@ -23,16 +23,7 @@ impl Trick for Campfire {
         }
         if cx.every(2, 0.3) {
             let at = pt(cx.center_x(18.0) - 3.0, 5.0 * PIXEL);
-            cx.spawn_full(
-                "·",
-                sys_color::ORANGE,
-                at,
-                16.0,
-                (-10.0, 10.0),
-                (18.0, 32.0),
-                0.8,
-                0.0,
-            );
+            cx.spawn_full("·", sys_color::ORANGE, at, 16.0, (-10.0, 10.0), (18.0, 32.0), 0.8, 0.0);
         }
     }
 
@@ -42,11 +33,7 @@ impl Trick for Campfire {
         let p = &cx.pet;
         let mut look = cx.look();
         look.frame = p.frame(if t > d - 2.0 { Eyes::Happy } else { eyes }, Pose::Sit);
-        look.props.push(prop(
-            rows(if cx.alt(0.25) { FIRE_A } else { FIRE_B }),
-            15.0,
-            0.0,
-        ));
+        look.props.push(prop(rows(if cx.alt(0.25) { FIRE_A } else { FIRE_B }), 15.0, 0.0));
         look.props.push(prop(stick(t > d * 0.5), 13.0, 3.0));
         look
     }

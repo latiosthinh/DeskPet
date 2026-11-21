@@ -30,16 +30,7 @@ impl Trick for PopFood {
         if t > 2.0 && cx.once(2) {
             cx.say("a snack for you!", 3.0);
             let at = pt(cx.center_x(20.0) - 4.0, 12.0);
-            cx.spawn_full(
-                "✦",
-                sys_color::YELLOW,
-                at,
-                11.0,
-                (-10.0, 10.0),
-                (22.0, 36.0),
-                0.9,
-                0.0,
-            );
+            cx.spawn_full("✦", sys_color::YELLOW, at, 11.0, (-10.0, 10.0), (22.0, 36.0), 0.9, 0.0);
         }
     }
 
@@ -51,11 +42,7 @@ impl Trick for PopFood {
         } else {
             look.frame = p.frame(Eyes::Happy, Pose::Sit);
             let q = ((t - 1.2) / 0.8).min(1.0);
-            look.props.push(prop(
-                rows(FOOD[self.food_kind]),
-                6.0 + 13.0 * q,
-                (1.0 - q) * 10.0 + 12.0 * (PI * q).sin(),
-            ));
+            look.props.push(prop(rows(FOOD[self.food_kind]), 6.0 + 13.0 * q, (1.0 - q) * 10.0 + 12.0 * (PI * q).sin()));
         }
         look
     }

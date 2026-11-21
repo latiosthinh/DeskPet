@@ -39,11 +39,7 @@ pub const PASTIME_YOYO: &[&str] = &[".r.", "rkr", ".r."];
 
 pub fn pool(width: usize) -> Rows {
     let w = width.max(2);
-    vec![
-        format!(".{}.", "C".repeat(w - 2)),
-        "c".repeat(w),
-        "c".repeat(w),
-    ]
+    vec![format!(".{}.", "C".repeat(w - 2)), "c".repeat(w), "c".repeat(w)]
 }
 
 /// A crescent blade of radius `r` cells, its hollow facing `angle` radians (counter-clockwise from

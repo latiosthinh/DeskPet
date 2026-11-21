@@ -50,11 +50,7 @@ fn reply<T: Wire>(v: &T) -> u64 {
 }
 
 fn with_brain<R>(f: impl FnOnce(&mut Brain) -> R) -> R {
-    BRAIN.with(|b| {
-        f(b.borrow_mut()
-            .as_mut()
-            .expect("deskpet: deskpet_new wasn't called"))
-    })
+    BRAIN.with(|b| f(b.borrow_mut().as_mut().expect("deskpet: deskpet_new wasn't called")))
 }
 
 pub fn about() -> u64 {

@@ -30,11 +30,7 @@ impl Trick for Bamboo {
         }
         look.free.push(cx.placed(SAMURAI_BAMBOO_BOTTOM, 21.0, 0.0));
         let q = ((t - slash - 0.4) / 0.7).clamp(0.0, 1.0);
-        look.free.push(cx.placed(
-            SAMURAI_BAMBOO_TOP,
-            21.0 + (4.0 * q).round(),
-            (9.0 * (1.0 - q)).round(),
-        ));
+        look.free.push(cx.placed(SAMURAI_BAMBOO_TOP, 21.0 + (4.0 * q).round(), (9.0 * (1.0 - q)).round()));
         if (slash..slash + 0.25).contains(&t) {
             look.free.push(cx.placed(SAMURAI_SLASH, 12.0, 9.0));
         }

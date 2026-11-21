@@ -37,20 +37,12 @@ impl Trick for Tornado {
             let dir = if cx.facing_left { -1.0 } else { 1.0 };
             let start = cx.pet_center_x() + dir * 30.0;
             let x = start + (spell_x(cx, 280.0) - start) * q;
-            let (px, tall) = cx
-                .pet
-                .picture
-                .as_ref()
-                .map_or((1.6, 56), |p| (p.px, p.height));
+            let (px, tall) = cx.pet.picture.as_ref().map_or((1.6, 56), |p| (p.px, p.height));
             let grid = tornado(t, tall, q > 0.88); // as tall as he is
             let w = grid[0].len() as f64 * px;
-            look.free.push(FreeSprite {
-                own_colors: true,
-                ..free(grid, x - w / 2.0, 0.0, px)
-            });
+            look.free.push(FreeSprite { own_colors: true, ..free(grid, x - w / 2.0, 0.0, px) });
             if cx.alt(0.15) {
-                look.free
-                    .push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL / 2.0));
+                look.free.push(free(rows(HERO_PUFF), x - 16.0, 0.0, PIXEL / 2.0));
             }
         }
         look

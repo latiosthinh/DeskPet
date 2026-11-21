@@ -34,11 +34,7 @@ impl Trick for Meditate {
         if (1.2..6.2).contains(&t) {
             for k in 0..4 {
                 let a = t * 1.8 + k as f64 * PI / 2.0;
-                let leaf = cx.placed(
-                    NINJA_LEAF,
-                    (6.0 + 11.0 * a.cos()).round(),
-                    (rise + 5.0 + 3.0 * a.sin()).round(),
-                );
+                let leaf = cx.placed(NINJA_LEAF, (6.0 + 11.0 * a.cos()).round(), (rise + 5.0 + 3.0 * a.sin()).round());
                 if a.sin() > 0.0 {
                     look.back.push(leaf);
                 } else {

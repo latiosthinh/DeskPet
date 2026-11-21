@@ -19,30 +19,14 @@ impl Trick for Bubbles {
         if cx.every(1, 0.45) {
             let at = pt(cx.center_x(15.0), 5.5 * PIXEL);
             let vx = cx.forward(8.0, 22.0);
-            cx.spawn_full(
-                "○",
-                sys_color::TEAL,
-                at,
-                rand(9.0, 15.0),
-                vx,
-                (12.0, 24.0),
-                2.4,
-                0.0,
-            );
+            cx.spawn_full("○", sys_color::TEAL, at, rand(9.0, 15.0), vx, (12.0, 24.0), 2.4, 0.0);
         }
     }
 
     fn look(&self, cx: &Stage, _t: f64) -> Look {
         let p = &cx.pet;
         let mut look = cx.look();
-        look.frame = p.frame(
-            if cx.alt(0.45) {
-                Eyes::Happy
-            } else {
-                Eyes::Open
-            },
-            Pose::Sit,
-        );
+        look.frame = p.frame(if cx.alt(0.45) { Eyes::Happy } else { Eyes::Open }, Pose::Sit);
         look
     }
 }

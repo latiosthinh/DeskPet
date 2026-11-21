@@ -26,14 +26,7 @@ impl Trick for Flip {
         let p = &cx.pet;
         let mut look = cx.look();
         // Crouches and does a backflip, lands in a puff of dust, and does another.
-        look.frame = p.frame(
-            if t > FLIPS[1] + FLIP_TIME {
-                Eyes::Happy
-            } else {
-                eyes
-            },
-            Pose::Stand(0),
-        );
+        look.frame = p.frame(if t > FLIPS[1] + FLIP_TIME { Eyes::Happy } else { eyes }, Pose::Stand(0));
         for &at in &FLIPS {
             if (at - 0.3..at).contains(&t) {
                 look.y_offset = -1.0;

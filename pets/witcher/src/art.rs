@@ -1289,16 +1289,11 @@ pub const WITCHER_WHIRL2_ROWS: &[&str] = &[
 ];
 
 pub fn witcher() -> Picture {
-    let grid =
-        |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
+    let grid = |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
     let (stand, anchor) = WITCHER_STAND;
     let mut frames: Vec<(Vec<Vec<u8>>, f64)> = (0..9).map(|_| (grid(stand), anchor)).collect();
     frames.extend(WITCHER_EXTRA.iter().map(|&(rows, a)| (grid(rows), a)));
-    assert_eq!(
-        frames.len(),
-        WITCHER_GHOST + 1,
-        "witcher frame indices out of step"
-    );
+    assert_eq!(frames.len(), WITCHER_GHOST + 1, "witcher frame indices out of step");
     let mut pic = Picture::from_frames(frames, 1.6);
     pic.idle_sits = true;
     pic.walk = (WITCHER_WALK..WITCHER_WALK + 7).collect();

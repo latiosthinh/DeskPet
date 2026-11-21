@@ -244,14 +244,8 @@ pub const MOONA_JUMP_ROWS: &[&str] = &[
 ];
 
 /// O glow round the glaive, P its fading trail; R, S, T, U moonlight from faintest to brightest.
-pub const MOONA_LIGHTS: &[(char, u32, f64)] = &[
-    ('O', 0x8ef6fd, 0.45),
-    ('P', 0x6ee5f8, 0.3),
-    ('R', 0x9fe3ff, 0.1),
-    ('S', 0xb8f0ff, 0.2),
-    ('T', 0xd8faff, 0.36),
-    ('U', 0xffffff, 0.62),
-];
+pub const MOONA_LIGHTS: &[(char, u32, f64)] =
+    &[('O', 0x8ef6fd, 0.45), ('P', 0x6ee5f8, 0.3), ('R', 0x9fe3ff, 0.1), ('S', 0xb8f0ff, 0.2), ('T', 0xd8faff, 0.36), ('U', 0xffffff, 0.62)];
 
 pub const MOONA_SLEEP: usize = 12;
 
@@ -516,8 +510,7 @@ pub const MOONA_WEAPON_ROWS: &[&str] = &[
 /// Moona riding her panther, from the poses in prototypes/moona.jpg (one art pixel ≈ 4.3 pixels
 /// there). Each pose has its own picture; walking lifts the legs of the walking picture.
 pub fn moona() -> Picture {
-    let grid =
-        |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
+    let grid = |rows: &[&str]| -> Vec<Vec<u8>> { rows.iter().map(|r| r.as_bytes().to_vec()).collect() };
     let walk = grid(MOONA_WALK);
     let anchor = 36.5;
     let mut frames = Vec::new();
@@ -534,13 +527,7 @@ pub fn moona() -> Picture {
         frames.push((steps[2].clone(), anchor));
         frames.push((face, anchor));
     }
-    for (rows, anchor) in [
-        (MOONA_JUMP_ROWS, 32.5),
-        (MOONA_WEAPON_ROWS, 34.5),
-        (MOONA_STORM_ROWS, 36.5),
-        (MOONA_SLEEP_ROWS, 28.0),
-        (MOONA_EAT_ROWS, 27.5),
-    ] {
+    for (rows, anchor) in [(MOONA_JUMP_ROWS, 32.5), (MOONA_WEAPON_ROWS, 34.5), (MOONA_STORM_ROWS, 36.5), (MOONA_SLEEP_ROWS, 28.0), (MOONA_EAT_ROWS, 27.5)] {
         frames.push((grid(rows), anchor));
     }
     // The in-between steps of the walk, where a pair of legs passes forward off the ground.
@@ -548,11 +535,7 @@ pub fn moona() -> Picture {
     frames.push((steps[1].clone(), anchor)); // MOONA_STEP_B
     frames.push((steps[3].clone(), anchor)); // MOONA_STEP_D
     frames.push((grid(MOONA_BARE_ROWS), anchor));
-    assert_eq!(
-        frames.len(),
-        MOONA_BARE + 1,
-        "Moona frame indices out of step"
-    );
+    assert_eq!(frames.len(), MOONA_BARE + 1, "Moona frame indices out of step");
     let mut pic = Picture::from_frames(frames, 1.6);
     pic.idle_sits = true;
     pic.walk = vec![0, MOONA_STEP_B, 1, MOONA_STEP_D];

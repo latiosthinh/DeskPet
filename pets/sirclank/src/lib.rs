@@ -11,20 +11,14 @@ petkit::export_pet!(pet);
 
 /// The whole pet: what it looks like, its tricks, and what it does while you type.
 pub fn pet() -> PetDef {
-    PetDef::new(info())
-        .trick(tricks::wind::Wind)
-        .trick(tricks::spring::Spring)
-        .trick(tricks::bell::Bell)
-        .typing(typing::Checklist)
-        .decorate(wind_key)
+    PetDef::new(info()).trick(tricks::wind::Wind).trick(tricks::spring::Spring).trick(tricks::bell::Bell).typing(typing::Checklist).decorate(wind_key)
 }
 
 /// His wind-up key sits on his back (it turns in his Wind Up trick, which draws it itself).
 fn wind_key(cx: &Stage, look: &mut Look) {
     let winding = cx.mode == Mode::Trick && !cx.dragging && cx.trick_id() == Some("wind");
     if !winding {
-        look.back
-            .push(cx.placed(HERO_KEY_A, -4.0 + look.x_offset, 4.0 + look.y_offset));
+        look.back.push(cx.placed(HERO_KEY_A, -4.0 + look.x_offset, 4.0 + look.y_offset));
     }
 }
 

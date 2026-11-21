@@ -38,11 +38,7 @@ impl Trick for Fly {
             },
             Pose::Stand(0),
         );
-        let fly = if cx.alt(0.04) {
-            SAMURAI_FLY_A
-        } else {
-            SAMURAI_FLY_B
-        };
+        let fly = if cx.alt(0.04) { SAMURAI_FLY_A } else { SAMURAI_FLY_B };
         if t < FLY_CATCH {
             let (dx, up) = (9.0 + 7.0 * (t * 3.1).sin(), 15.0 + 3.0 * (t * 5.3).sin());
             look.free.push(cx.placed(fly, dx.round(), up.round()));
@@ -54,11 +50,7 @@ impl Trick for Fly {
             }
         } else {
             let q = t - FLY_FREE;
-            look.free.push(cx.placed(
-                fly,
-                (18.0 + 6.0 * q).round(),
-                (10.0 + 8.0 * q + (q * 9.0).sin()).round(),
-            ));
+            look.free.push(cx.placed(fly, (18.0 + 6.0 * q).round(), (10.0 + 8.0 * q + (q * 9.0).sin()).round()));
             if q < 0.8 {
                 look.free.push(cx.placed(SAMURAI_CHOPSTICKS, 14.0, 6.0));
             }

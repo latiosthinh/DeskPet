@@ -39,14 +39,7 @@ impl Trick for BoxNap {
             2.0
         };
         look.y_offset = y;
-        look.frame = p.frame(
-            if t > 1.2 && t < d - 1.2 {
-                Eyes::Closed
-            } else {
-                Eyes::Happy
-            },
-            Pose::Sit,
-        );
+        look.frame = p.frame(if t > 1.2 && t < d - 1.2 { Eyes::Closed } else { Eyes::Happy }, Pose::Sit);
         look.props.push(prop(rows(BOX), -1.0, 0.0));
         look
     }

@@ -34,23 +34,15 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::Graphics::Gdi::HBITMAP;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
-const RANGE_OPTIONS: [(f64, &str); 5] = [
-    (0.0, "Stay Put"),
-    (80.0, "Tiny  (±80 px)"),
-    (160.0, "Small  (±160 px)"),
-    (300.0, "Medium  (±300 px)"),
-    (500.0, "Large  (±500 px)"),
-];
+const RANGE_OPTIONS: [(f64, &str); 5] =
+    [(0.0, "Stay Put"), (80.0, "Tiny  (±80 px)"), (160.0, "Small  (±160 px)"), (300.0, "Medium  (±300 px)"), (500.0, "Large  (±500 px)")];
 const CORNER_MARGIN: f64 = 4.0;
 /// Each interval is re-picked at random within its range, so reminders don't feel mechanical.
 const BREAK: (f64, f64) = (40.0 * 60.0, 60.0 * 60.0);
 const WATER: (f64, f64) = (20.0 * 60.0, 30.0 * 60.0);
 const BREAK_RESET_IDLE: f64 = 5.0 * 60.0;
 /// Main meals as (reminder, name, minutes after midnight). Each can fire once a day, up to 2 hours after its time.
-const MEALS: [(Reminder, &str, u32); 2] = [
-    (Reminder::Lunch, "lunch", 12 * 60),
-    (Reminder::Dinner, "dinner", 18 * 60 + 30),
-];
+const MEALS: [(Reminder, &str, u32); 2] = [(Reminder::Lunch, "lunch", 12 * 60), (Reminder::Dinner, "dinner", 18 * 60 + 30)];
 
 const FRAME_MS: u32 = 33;
 const HIDDEN_MS: u32 = 250;
@@ -155,23 +147,15 @@ fn with_app<T>(f: impl FnOnce(&mut App) -> T) -> Option<T> {
 fn pet_pixels(pet: &About, size: i32) -> Vec<u32> {
     let all = &pet.icon;
     let width = all[0].len();
-    let used: Vec<usize> = (0..all.len())
-        .filter(|&r| all[r].iter().any(|c| c.is_some()))
-        .collect();
+    let used: Vec<usize> = (0..all.len()).filter(|&r| all[r].iter().any(|c| c.is_some())).collect();
     let rows = &all[used[0]..=*used.last().unwrap()];
-    let cols_used: Vec<usize> = (0..width)
-        .filter(|&c| rows.iter().any(|r| r[c].is_some()))
-        .collect();
+    let cols_used: Vec<usize> = (0..width).filter(|&c| rows.iter().any(|r| r[c].is_some())).collect();
     let c0 = cols_used[0];
     let cols = cols_used.last().unwrap() - c0 + 1;
 
     let n = size as f64;
     let fit = n / cols.max(rows.len()) as f64;
-    let k = if fit.floor() >= 1.0 && fit.floor() / fit >= 0.8 {
-        fit.floor()
-    } else {
-        fit
-    };
+    let k = if fit.floor() >= 1.0 && fit.floor() / fit >= 0.8 { fit.floor() } else { fit };
     let ox = ((n - cols as f64 * k) / 2.0).round();
     let oy = ((n - rows.len() as f64 * k) / 2.0).round();
 
@@ -179,18 +163,9 @@ fn pet_pixels(pet: &About, size: i32) -> Vec<u32> {
     for (r, row) in rows.iter().enumerate() {
         for c in 0..cols {
             let Some(color) = row[c0 + c] else { continue };
-            let argb = (color.a as u32) << 24
-                | (color.r as u32) << 16
-                | (color.g as u32) << 8
-                | color.b as u32;
-            let (x0, x1) = (
-                (ox + c as f64 * k).round() as i32,
-                (ox + (c + 1) as f64 * k).round() as i32,
-            );
-            let (y0, y1) = (
-                (oy + r as f64 * k).round() as i32,
-                (oy + (r + 1) as f64 * k).round() as i32,
-            );
+            let argb = (color.a as u32) << 24 | (color.r as u32) << 16 | (color.g as u32) << 8 | color.b as u32;
+            let (x0, x1) = ((ox + c as f64 * k).round() as i32, (ox + (c + 1) as f64 * k).round() as i32);
+            let (y0, y1) = ((oy + r as f64 * k).round() as i32, (oy + (r + 1) as f64 * k).round() as i32);
             for y in y0.max(0)..y1.min(size) {
                 for x in x0.max(0)..x1.min(size) {
                     px[(y * size + x) as usize] = argb;
@@ -207,16 +182,12 @@ fn pet_icon(pet: &About, size: i32) -> HICON {
 
 /// A fresh seed for a pet's random numbers.
 fn seed() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(1, |d| d.as_nanos() as u64)
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64)
 }
 
 /// Starts pet `i`, or the first built-in pet if that one won't start.
 fn start_pet(pets: &[Entry], i: usize) -> PetView {
-    PetView::new(&pets[i].bytes, uptime(), seed())
-        .or_else(|_| PetView::new(&pets[0].bytes, uptime(), seed()))
-        .expect("the built-in pets start")
+    PetView::new(&pets[i].bytes, uptime(), seed()).or_else(|_| PetView::new(&pets[0].bytes, uptime(), seed())).expect("the built-in pets start")
 }
 
 impl App {
@@ -225,10 +196,7 @@ impl App {
         let now = uptime();
         let saved_id = settings::get_string("pet").unwrap_or_else(|| "mochi".into());
         let id = wanted.unwrap_or(&saved_id);
-        let pet = pets
-            .iter()
-            .position(|p| p.about.id.eq_ignore_ascii_case(id))
-            .unwrap_or(0);
+        let pet = pets.iter().position(|p| p.about.id.eq_ignore_ascii_case(id)).unwrap_or(0);
         settings::refresh_login_path();
 
         App {
@@ -253,12 +221,7 @@ impl App {
             shown: false,
             menu_open: false,
             click_through: true,
-            last_work: RECT {
-                left: 0,
-                top: 0,
-                right: 0,
-                bottom: 0,
-            },
+            last_work: RECT { left: 0, top: 0, right: 0, bottom: 0 },
             last_dpi: 96,
             last_tick: now,
             streak_start: now,
@@ -294,18 +257,11 @@ impl App {
         self.last_work = wa;
         self.last_dpi = screen.dpi;
         let s = screen.dpi as f64 / 96.0;
-        let width =
-            ((wa.right - wa.left) as f64 / s).min(2.0 * self.range + PET_SIZE + 2.0 * PROP_ROOM);
-        let tallest = self
-            .pets
-            .iter()
-            .map(|p| p.about.tallest)
-            .fold(PET_SIZE, f64::max);
+        let width = ((wa.right - wa.left) as f64 / s).min(2.0 * self.range + PET_SIZE + 2.0 * PROP_ROOM);
+        let tallest = self.pets.iter().map(|p| p.about.tallest).fold(PET_SIZE, f64::max);
         let height = tallest + 70.0;
         let (w, h) = ((width * s).round() as i32, (height * s).round() as i32);
-        let home = self
-            .home_x
-            .unwrap_or(wa.right - (CORNER_MARGIN * s).round() as i32 - w / 2);
+        let home = self.home_x.unwrap_or(wa.right - (CORNER_MARGIN * s).round() as i32 - w / 2);
 
         self.scale = s;
         self.x = (home - w / 2).max(wa.left).min(wa.right - w);
@@ -314,11 +270,7 @@ impl App {
         self.h = h;
         self.min_x = wa.left;
         self.max_x = wa.right;
-        self.view.command(Command::Pen {
-            width: w as f64 / s,
-            height: h as f64 / s,
-            range: self.range,
-        });
+        self.view.command(Command::Pen { width: w as f64 / s, height: h as f64 / s, range: self.range });
     }
 
     fn pet_screen_x(&self) -> f64 {
@@ -326,8 +278,7 @@ impl App {
     }
 
     fn keep_pet(&mut self, screen_x: f64) {
-        self.view
-            .command(Command::PlaceAt((screen_x - self.x as f64) / self.scale));
+        self.view.command(Command::PlaceAt((screen_x - self.x as f64) / self.scale));
     }
 
     fn screens_changed(&mut self) {
@@ -398,9 +349,7 @@ impl App {
             self.fullscreen = sys::fullscreen_app_in_front();
             let screen = sys::primary_screen();
             let (a, b) = (screen.work, self.last_work);
-            if (a.left, a.top, a.right, a.bottom) != (b.left, b.top, b.right, b.bottom)
-                || screen.dpi != self.last_dpi
-            {
+            if (a.left, a.top, a.right, a.bottom) != (b.left, b.top, b.right, b.bottom) || screen.dpi != self.last_dpi {
                 self.screens_changed();
             }
             if self.shown {
@@ -425,22 +374,9 @@ impl App {
 
         let (cx, cy) = sys::cursor();
         let demo_running = !self.demo.is_empty() || now < self.next_demo; // the demo ignores real typing and idleness
-        let mouse = pt(
-            (cx - self.x) as f64 / self.scale,
-            (self.y + self.h - cy) as f64 / self.scale,
-        );
-        let (idle, key_idle) = if demo_running {
-            (0.0, 99.0)
-        } else {
-            (idle, key_idle)
-        };
-        self.view.tick(Input {
-            dt,
-            now,
-            idle,
-            key_idle,
-            mouse,
-        });
+        let mouse = pt((cx - self.x) as f64 / self.scale, (self.y + self.h - cy) as f64 / self.scale);
+        let (idle, key_idle) = if demo_running { (0.0, 99.0) } else { (idle, key_idle) };
+        self.view.tick(Input { dt, now, idle, key_idle, mouse });
         if self.view.failed.is_some() {
             // The pet's module broke: the first built-in pet takes over.
             let name = self.view.about.short_name.clone();
@@ -478,13 +414,7 @@ impl App {
         }
         let dib = self.dib.as_mut().unwrap();
         {
-            let mut c = Canvas {
-                buf: dib.pixels(),
-                w,
-                h,
-                s: self.scale,
-                text: &mut self.text,
-            };
+            let mut c = Canvas { buf: dib.pixels(), w, h, s: self.scale, text: &mut self.text };
             c.clear();
             // A nearly invisible fill so the whole sprite area takes clicks, not just its painted pixels.
             let (rx, ry, rw, rh) = self.view.r.pet_rect;
@@ -508,29 +438,13 @@ impl App {
             if new == &old[..] {
                 continue;
             }
-            let first = new
-                .iter()
-                .zip(old.iter())
-                .position(|(a, b)| a != b)
-                .unwrap() as i32;
-            let last = w
-                - 1
-                - new
-                    .iter()
-                    .rev()
-                    .zip(old.iter().rev())
-                    .position(|(a, b)| a != b)
-                    .unwrap() as i32;
+            let first = new.iter().zip(old.iter()).position(|(a, b)| a != b).unwrap() as i32;
+            let last = w - 1 - new.iter().rev().zip(old.iter().rev()).position(|(a, b)| a != b).unwrap() as i32;
             (x0, x1, y0, y1) = (x0.min(first), x1.max(last + 1), y0.min(y), y + 1);
             old.copy_from_slice(new);
         }
         if x1 > x0 {
-            let dirty = RECT {
-                left: x0,
-                top: y0,
-                right: x1,
-                bottom: y1,
-            };
+            let dirty = RECT { left: x0, top: y0, right: x1, bottom: y1 };
             sys::update_layered(self.pet_hwnd, dib, self.x, self.y, Some(dirty));
         }
     }
@@ -567,10 +481,7 @@ impl App {
         let today = format!("{y:04}-{m:02}-{d:02}");
         for (reminder, key, start) in MEALS {
             let name = format!("lastMeal.{key}");
-            if minutes >= start
-                && minutes < start + 120
-                && settings::get_string(&name).as_deref() != Some(today.as_str())
-            {
+            if minutes >= start && minutes < start + 120 && settings::get_string(&name).as_deref() != Some(today.as_str()) {
                 settings::set_string(&name, &today);
                 self.view.command(Command::Remind(reminder));
                 return;
@@ -598,22 +509,14 @@ impl App {
         let mut bitmaps = Vec::new();
         let icon = sys::small_icon_size(self.last_dpi);
         let mut menu = Menu::new();
-        menu.add(MenuItem {
-            checked: self.visible,
-            ..MenuItem::new("Show Pet", CMD_SHOW)
-        });
+        menu.add(MenuItem { checked: self.visible, ..MenuItem::new("Show Pet", CMD_SHOW) });
 
         let mut pets = Menu::new();
         for (i, p) in self.pets.iter().enumerate() {
             let current = p.about.id == self.view.about.id;
             let bmp = sys::bitmap_from_pixels(&pet_pixels(&p.about, icon), icon);
             bitmaps.push(bmp);
-            pets.add(MenuItem {
-                checked: current,
-                bold: current,
-                bitmap: bmp,
-                ..MenuItem::new(&p.about.name, CMD_PET + i as u32)
-            });
+            pets.add(MenuItem { checked: current, bold: current, bitmap: bmp, ..MenuItem::new(&p.about.name, CMD_PET + i as u32) });
         }
         menu.submenu("Pet", pets);
 
@@ -630,11 +533,7 @@ impl App {
 
         let mut ranges = Menu::new();
         for (i, (value, title)) in RANGE_OPTIONS.iter().enumerate() {
-            ranges.add(MenuItem {
-                checked: *value == self.range,
-                radio: true,
-                ..MenuItem::new(title, CMD_RANGE + i as u32)
-            });
+            ranges.add(MenuItem { checked: *value == self.range, radio: true, ..MenuItem::new(title, CMD_RANGE + i as u32) });
         }
         menu.submenu("Roam Range", ranges);
         menu.add(MenuItem::new("Show Roam Area", CMD_SHOW_AREA));
@@ -642,31 +541,17 @@ impl App {
         menu.separator();
 
         let mut reminders = Menu::new();
-        reminders.add(MenuItem {
-            checked: self.water_on,
-            ..MenuItem::new("Drink Water (every 20–30 min)", CMD_WATER)
-        });
-        reminders.add(MenuItem {
-            checked: self.meals_on,
-            ..MenuItem::new("Main Meals (lunch 12:00, dinner 18:30)", CMD_MEALS)
-        });
-        reminders.add(MenuItem {
-            checked: self.breaks_on,
-            ..MenuItem::new("Stretch Break (every 40–60 min)", CMD_BREAKS)
-        });
+        reminders.add(MenuItem { checked: self.water_on, ..MenuItem::new("Drink Water (every 20–30 min)", CMD_WATER) });
+        reminders.add(MenuItem { checked: self.meals_on, ..MenuItem::new("Main Meals (lunch 12:00, dinner 18:30)", CMD_MEALS) });
+        reminders.add(MenuItem { checked: self.breaks_on, ..MenuItem::new("Stretch Break (every 40–60 min)", CMD_BREAKS) });
         menu.submenu("Reminders", reminders);
 
         // The setting can also change in Task Manager → Startup apps, so it's re-read every time.
         match settings::login_state() {
-            LoginState::TurnedOffInTaskManager => menu.add(MenuItem {
-                checked: true,
-                radio: true,
-                ..MenuItem::new("Open at Login (turned off in Task Manager)", CMD_LOGIN)
-            }),
-            state => menu.add(MenuItem {
-                checked: state == LoginState::On,
-                ..MenuItem::new("Open at Login", CMD_LOGIN)
-            }),
+            LoginState::TurnedOffInTaskManager => {
+                menu.add(MenuItem { checked: true, radio: true, ..MenuItem::new("Open at Login (turned off in Task Manager)", CMD_LOGIN) })
+            }
+            state => menu.add(MenuItem { checked: state == LoginState::On, ..MenuItem::new("Open at Login", CMD_LOGIN) }),
         }
         menu.separator();
 
@@ -674,19 +559,10 @@ impl App {
         if let (Some(click), Some(right)) = (&pet.click_trick, &pet.right_click_trick) {
             // A pet whose clicks do tricks (Moona) says what they do, and how to reach this menu.
             let hint = format!("Click: {click} · right-click: {right}");
-            menu.add(MenuItem {
-                enabled: false,
-                ..MenuItem::new(&hint, 0)
-            });
-            menu.add(MenuItem {
-                enabled: false,
-                ..MenuItem::new("Drag to move its home · Shift+right-click: this menu", 0)
-            });
+            menu.add(MenuItem { enabled: false, ..MenuItem::new(&hint, 0) });
+            menu.add(MenuItem { enabled: false, ..MenuItem::new("Drag to move its home · Shift+right-click: this menu", 0) });
         } else {
-            menu.add(MenuItem {
-                enabled: false,
-                ..MenuItem::new("Drag the pet to move its home · click to pet", 0)
-            });
+            menu.add(MenuItem { enabled: false, ..MenuItem::new("Drag the pet to move its home · click to pet", 0) });
         }
         menu.add(MenuItem::new("Quit DeskPet", CMD_QUIT));
         (menu, bitmaps)
@@ -809,9 +685,7 @@ fn show_menu() {
         a.command(id)
     });
     match after {
-        Some(After::LoginFailed) => {
-            sys::message_box("Couldn't change Open at Login.\n\nYou can add DeskPet yourself in Settings → Apps → Startup.", true)
-        }
+        Some(After::LoginFailed) => sys::message_box("Couldn't change Open at Login.\n\nYou can add DeskPet yourself in Settings → Apps → Startup.", true),
         Some(After::Quit) => {
             with_app(|a| a.quit());
         }
@@ -845,9 +719,7 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
                         a.drag_moved = true;
                     }
                     if a.drag_moved {
-                        a.x = (a.drag_start_x + dx)
-                            .max(a.min_x)
-                            .min(a.min_x.max(a.max_x - a.w));
+                        a.x = (a.drag_start_x + dx).max(a.min_x).min(a.min_x.max(a.max_x - a.w));
                         a.render();
                     }
                 }
@@ -860,9 +732,7 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
                     return false;
                 }
                 a.mouse_down = false;
-                a.view.command(Command::EndDrag {
-                    moved: a.drag_moved,
-                });
+                a.view.command(Command::EndDrag { moved: a.drag_moved });
                 a.save_home_if_moved();
                 true
             });
@@ -873,9 +743,7 @@ unsafe extern "system" fn pet_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
         }
         WM_RBUTTONUP => {
             // Shift+right-click always opens the menu, for pets whose right-click does a trick.
-            let shift = windows_sys::Win32::UI::Input::KeyboardAndMouse::GetKeyState(
-                windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_SHIFT as i32,
-            ) < 0;
+            let shift = windows_sys::Win32::UI::Input::KeyboardAndMouse::GetKeyState(windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_SHIFT as i32) < 0;
             if shift || with_app(|a| a.view.command(Command::RightClick)) != Some(true) {
                 show_menu();
             }
@@ -933,20 +801,8 @@ fn main() {
     sys::register_class(&owner_class, Some(owner_proc), null_mut());
     let title = wide("DeskPet");
     let (owner, pet_hwnd) = unsafe {
-        let owner = CreateWindowExW(
-            WS_EX_TOOLWINDOW,
-            owner_class.as_ptr(),
-            title.as_ptr(),
-            WS_POPUP,
-            0,
-            0,
-            0,
-            0,
-            null_mut(),
-            null_mut(),
-            sys::instance(),
-            null(),
-        );
+        let owner =
+            CreateWindowExW(WS_EX_TOOLWINDOW, owner_class.as_ptr(), title.as_ptr(), WS_POPUP, 0, 0, 0, 0, null_mut(), null_mut(), sys::instance(), null());
         let pet = CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
             pet_class.as_ptr(),
@@ -967,12 +823,7 @@ fn main() {
     // `--pet <id>` starts with that pet for this run; `--pets <folder>` also loads the pets in a
     // folder (build-pets.ps1 makes them in build\pets).
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let value = |flag: &str| {
-        args.iter()
-            .position(|a| a == flag)
-            .and_then(|i| args.get(i + 1))
-            .map(String::as_str)
-    };
+    let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(String::as_str);
     let pets = pets::catalog(value("--pets").map(std::path::Path::new));
     let mut app = App::new(pets, value("--pet"), pet_hwnd, owner);
     app.layout();
@@ -985,12 +836,7 @@ fn main() {
     // `--demo` cycles through every activity, reminder and trick; `--tricks` plays only the pet's tricks;
     // `--typing` and `--pastime` show just that activity.
     let has = |f: &str| args.iter().any(|a| a == f);
-    let (demo, tricks, typing, pastime) = (
-        has("--demo"),
-        has("--tricks"),
-        has("--typing"),
-        has("--pastime"),
-    );
+    let (demo, tricks, typing, pastime) = (has("--demo"), has("--tricks"), has("--typing"), has("--pastime"));
     if demo || tricks || typing || pastime {
         let about = &app.view.about;
         let q = &mut app.demo;

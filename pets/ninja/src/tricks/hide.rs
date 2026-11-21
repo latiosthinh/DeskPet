@@ -26,10 +26,7 @@ impl Trick for Hide {
         let p = &cx.pet;
         let mut look = cx.look();
         // Ducks into a bush, peeks out left and right, then jumps out.
-        look.frame = p.frame(
-            if t > HIDE_POP { Eyes::Happy } else { eyes },
-            Pose::Stand(0),
-        );
+        look.frame = p.frame(if t > HIDE_POP { Eyes::Happy } else { eyes }, Pose::Stand(0));
         if (0.8..HIDE_POP).contains(&t) {
             look.y_offset = -2.0;
             if (2.5..3.2).contains(&t) || (4.5..5.2).contains(&t) {

@@ -154,12 +154,7 @@ impl Brain {
     pub fn new(def: PetDef, now: f64) -> Brain {
         let mut stage = Stage::new(def.info, now);
         stage.trick_ids = def.tricks.iter().map(|t| t.id()).collect();
-        Brain {
-            stage,
-            tricks: def.tricks,
-            typing: def.typing,
-            decorate: def.decorate,
-        }
+        Brain { stage, tricks: def.tricks, typing: def.typing, decorate: def.decorate }
     }
 
     // MARK: Tricks
@@ -221,12 +216,8 @@ impl Brain {
             self.stage.next_trick_at = Some(self.stage.now + rand(60.0, 180.0).min(rand(lo, hi)));
         }
         if !self.tricks.is_empty() && self.stage.now >= self.stage.next_trick_at.unwrap() {
-            let choices: Vec<usize> = (0..self.tricks.len())
-                .filter(|&i| Some(i) != self.stage.last_trick)
-                .collect();
-            let favorite = self
-                .trick_by_id(self.stage.pet.favorite_trick)
-                .filter(|_| rand01() < 0.5);
+            let choices: Vec<usize> = (0..self.tricks.len()).filter(|&i| Some(i) != self.stage.last_trick).collect();
+            let favorite = self.trick_by_id(self.stage.pet.favorite_trick).filter(|_| rand01() < 0.5);
             let t = if let Some(f) = favorite {
                 f
             } else if choices.is_empty() {
@@ -297,8 +288,8 @@ impl Brain {
         // React to what the human is doing.
         let wake = self.trick_by_id(self.stage.pet.wake_trick);
         let s = &self.stage;
-        let busy_with_reminder = matches!(s.mode, Mode::Drinking | Mode::Eating | Mode::Cheering)
-            || (s.mode == Mode::Trick && s.trick.is_some() && s.trick == wake); // typing doesn't cut it short
+        let busy_with_reminder =
+            matches!(s.mode, Mode::Drinking | Mode::Eating | Mode::Cheering) || (s.mode == Mode::Trick && s.trick.is_some() && s.trick == wake); // typing doesn't cut it short
         if s.mode != Mode::Sleeping && idle > SLEEP_AFTER {
             set_mode(&mut self.stage, Mode::Sleeping, 0.0);
         } else if s.mode == Mode::Sleeping && idle < 1.0 {
@@ -331,16 +322,7 @@ impl Brain {
                 if now - s.last_puff > 0.35 {
                     s.last_puff = now;
                     let at = pt(s.x_for_column(19.0), 0.0);
-                    s.spawn_full(
-                        "·",
-                        sys_color::BROWN.with_alpha(0.8),
-                        at,
-                        16.0,
-                        (-14.0, 14.0),
-                        (6.0, 16.0),
-                        0.9,
-                        0.0,
-                    );
+                    s.spawn_full("·", sys_color::BROWN.with_alpha(0.8), at, 16.0, (-14.0, 14.0), (6.0, 16.0), 0.9, 0.0);
                 }
                 if now >= s.mode_until {
                     self.decide_next();
@@ -358,16 +340,7 @@ impl Brain {
                 if now - s.last_puff > 0.8 {
                     s.last_puff = now;
                     let at = pt(s.x_for_column(18.0), 18.0);
-                    s.spawn_full(
-                        "~",
-                        sys_color::SECONDARY_LABEL,
-                        at,
-                        12.0,
-                        (-3.0, 3.0),
-                        (10.0, 16.0),
-                        1.2,
-                        0.0,
-                    );
+                    s.spawn_full("~", sys_color::SECONDARY_LABEL, at, 12.0, (-3.0, 3.0), (10.0, 16.0), 1.2, 0.0);
                 }
                 if now >= s.mode_until {
                     done_eating(s);
@@ -436,15 +409,7 @@ impl Brain {
         match reminder {
             Reminder::Water => {
                 // A pet that doesn't drink (Moona) just waits with you while you do.
-                set_mode(
-                    s,
-                    if s.pet.drinks {
-                        Mode::Drinking
-                    } else {
-                        Mode::Sitting
-                    },
-                    7.0,
-                );
+                set_mode(s, if s.pet.drinks { Mode::Drinking } else { Mode::Sitting }, 7.0);
                 s.say_with("Time for some water", 9.0, Some(bubble_icons::DROP));
             }
             Reminder::Lunch => {
@@ -546,11 +511,7 @@ impl Brain {
         let look = self.current_look();
         let picture = s.pet.picture.as_ref().map(|pic| {
             let i = pic.index_for(&look.frame);
-            PictureFrame {
-                rows: pic.frames[i].clone(),
-                anchor: pic.anchors[i],
-                px: pic.px,
-            }
+            PictureFrame { rows: pic.frames[i].clone(), anchor: pic.anchors[i], px: pic.px }
         });
         Render {
             picture,
@@ -582,11 +543,7 @@ impl Brain {
     /// Something happened. Returns true for a right-click the pet used for a trick.
     pub fn command(&mut self, c: Command) -> bool {
         match c {
-            Command::Pen {
-                width,
-                height,
-                range,
-            } => {
+            Command::Pen { width, height, range } => {
                 let s = &mut self.stage;
                 (s.width, s.height, s.range) = (width, height, range);
             }
@@ -643,10 +600,7 @@ impl Brain {
     /// The pet's description, for the app's menus and icons.
     pub fn about(&self) -> About {
         let p = &self.stage.pet;
-        let title = |id: Option<&str>| {
-            id.and_then(|id| self.trick_index(id))
-                .map(|i| self.tricks[i].title().to_string())
-        };
+        let title = |id: Option<&str>| id.and_then(|id| self.trick_index(id)).map(|i| self.tricks[i].title().to_string());
         let rows: Vec<Vec<u8>> = match &p.picture {
             Some(pic) => pic.frames[if pic.idle_sits { 2 } else { 0 }].clone(),
             None => p.rows(Eyes::Open).iter().map(|r| r.to_vec()).collect(),
@@ -659,20 +613,13 @@ impl Brain {
             description: p.description.to_string(),
             author: p.author.to_string(),
             version: p.version,
-            tricks: self
-                .tricks
-                .iter()
-                .map(|t| (t.title().to_string(), t.duration()))
-                .collect(),
+            tricks: self.tricks.iter().map(|t| (t.title().to_string(), t.duration())).collect(),
             sweeps: p.sweeps,
             has_pastime: p.pastime.is_some(),
             click_trick: title(p.click_trick),
             right_click_trick: title(p.right_click_trick),
             tallest: p.tallest(),
-            icon: rows
-                .iter()
-                .map(|r| r.iter().map(|&c| p.palette.get(c)).collect())
-                .collect(),
+            icon: rows.iter().map(|r| r.iter().map(|&c| p.palette.get(c)).collect()).collect(),
         }
     }
 }
@@ -698,11 +645,7 @@ pub fn is_sipping(t: f64) -> bool {
 /// The default typing look: sitting at a little laptop, paws tapping.
 pub fn laptop_look(cx: &Stage, t: f64) -> Look {
     let mut look = cx.look();
-    let laptop = if t < 0.3 {
-        props::laptop_closed()
-    } else {
-        props::laptop_open(cx.alt(0.12), cx.alt(0.5))
-    };
+    let laptop = if t < 0.3 { props::laptop_closed() } else { props::laptop_open(cx.alt(0.12), cx.alt(0.5)) };
     look.props.push(prop(laptop, 14.0, 0.0));
     look
 }
@@ -718,19 +661,10 @@ impl Stage {
         }
         match self.mode {
             Mode::Walking => match p.picture.as_ref().filter(|pic| !pic.walk.is_empty()) {
-                Some(pic) => {
-                    Picture::marker_index(pic.walk[(self.clock / 0.14) as usize % pic.walk.len()])
-                }
+                Some(pic) => Picture::marker_index(pic.walk[(self.clock / 0.14) as usize % pic.walk.len()]),
                 None => p.frame(Eyes::Open, Pose::Stand(self.step_of(0.18))),
             },
-            Mode::Idle => p.frame(
-                eyes,
-                if p.picture.as_ref().is_some_and(|pic| pic.idle_sits) {
-                    Pose::Sit
-                } else {
-                    Pose::Stand(0)
-                },
-            ),
+            Mode::Idle => p.frame(eyes, if p.picture.as_ref().is_some_and(|pic| pic.idle_sits) { Pose::Sit } else { Pose::Stand(0) }),
             Mode::Sitting | Mode::Typing | Mode::Pastime => p.frame(eyes, Pose::Sit),
             Mode::Cheering => p.frame(Eyes::Happy, if beat { Pose::Stand(0) } else { Pose::Sit }),
             Mode::Sleeping => match p.picture.as_ref().and_then(|pic| pic.sleep) {
@@ -738,24 +672,10 @@ impl Stage {
                 None => p.frame(Eyes::Closed, Pose::Sit),
             },
             Mode::Sweeping => p.frame(eyes, Pose::Stand(self.step_of(0.3))),
-            Mode::Drinking => p.frame(
-                if is_sipping(t) {
-                    Eyes::Happy
-                } else {
-                    Eyes::Open
-                },
-                Pose::Sit,
-            ),
+            Mode::Drinking => p.frame(if is_sipping(t) { Eyes::Happy } else { Eyes::Open }, Pose::Sit),
             Mode::Eating => match p.picture.as_ref().and_then(|pic| pic.eat) {
                 Some(i) => Picture::marker_index(i),
-                None => p.frame(
-                    if self.step_of(0.4) == 0 {
-                        Eyes::Happy
-                    } else {
-                        Eyes::Open
-                    },
-                    Pose::Sit,
-                ),
+                None => p.frame(if self.step_of(0.4) == 0 { Eyes::Happy } else { Eyes::Open }, Pose::Sit),
             },
             Mode::Trick => p.frame(eyes, Pose::Sit),
         }
@@ -766,27 +686,11 @@ impl Stage {
             return None;
         }
         let t = self.now - self.mode_start;
-        let progress = if self.mode_until > self.mode_start {
-            (t / (self.mode_until - self.mode_start)).min(1.0)
-        } else {
-            0.0
-        };
+        let progress = if self.mode_until > self.mode_start { (t / (self.mode_until - self.mode_start)).min(1.0) } else { 0.0 };
         match self.mode {
             Mode::Sweeping => Some(prop(props::broom(self.alt(0.3)), 14.0, 0.0)),
-            Mode::Drinking => Some(prop(
-                props::cup(1.0 - progress),
-                14.0,
-                if is_sipping(t) { 5.0 } else { 3.0 },
-            )),
-            Mode::Eating
-                if self
-                    .pet
-                    .picture
-                    .as_ref()
-                    .is_some_and(|pic| pic.eat.is_some()) =>
-            {
-                None
-            } // has its own food
+            Mode::Drinking => Some(prop(props::cup(1.0 - progress), 14.0, if is_sipping(t) { 5.0 } else { 3.0 })),
+            Mode::Eating if self.pet.picture.as_ref().is_some_and(|pic| pic.eat.is_some()) => None, // has its own food
             Mode::Eating => Some(prop(props::bowl(1.0 - progress), 14.0, 0.0)),
             _ => None,
         }
@@ -799,10 +703,7 @@ impl Stage {
         let progress = (t / (self.mode_until - self.mode_start).max(1.0)).min(1.0);
         match self.pet.pastime {
             None => {}
-            Some(Pastime::Book) => {
-                look.props
-                    .push(prop(props::book(t % 3.0 < 0.25), 13.0, self.book_lift()))
-            }
+            Some(Pastime::Book) => look.props.push(prop(props::book(t % 3.0 < 0.25), 13.0, self.book_lift())),
             Some(Pastime::Yoyo) => {
                 let depth = (5.0 * (PI * ((t * 1.1) % 1.0)).sin()).round();
                 let string = vec!["i"; depth as usize + 1];
@@ -812,57 +713,27 @@ impl Stage {
             Some(Pastime::Knit) => {
                 // The scarf grows longer the longer it knits.
                 let len = 1 + (progress * 4.0) as usize;
-                let scarf: Vec<&str> = (0..len)
-                    .map(|i| if i % 2 == 0 { "rrr" } else { "yyy" })
-                    .collect();
+                let scarf: Vec<&str> = (0..len).map(|i| if i % 2 == 0 { "rrr" } else { "yyy" }).collect();
                 look.free.push(self.placed(&scarf, 13.0, 5.0 - len as f64));
-                look.free.push(self.placed(
-                    if self.alt(0.25) {
-                        PASTIME_NEEDLES_A
-                    } else {
-                        PASTIME_NEEDLES_B
-                    },
-                    12.0,
-                    5.0,
-                ));
+                look.free.push(self.placed(if self.alt(0.25) { PASTIME_NEEDLES_A } else { PASTIME_NEEDLES_B }, 12.0, 5.0));
             }
             Some(Pastime::Flower) => {
                 look.free.push(self.placed(HERO_FLOWER, 15.0, 0.0));
-                let wings = if self.alt(0.15) {
-                    PASTIME_BUTTERFLY_A
-                } else {
-                    PASTIME_BUTTERFLY_B
-                };
-                look.free.push(self.placed(
-                    wings,
-                    (17.0 + 3.0 * (t * 1.3).cos()).round(),
-                    (8.0 + 2.0 * (t * 2.1).sin()).round(),
-                ));
+                let wings = if self.alt(0.15) { PASTIME_BUTTERFLY_A } else { PASTIME_BUTTERFLY_B };
+                look.free.push(self.placed(wings, (17.0 + 3.0 * (t * 1.3).cos()).round(), (8.0 + 2.0 * (t * 2.1).sin()).round()));
             }
             Some(Pastime::Juggle) => {
-                for (k, ball) in [PASTIME_BALL_R, PASTIME_BALL_Y, PASTIME_BALL_C]
-                    .into_iter()
-                    .enumerate()
-                {
+                for (k, ball) in [PASTIME_BALL_R, PASTIME_BALL_Y, PASTIME_BALL_C].into_iter().enumerate() {
                     let a = (t * 1.4 + k as f64 / 3.0) * 2.0 * PI;
-                    look.free.push(self.placed(
-                        ball,
-                        (15.0 + 4.0 * a.cos()).round(),
-                        (10.0 + 5.0 * a.sin()).round(),
-                    ));
+                    look.free.push(self.placed(ball, (15.0 + 4.0 * a.cos()).round(), (10.0 + 5.0 * a.sin()).round()));
                 }
             }
             Some(Pastime::Bubbles) => {
-                look.props
-                    .push(prop(crate::art::rows(PASTIME_WAND), 13.0, 4.0));
+                look.props.push(prop(crate::art::rows(PASTIME_WAND), 13.0, 4.0));
                 for k in 0..4 {
                     let q = (t * 0.45 + k as f64 * 0.25) % 1.0;
                     let dx = 17.0 + 7.0 * q + (q * 9.0 + k as f64).sin();
-                    look.free.push(self.placed(
-                        PASTIME_BUBBLE,
-                        dx.round(),
-                        (9.0 + 14.0 * q).round(),
-                    ));
+                    look.free.push(self.placed(PASTIME_BUBBLE, dx.round(), (9.0 + 14.0 * q).round()));
                 }
             }
         }

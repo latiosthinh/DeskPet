@@ -29,14 +29,7 @@ impl Trick for SpitWater {
     fn look(&self, cx: &Stage, t: f64) -> Look {
         let p = &cx.pet;
         let mut look = cx.look();
-        look.frame = p.frame(
-            if t % 0.9 < 0.2 {
-                Eyes::Happy
-            } else {
-                Eyes::Open
-            },
-            Pose::Sit,
-        );
+        look.frame = p.frame(if t % 0.9 < 0.2 { Eyes::Happy } else { Eyes::Open }, Pose::Sit);
         look
     }
 }

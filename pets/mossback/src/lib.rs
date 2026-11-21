@@ -11,11 +11,7 @@ petkit::export_pet!(pet);
 
 /// The whole pet: what it looks like, its tricks, and what it does while you type.
 pub fn pet() -> PetDef {
-    PetDef::new(info())
-        .trick(tricks::toss::Toss)
-        .trick(tricks::bloom::Bloom)
-        .trick(tricks::rain::Rain)
-        .typing(typing::Pebbles)
+    PetDef::new(info()).trick(tricks::toss::Toss).trick(tricks::bloom::Bloom).trick(tricks::rain::Rain).typing(typing::Pebbles)
 }
 
 fn info() -> PetInfo {

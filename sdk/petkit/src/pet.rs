@@ -259,12 +259,7 @@ pub struct PetDef {
 
 impl PetDef {
     pub fn new(info: PetInfo) -> PetDef {
-        PetDef {
-            info,
-            tricks: vec![],
-            typing: Box::new(Laptop),
-            decorate: None,
-        }
+        PetDef { info, tricks: vec![], typing: Box::new(Laptop), decorate: None }
     }
     pub fn trick(mut self, t: impl Trick + 'static) -> PetDef {
         self.tricks.push(Box::new(t));

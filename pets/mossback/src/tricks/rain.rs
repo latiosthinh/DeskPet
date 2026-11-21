@@ -29,10 +29,7 @@ impl Trick for Rain {
             look.frame = p.frame(eyes, Pose::Stand(0));
             let fall1 = ((t * 9.0) % 8.0).round();
             let fall2 = ((t * 9.0 + 3.0) % 8.0).round();
-            look.free = vec![
-                cx.placed(HERO_RAIN, 4.0, 19.0 - fall1),
-                cx.placed(HERO_RAIN, 10.0, 19.0 - fall2),
-            ];
+            look.free = vec![cx.placed(HERO_RAIN, 4.0, 19.0 - fall1), cx.placed(HERO_RAIN, 10.0, 19.0 - fall2)];
             if beat > 0.0 {
                 look.palette.set('m', Some(hex(0xa8bc77)));
             }

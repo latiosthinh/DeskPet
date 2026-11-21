@@ -27,10 +27,7 @@ impl Trick for Spin {
         let mut look = cx.look();
         // Spins on the spot with his katana out while a ring of steel flashes round him.
         let spinning = (SPIN.0..SPIN.1).contains(&t);
-        look.frame = p.frame(
-            if t > SPIN.1 + 0.5 { Eyes::Happy } else { eyes },
-            Pose::Stand(0),
-        );
+        look.frame = p.frame(if t > SPIN.1 + 0.5 { Eyes::Happy } else { eyes }, Pose::Stand(0));
         if (SPIN.0 - 0.4..SPIN.1 + 1.0).contains(&t) {
             look.props = vec![prop(rows(SAMURAI_KATANA), 12.0, 5.0)];
         }

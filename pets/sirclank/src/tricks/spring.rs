@@ -26,11 +26,7 @@ impl Trick for Spring {
         look.frame = p.frame(eyes, Pose::Stand(0));
         if t > 2.0 && t < 7.0 {
             let out = ((if t < 5.0 { t - 2.0 } else { 7.0 - t }) * 2.0).round();
-            look.props = vec![prop(
-                rows(HERO_SPRING),
-                12.0 + out + if t < 3.0 { 2.0 } else { 0.0 },
-                3.0,
-            )];
+            look.props = vec![prop(rows(HERO_SPRING), 12.0 + out + if t < 3.0 { 2.0 } else { 0.0 }, 3.0)];
         }
         if t > 2.0 && t < 3.0 {
             look.x_offset = -2.0;

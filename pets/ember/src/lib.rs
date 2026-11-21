@@ -23,12 +23,7 @@ pub fn pet() -> PetDef {
 
 fn info() -> PetInfo {
     PetInfo {
-        palette: Palette::new(&[
-            ('k', rgb(0.23, 0.14, 0.13)),
-            ('w', rgb(0.95, 0.53, 0.23)),
-            ('s', rgb(0.83, 0.42, 0.16)),
-            ('c', rgb(1.00, 0.95, 0.86)),
-        ]),
+        palette: Palette::new(&[('k', rgb(0.23, 0.14, 0.13)), ('w', rgb(0.95, 0.53, 0.23)), ('s', rgb(0.83, 0.42, 0.16)), ('c', rgb(1.00, 0.95, 0.86))]),
         body: [
             ".....k.....k....",
             "....kwk...kwk...",
