@@ -18,7 +18,10 @@ test("gallery lists every pet, grouped by author, and cards navigate", async ({ 
   await expect(page.locator(".gallery-grid a.card")).toHaveCount(15);
   await expect(page.locator("#author-deskpet")).toHaveCount(1);
   await expect(page.locator("#author-deskpet-title")).toHaveText("By DeskPet");
-  await expect(page.locator(".author-nav a")).toContainText("DeskPet · 15");
+  await expect(page.locator(".author-nav a")).toHaveCount(1);
+  await expect(page.locator(".author-nav a")).toHaveText("DeskPet");
+  await expect(page.locator(".section-head .count")).toHaveCount(0);
+  await expect(page.locator(".group-head .count")).toHaveText("15 pets");
   await expect(page.locator(".gallery-grid .badge")).toHaveCount(3);
   await expect(page.locator(".gallery-grid")).toHaveCount(1);
 
@@ -254,11 +257,11 @@ test("hero animates by default, and every animation can pause and resume", async
   const hero = page.locator(".hero-stage [data-anim]");
   const heroImage = hero.locator("img");
   await expect(hero).toHaveAttribute("data-playing", "true");
-  await expect(heroImage).toHaveAttribute("src", /hero\.gif$/);
+  await expect(heroImage).toHaveAttribute("src", /hero\.sprite\.gif$/);
 
   await page.locator(".hero-stage [data-anim-toggle]").click();
   await expect(hero).toHaveAttribute("data-playing", "false");
-  await expect(heroImage).toHaveAttribute("src", /hero\.png$/);
+  await expect(heroImage).toHaveAttribute("src", /hero\.sprite\.png$/);
   await page.locator(".hero-stage [data-anim-toggle]").click();
   await expect(hero).toHaveAttribute("data-playing", "true");
 
@@ -279,12 +282,58 @@ test("trick GIFs animate when visible and pause individually", async ({ page }) 
   const media = figure.locator("[data-anim]");
   await figure.scrollIntoViewIfNeeded();
   await expect(media).toHaveAttribute("data-playing", "true");
-  await expect(media.locator("img")).toHaveAttribute("src", /firework\.gif$/);
+  await expect(media.locator("img")).toHaveAttribute("src", /firework\.sprite\.gif$/);
 
   await figure.locator("[data-anim-toggle]").click();
   await expect(media).toHaveAttribute("data-playing", "false");
-  await expect(media.locator("img")).toHaveAttribute("src", /firework\.png$/);
-  await expect(figure.locator("figcaption")).toContainText(/\d+(\.\d)?s/);
+  await expect(media.locator("img")).toHaveAttribute("src", /firework\.sprite\.png$/);
+  await expect(figure.locator("figcaption")).toContainText(/\d+ s/);
+});
+
+test("trick play controls sit on the picture and captions sit below it", async ({ page }) => {
+  await gotoThemed(page, "/pets/ember/", "light", { reducedMotion: true });
+  const figure = page.locator(".trick-grid figure").first();
+  const frame = figure.locator(".media-frame");
+  const button = figure.locator("[data-anim-toggle]");
+  const image = frame.locator("img");
+  const title = figure.locator(".tile-title");
+  const duration = figure.locator(".duration");
+
+  await expect(button).toHaveAccessibleName(/Play Ember the fox/);
+  const frameBox = await frame.boundingBox();
+  const buttonBox = await button.boundingBox();
+  const imageBox = await image.boundingBox();
+  const titleBox = await title.boundingBox();
+  const durationBox = await duration.boundingBox();
+
+  expect(frameBox, "picture frame has no box").not.toBeNull();
+  expect(buttonBox, "play control has no box").not.toBeNull();
+  expect(imageBox, "picture has no box").not.toBeNull();
+  expect(titleBox, "title has no box").not.toBeNull();
+  expect(durationBox, "duration has no box").not.toBeNull();
+
+  expect(buttonBox!.width, "play control is narrower than 24px").toBeGreaterThanOrEqual(24);
+  expect(buttonBox!.height, "play control is shorter than 24px").toBeGreaterThanOrEqual(24);
+  expect(buttonBox!.x, "play control starts outside the picture").toBeGreaterThanOrEqual(
+    frameBox!.x,
+  );
+  expect(buttonBox!.y, "play control starts outside the picture").toBeGreaterThanOrEqual(
+    frameBox!.y,
+  );
+  expect(buttonBox!.x + buttonBox!.width, "play control overflows the picture").toBeLessThanOrEqual(
+    frameBox!.x + frameBox!.width + 1,
+  );
+  expect(
+    buttonBox!.y + buttonBox!.height,
+    "play control overflows the picture",
+  ).toBeLessThanOrEqual(frameBox!.y + frameBox!.height + 1);
+  expect(titleBox!.y, "title is not below the picture").toBeGreaterThanOrEqual(
+    imageBox!.y + imageBox!.height - 1,
+  );
+  expect(durationBox!.y, "duration is not below the title").toBeGreaterThanOrEqual(
+    titleBox!.y + titleBox!.height - 1,
+  );
+  await expect(duration).toHaveText(/\d+ s/);
 });
 
 test("every gallery card has one fixed image box at every breakpoint", async ({ page }) => {
@@ -337,7 +386,7 @@ test("every trick tile on every pet has one fixed image box at every breakpoint"
   const after = await tileShape(figure, 0);
   expect(after.mediaWidth).toBeCloseTo(before.mediaWidth, 1);
   expect(after.mediaHeight).toBeCloseTo(before.mediaHeight, 1);
-  await expect(figure.locator("figcaption")).toContainText(/\d+(\.\d)?s/);
+  await expect(figure.locator("figcaption")).toContainText(/\d+ s/);
 });
 
 interface Shape {
@@ -555,16 +604,16 @@ test.describe("reduced motion", () => {
     const heroImage = hero.locator("img");
     await page.waitForTimeout(700);
     await expect(hero).toHaveAttribute("data-playing", "false");
-    await expect(heroImage).toHaveAttribute("src", /hero\.png$/);
+    await expect(heroImage).toHaveAttribute("src", /hero\.sprite\.png$/);
     expect(gifRequests).toEqual([]);
 
     await page.locator(".hero-stage [data-anim-toggle]").click();
     await expect(hero).toHaveAttribute("data-playing", "true");
-    await expect(heroImage).toHaveAttribute("src", /hero\.gif$/);
-    expect(gifRequests.some((url) => url.endsWith("/pets/mochi/hero.gif"))).toBe(true);
+    await expect(heroImage).toHaveAttribute("src", /hero\.sprite\.gif$/);
+    expect(gifRequests.some((url) => url.endsWith("/pets/mochi/hero.sprite.gif"))).toBe(true);
 
     await page.locator(".hero-stage [data-anim-toggle]").click();
-    await expect(heroImage).toHaveAttribute("src", /hero\.png$/);
+    await expect(heroImage).toHaveAttribute("src", /hero\.sprite\.png$/);
   });
 });
 
@@ -607,5 +656,79 @@ test("layout holds from 320px to 1920px", async ({ page }) => {
       await loadAllImages(page);
       await expectNoHorizontalOverflow(page);
     }
+  }
+});
+
+test("mobile header: Download hidden, brand+controls row1, nav row2 at 375px", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await gotoThemed(page, "/", "light", { reducedMotion: true });
+  await loadAllImages(page);
+
+  const header = page.locator(".header-inner");
+  const headerBox = await header.boundingBox();
+  expect(headerBox, "header has no box").not.toBeNull();
+  expect(headerBox!.height, "header is taller than expected").toBeLessThanOrEqual(120);
+
+  const download = page.locator("header .header-download");
+  await expect(download, "header Download should be hidden at 375px").toBeHidden();
+
+  const brand = page.locator(".brand");
+  const brandBox = await brand.boundingBox();
+  expect(brandBox, "brand has no box").not.toBeNull();
+
+  const themeBtn = page.locator("[data-theme-toggle]");
+  const themeBox = await themeBtn.boundingBox();
+  expect(themeBox, "theme toggle has no box").not.toBeNull();
+
+  expect(
+    Math.abs(brandBox!.y - themeBox!.y),
+    "brand and theme toggle should share first row",
+  ).toBeLessThanOrEqual(2);
+
+  const nav = page.locator(".main-nav");
+  const navBox = await nav.boundingBox();
+  expect(navBox, "nav has no box").not.toBeNull();
+  expect(navBox!.y, "nav should be below brand row at 375px").toBeGreaterThanOrEqual(
+    brandBox!.y + brandBox!.height - 2,
+  );
+});
+
+test("desktop header keeps Download visible at 1440px", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoThemed(page, "/", "light", { reducedMotion: true });
+  await loadAllImages(page);
+
+  const download = page.locator("header .header-download");
+  await expect(download, "header Download should be visible at 1440px").toBeVisible();
+});
+
+test("hero scene image drives frame height at 375 and 1440px", async ({ page }) => {
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+
+    const frame = page.locator(".scene-pet .frame-scene");
+    const image = frame.locator("img");
+    const frameBox = await frame.boundingBox();
+    const imageBox = await image.boundingBox();
+    expect(frameBox, `${width}px frame has no box`).not.toBeNull();
+    expect(imageBox, `${width}px image has no box`).not.toBeNull();
+
+    const frameAspect = frameBox!.width / frameBox!.height;
+    const imageNatural = await image.evaluate((img: HTMLImageElement) => ({
+      w: img.naturalWidth,
+      h: img.naturalHeight,
+    }));
+    const expectedAspect = imageNatural.w / imageNatural.h;
+    expect(
+      Math.abs(frameAspect - expectedAspect),
+      `${width}px frame ratio does not match image intrinsic ratio`,
+    ).toBeLessThan(0.02);
+
+    expect(
+      imageBox!.y + imageBox!.height,
+      `${width}px image is not bottom-anchored`,
+    ).toBeGreaterThanOrEqual(frameBox!.y + frameBox!.height - 1);
   }
 });

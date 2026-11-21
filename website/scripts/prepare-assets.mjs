@@ -3,12 +3,14 @@
 //
 //   * reads pets.json (source of truth, written by petshot)
 //   * keeps the real GIFs under public/pets/ when they exist
-//   * creates small, clearly marked build-only fallback art when they do not, so a fresh
-//     checkout (CI) can build without the generated players
-//   * writes a still PNG poster next to every GIF, plus one Open Graph image per pet
-//   * writes src/data/pets.generated.json: true sizes, durations and poster paths
+//   * creates small, clearly marked build-only fallback art when they do not, so a
+//     fresh checkout (CI) can build without the generated players
+//   * derives clean, normalised `.sprite.gif` clips and `.sprite.png` posters next
+//     to every raw GIF (the raw GIFs are never edited)
+//   * writes one Open Graph image per pet and src/data/pets.generated.json with
+//     the true canvas sizes, durations and poster paths
 //
-// It never overwrites donate-qr.png, GIFs or .deskpet modules produced by petshot.
+// It never overwrites donate-qr.png, raw GIFs or .deskpet modules produced by petshot.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -16,6 +18,24 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { makeFallbackGif, readGifInfo } from "./lib/gif.mjs";
 import { hexToRgb, lightPalette } from "./lib/palette.mjs";
+import {
+  CANVAS_MARGIN,
+  GALLERY_HEIGHT,
+  GALLERY_WIDTH,
+  contentBounds,
+  detectPixelGrid,
+  encodeFrames,
+  findBubble,
+  frameView,
+  heroBodyHeight,
+  isContent,
+  largestBody,
+  posterFrom,
+  readFrames,
+  scaleFrames,
+  settledFrameIndex,
+  targetScale,
+} from "./lib/sprite.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PUBLIC = join(ROOT, "public");
@@ -38,29 +58,75 @@ mkdirSync(join(PUBLIC, "pets"), { recursive: true });
 mkdirSync(join(PUBLIC, "files"), { recursive: true });
 mkdirSync(dirname(DATA_FILE), { recursive: true });
 
-const built = [];
+const rawPets = [];
 for (const pet of pets) {
   const dir = join(PUBLIC, "pets", pet.id);
   mkdirSync(dir, { recursive: true });
 
-  const hero = await media(pet, "hero");
-  const tricks = [];
-  for (const trick of pet.tricks) tricks.push({ ...trick, ...(await media(pet, trick.id)) });
+  const hero = rawMedia(pet, "hero");
+  const heroFrames = await readFrames(hero.path);
+  const tricks = pet.tricks.map((trick) => ({ trick, raw: rawMedia(pet, trick.id) }));
+  rawPets.push({ pet, hero, heroFrames, tricks });
 
   const marker = join(dir, "FALLBACK-ART.txt");
-  const petFallbacks = [hero, ...tricks].filter((item) => item.fallback).map((item) => item.src);
+  const petFallbacks = [hero, ...tricks.map((item) => item.raw)].filter((item) => item.fallback);
   if (petFallbacks.length) {
     writeFileSync(
       marker,
       `Build-only fallback art for ${pet.id}. The real GIFs were not present in this checkout.\n` +
-        `Run petshot site before deploying. Placeholder files:\n${petFallbacks.join("\n")}\n`,
+        `Run petshot site before deploying. Placeholder files:\n${petFallbacks
+          .map((item) => item.path)
+          .join("\n")}\n`,
     );
   } else if (existsSync(marker)) {
     rmSync(marker);
   }
+}
+
+// One body size, one canvas for every clip: the pet never changes size between
+// a gallery card, a hero or a trick tile, whatever props or bubbles a clip has.
+// The enlargement is an integer multiple of the source pixel grid, never a
+// fractional nearest-neighbour resize.
+const heroScale = new Map();
+const jobs = [];
+for (const { pet, hero, heroFrames, tricks } of rawPets) {
+  const body = heroBodyHeight(heroFrames);
+  const grid = detectPixelGrid(heroFrames);
+  const scale = targetScale(body);
+  heroScale.set(pet.id, { body, grid, scale });
+  jobs.push({ pet, name: "hero", raw: hero, greeting: true, scale });
+  for (const { trick, raw } of tricks) {
+    jobs.push({ pet, name: trick.id, raw, greeting: false, scale, trick });
+  }
+}
+
+let canvasWidth = 1;
+let canvasHeight = 1;
+for (const job of jobs) {
+  const frames = await readFrames(job.raw.path);
+  const bounds = contentBounds(frames, { greeting: job.greeting });
+  if (!bounds) continue;
+  canvasWidth = Math.max(canvasWidth, Math.ceil(bounds.width * job.scale) + CANVAS_MARGIN * 2);
+  canvasHeight = Math.max(canvasHeight, Math.ceil(bounds.height * job.scale) + CANVAS_MARGIN * 2);
+}
+
+const normalised = new Map();
+for (const job of jobs) {
+  const media = await normalise(job, canvasWidth, canvasHeight);
+  normalised.set(`${job.pet.id}/${job.name}`, media);
+}
+
+const built = [];
+for (const { pet, heroFrames, tricks } of rawPets) {
+  const heroMedia = normalised.get(`${pet.id}/hero`);
+  const trickMedia = tricks.map(({ trick }) => ({
+    ...trick,
+    ...normalised.get(`${pet.id}/${trick.id}`),
+  }));
+  const gallery = await galleryPoster(pet, heroFrames, heroScale.get(pet.id).scale);
 
   const ogRel = `pets/${pet.id}/og.png`;
-  await makeOg([join(PUBLIC, hero.poster.slice(1))], join(PUBLIC, ogRel), pet.shortName);
+  await makeOg([join(PUBLIC, heroMedia.poster.slice(1))], join(PUBLIC, ogRel), pet.shortName);
 
   built.push({
     id: pet.id,
@@ -73,9 +139,10 @@ for (const pet of pets) {
     builtin: Boolean(pet.builtin),
     fileSize: fileSize(pet),
     trickCount: pet.tricks.length,
-    hero,
+    hero: heroMedia,
+    gallery,
     og: `/${ogRel}`,
-    tricks,
+    tricks: trickMedia,
   });
 }
 
@@ -100,11 +167,181 @@ if (fallbacks.length) {
   );
 } else {
   console.log(
-    `[prepare-assets] ${built.length} pets: real GIFs, posters and Open Graph images ready`,
+    `[prepare-assets] ${built.length} pets: ${normalised.size} clean sprite clips, posters and Open Graph images ready`,
   );
+}
+if (!fallbacks.length) {
+  console.log(`[prepare-assets] one sprite canvas: ${canvasWidth}x${canvasHeight}px`);
 }
 
 // ---------------------------------------------------------------- helpers
+
+/**
+ * Static gallery poster: one settled hero frame, cropped to the pet body (no
+ * bubble, no detached hearts/props), integer-enlarged and centred on the shared
+ * 4:3 canvas. Kept separate from the animation clips so tricks stay uncropped.
+ */
+async function galleryPoster(pet, frames, scale) {
+  const median = heroBodyHeight(frames);
+  const index = settledFrameIndex(frames, median);
+  const data = frameView(frames, index);
+  const bubble = findBubble(data, frames.width, frames.height);
+  const { box: body, mask } = largestBody(data, frames.width, frames.height, bubble);
+  if (!body || !mask) throw new Error(`prepare-assets: no body found for gallery poster ${pet.id}`);
+
+  const width = body.width;
+  const height = body.height;
+  const cropped = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const sx = body.minX + x;
+      const sy = body.minY + y;
+      const source = sy * frames.width + sx;
+      if (!mask[source]) continue;
+      const from = source * 4;
+      const target = (y * width + x) * 4;
+      cropped[target] = data[from];
+      cropped[target + 1] = data[from + 1];
+      cropped[target + 2] = data[from + 2];
+      cropped[target + 3] = 255;
+    }
+  }
+
+  const maxScale = Math.max(
+    1,
+    Math.floor(
+      Math.min(
+        (GALLERY_WIDTH - CANVAS_MARGIN * 2) / width,
+        (GALLERY_HEIGHT - CANVAS_MARGIN * 2) / height,
+      ),
+    ),
+  );
+  const galleryScale = Math.min(scale, maxScale);
+  const scaledWidth = width * galleryScale;
+  const scaledHeight = height * galleryScale;
+  const scaled = await sharp(cropped, { raw: { width, height, channels: 4 } })
+    .resize(scaledWidth, scaledHeight, { kernel: "nearest" })
+    .png()
+    .toBuffer();
+  const rel = `pets/${pet.id}/gallery.png`;
+  await sharp({
+    create: {
+      width: GALLERY_WIDTH,
+      height: GALLERY_HEIGHT,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      {
+        input: scaled,
+        left: Math.round((GALLERY_WIDTH - scaledWidth) / 2),
+        top: Math.round((GALLERY_HEIGHT - scaledHeight) / 2),
+      },
+    ])
+    .png({ compressionLevel: 9 })
+    .toFile(join(PUBLIC, rel));
+
+  return { src: `/${rel}`, width: GALLERY_WIDTH, height: GALLERY_HEIGHT };
+}
+
+async function normalise(job, width, height) {
+  const frames = await readFrames(job.raw.path);
+
+  // Clear greeting bubble, border and detached components (hearts/tail/orbs)
+  // from every source frame independently before scaling. The bubble moves
+  // between frames and its border is not white, so findBubble+largestBody
+  // keeps only the main pet body per frame.
+  if (job.greeting) {
+    for (let f = 0; f < frames.pages; f++) {
+      const data = frameView(frames, f);
+      const bubble = findBubble(data, frames.width, frames.height);
+      const { mask } = largestBody(data, frames.width, frames.height, bubble);
+      if (!mask) continue;
+      for (let y = 0; y < frames.height; y++) {
+        for (let x = 0; x < frames.width; x++) {
+          const offset = (y * frames.width + x) * 4;
+          if (isContent(data, offset) && !mask[y * frames.width + x]) {
+            data[offset] = 0;
+            data[offset + 1] = 0;
+            data[offset + 2] = 0;
+            data[offset + 3] = 0;
+          }
+        }
+      }
+    }
+  }
+
+  const scaled = await scaleFrames(
+    frames,
+    Math.max(1, Math.round(frames.width * job.scale)),
+    Math.max(1, Math.round(frames.height * job.scale)),
+  );
+  const bounds = contentBounds(scaled, { greeting: false });
+  const pageBytes = width * height * 4;
+  const data = Buffer.alloc(pageBytes * scaled.pages);
+  if (bounds) {
+    const offsetX = Math.round((width - bounds.width) / 2) - bounds.minX;
+    const offsetY = height - CANVAS_MARGIN - bounds.maxY - 1;
+    for (let frame = 0; frame < scaled.pages; frame++) {
+      const source = frameView(scaled, frame);
+      const frameStart = frame * pageBytes;
+      for (let y = 0; y < scaled.height; y++) {
+        const targetY = y + offsetY;
+        if (targetY < 0 || targetY >= height) continue;
+        for (let x = 0; x < scaled.width; x++) {
+          const targetX = x + offsetX;
+          if (targetX < 0 || targetX >= width) continue;
+          const sourceOffset = (y * scaled.width + x) * 4;
+          if (!isContent(source, sourceOffset)) continue;
+          const targetOffset = frameStart + (targetY * width + targetX) * 4;
+          data[targetOffset] = source[sourceOffset];
+          data[targetOffset + 1] = source[sourceOffset + 1];
+          data[targetOffset + 2] = source[sourceOffset + 2];
+          data[targetOffset + 3] = 255;
+        }
+      }
+    }
+  }
+
+  const canvas = {
+    data,
+    width,
+    height,
+    pages: scaled.pages,
+    channels: 4,
+    stride: 4,
+    pageBytes,
+    delays: scaled.delays,
+  };
+  const gifRel = `pets/${job.pet.id}/${job.name}.sprite.gif`;
+  const posterRel = `pets/${job.pet.id}/${job.name}.sprite.png`;
+  writeFileSync(join(PUBLIC, gifRel), await encodeFrames(canvas));
+  await sharp(await posterFrom(canvas)).toFile(join(PUBLIC, posterRel));
+
+  return {
+    src: `/${gifRel}`,
+    poster: `/${posterRel}`,
+    width,
+    height,
+    durationMs: job.raw.info.durationMs,
+    fallback: job.raw.fallback,
+  };
+}
+
+function rawMedia(pet, name) {
+  const rel = `pets/${pet.id}/${name}.gif`;
+  const gif = join(PUBLIC, rel);
+  if (!existsSync(gif)) {
+    mkdirSync(dirname(gif), { recursive: true });
+    writeFileSync(gif, makeFallbackGif());
+  }
+
+  const bytes = readFileSync(gif);
+  const fallback = bytes.toString("latin1").includes("BUILD-ONLY FALLBACK ART");
+  if (fallback) fallbacks.push(gif);
+  return { path: gif, info: readGifInfo(bytes), fallback };
+}
 
 function validate(list) {
   const seen = new Set();
@@ -134,32 +371,6 @@ function fileSize(pet) {
   if (pet.file_size) return pet.file_size;
   const module = join(PUBLIC, "files", `${pet.id}.deskpet`);
   return existsSync(module) ? statSync(module).size : null;
-}
-
-async function media(pet, name) {
-  const rel = `pets/${pet.id}/${name}.gif`;
-  const gif = join(PUBLIC, rel);
-  if (!existsSync(gif)) {
-    mkdirSync(dirname(gif), { recursive: true });
-    writeFileSync(gif, makeFallbackGif());
-  }
-
-  const bytes = readFileSync(gif);
-  const fallback = bytes.toString("latin1").includes("BUILD-ONLY FALLBACK ART");
-  if (fallback) fallbacks.push(gif);
-  const info = readGifInfo(bytes);
-  const posterRel = `pets/${pet.id}/${name}.png`;
-  const poster = join(PUBLIC, posterRel);
-  await sharp(gif, { page: 0 }).png({ compressionLevel: 9 }).toFile(poster);
-
-  return {
-    src: `/${rel}`,
-    poster: `/${posterRel}`,
-    width: info.width,
-    height: info.height,
-    durationMs: info.durationMs,
-    fallback,
-  };
 }
 
 async function ensureQr() {

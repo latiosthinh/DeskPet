@@ -34,20 +34,20 @@ website/
     styles/global.css         Tailwind v4 + design tokens (light/dark)
     data/pets.generated.json  written by prepare-assets (git-ignored)
   scripts/
-    prepare-assets.mjs        posters, OG images, fallback art, true sizes/durations
+    prepare-assets.mjs        clean sprite clips, posters, OG images, fallback art, sizes/durations
     check-backend.mjs         wrangler pages dev + local D1 endpoint checks
     lighthouse.mjs            mobile Lighthouse on home, a built-in and an add-on pet
     contact-sheet.mjs         desktop/mobile contact sheets from the screenshots
     design-tokens.mjs         rejects off-token colours, radii and spacing
     serve-for-tests.mjs       Playwright webServer
-    lib/                      GIF reader/encoder, server helper
+    lib/                      GIF reader/encoder, sprite normaliser, server helper
   tests/
     unit/                     data, dimensions, durations, GIF parser, links
     e2e/                      axe, every-width screenshots, behavior, support dialog
   functions/                  unchanged Pages Functions (visit/update/download/files/stats)
   lib/shared.js               unchanged pet lookup + D1 upsert
   public/                     generated and git-ignored except donate-qr.png
-    pets/<id>/                real GIFs from petshot, plus generated .png posters/og.png
+    pets/<id>/                raw GIFs from petshot, plus generated .sprite clips/posters/og.png
     files/<id>.deskpet        add-on modules from petshot
     donate-qr.png             owner's file, never overwritten
   wrangler.toml               Pages project, D1 binding, output directory = dist/

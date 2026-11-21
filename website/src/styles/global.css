@@ -335,12 +335,12 @@
     border-color: var(--brand);
   }
 
-  .header-download {
+  .btn.header-download {
     display: none;
   }
 
   @media (min-width: 640px) {
-    .header-download {
+    .btn.header-download {
       display: inline-flex;
     }
   }
@@ -522,6 +522,14 @@
     aspect-ratio: 4 / 3;
   }
 
+  /* The gallery poster is integer-scaled art displayed at its natural 1x size,
+     so the card never resamples it. */
+  .card .frame-gallery {
+    width: 224px;
+    max-width: calc(100% - var(--spacing-snug) * 2);
+    margin-inline: auto;
+  }
+
   /* ---------------------------------------------------------------- hero */
 
   .hero-glow {
@@ -566,23 +574,272 @@
 
   .hero-stage {
     position: relative;
-    isolation: isolate;
-  }
-
-  .hero-stage::before {
-    content: "";
-    position: absolute;
-    inset: 12% 2% -8% 2%;
-    z-index: -1;
-    border-radius: var(--radius-card);
-    transform: rotate(-2deg);
-    background: color-mix(in srgb, var(--accent) 42%, var(--surface));
-    box-shadow: var(--elevation-lift);
   }
 
   .hero-panel {
     margin: 0;
+    padding: var(--spacing-tight);
+  }
+
+  /* A small, abstract desktop corner: screen, window, Dock and Mochi on the edge. */
+
+  .desktop-scene {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-mini);
+    background:
+      radial-gradient(
+        28rem 18rem at 82% 12%,
+        color-mix(in srgb, var(--accent) 38%, transparent),
+        transparent 70%
+      ),
+      linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--surface) 78%, var(--accent)),
+        color-mix(in srgb, var(--surface-2) 88%, var(--brand))
+      );
+  }
+
+  .desktop-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     padding: var(--spacing-cozy);
+  }
+
+  .desktop-window {
+    display: flex;
+    width: min(62%, 18rem);
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    box-shadow: var(--elevation-soft);
+  }
+
+  .window-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+    padding: var(--spacing-tight) var(--spacing-snug);
+  }
+
+  .window-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: var(--radius-mini);
+    background: color-mix(in srgb, var(--line) 72%, var(--surface));
+  }
+
+  .window-dot:first-child {
+    background: var(--brand);
+  }
+
+  .window-body {
+    display: grid;
+    gap: var(--spacing-tight);
+    padding: var(--spacing-snug);
+  }
+
+  .window-line {
+    display: block;
+    width: 100%;
+    height: 0.4rem;
+    border-radius: var(--radius-mini);
+    background: color-mix(in srgb, var(--line) 62%, var(--surface));
+  }
+
+  .window-line-lg {
+    width: 68%;
+    background: color-mix(in srgb, var(--brand) 38%, var(--surface));
+  }
+
+  .window-line-sm {
+    width: 42%;
+  }
+
+  .window-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-hair);
+  }
+
+  .window-card {
+    display: block;
+    height: 2.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-mini);
+    background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+  }
+
+  .window-card:last-child {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+  }
+
+  .desktop-dock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-tight);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    box-shadow: var(--elevation-soft);
+    padding: var(--spacing-tight) var(--spacing-snug);
+  }
+
+  .dock-icon {
+    position: relative;
+    width: 1.65rem;
+    height: 1.65rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-mini);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--surface-2) 70%, transparent);
+  }
+
+  .dock-icon::after {
+    content: "";
+    position: absolute;
+    inset: 32%;
+    border-radius: var(--radius-mini);
+    background: var(--accent);
+  }
+
+  .dock-icon:nth-child(2)::after {
+    background: var(--brand);
+  }
+
+  .dock-icon:nth-child(3)::after {
+    background: color-mix(in srgb, var(--brand) 48%, var(--accent));
+  }
+
+  .dock-icon:nth-child(4)::after {
+    background: color-mix(in srgb, var(--ink) 46%, var(--accent));
+  }
+
+  .dock-icon:nth-child(5)::after {
+    background: color-mix(in srgb, var(--accent) 62%, var(--brand));
+  }
+
+  .dock-icon:nth-child(6)::after {
+    background: color-mix(in srgb, var(--line) 65%, var(--brand));
+  }
+
+  .dock-icon:nth-child(7)::after {
+    background: color-mix(in srgb, var(--ink) 30%, var(--surface));
+  }
+
+  .scene-pet {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--spacing-cozy) + 2.55rem);
+    width: min(82%, 24rem);
+    transform: translateX(-50%);
+  }
+
+  /* Shared integer sprite canvas: the image's natural dimensions from its width/
+     height HTML attributes set the frame height so there is no letterbox. The
+     image flows at 100% width and auto height; the frame flex-end aligns it to
+     the bottom, so the transparent gap under paws is only the margin. */
+  .scene-pet .frame-scene {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: transparent;
+  }
+
+  .scene-pet .media-frame img {
+    position: static;
+    display: block;
+    width: 100%;
+    height: auto;
+    background: transparent;
+  }
+
+  .scene-pet .media-frame .anim-btn {
+    right: auto;
+    bottom: var(--spacing-hair);
+    left: var(--spacing-hair);
+  }
+
+  .scene-bubble {
+    position: absolute;
+    top: 12%;
+    right: var(--spacing-cozy);
+    z-index: 2;
+    max-width: 14rem;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    box-shadow: var(--elevation-soft);
+    color: var(--ink);
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    padding: var(--spacing-tight) var(--spacing-snug);
+  }
+
+  .scene-bubble strong {
+    display: block;
+    font-weight: 750;
+  }
+
+  .scene-bubble span {
+    display: block;
+    color: var(--muted);
+  }
+
+  .scene-bubble::after {
+    content: "";
+    position: absolute;
+    left: var(--spacing-cozy);
+    bottom: calc(var(--spacing-tight) * -1);
+    width: var(--spacing-tight);
+    height: var(--spacing-tight);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    transform: rotate(45deg);
+  }
+
+  @media (max-width: 480px) {
+    .desktop-screen {
+      padding: var(--spacing-tight);
+    }
+
+    .window-card {
+      height: 1.8rem;
+    }
+
+    .desktop-dock {
+      gap: var(--spacing-hair);
+      padding-inline: var(--spacing-tight);
+    }
+
+    .dock-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .scene-pet {
+      bottom: calc(var(--spacing-tight) + 2.24rem);
+      width: 70%;
+    }
+
+    .scene-bubble {
+      top: var(--spacing-tight);
+      right: var(--spacing-tight);
+      max-width: 11rem;
+    }
   }
 
   .hero-caption {
@@ -635,13 +892,13 @@
     }
   }
 
-  @media (min-width: 720px) {
+  @media (min-width: 900px) {
     :root {
       --gallery-columns: 3;
     }
   }
 
-  @media (min-width: 1080px) {
+  @media (min-width: 1200px) {
     :root {
       --gallery-columns: 4;
     }
@@ -708,7 +965,7 @@
   }
 
   .card .media-frame {
-    margin: var(--spacing-snug) var(--spacing-snug) 0;
+    margin: var(--spacing-snug) auto 0;
   }
 
   .card-body {
@@ -721,24 +978,25 @@
 
   .card-title {
     display: -webkit-box;
-    min-height: calc(2 * 1.3em);
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
 
   .card-foot {
-    display: grid;
-    min-height: 4.5rem;
-    align-content: start;
-    gap: var(--spacing-hair);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-tight);
     margin-top: auto;
+    padding-top: var(--spacing-tight);
   }
 
   .card-status {
-    display: flex;
-    min-height: 2.5rem;
-    align-items: flex-start;
+    display: inline-flex;
+    min-height: 1.75rem;
+    align-items: center;
+    justify-content: flex-end;
   }
 
   .card-meta {
@@ -834,6 +1092,24 @@
     padding: var(--spacing-cozy);
   }
 
+  .pet-scene {
+    position: relative;
+  }
+
+  .pet-bubble {
+    top: var(--spacing-snug);
+    right: var(--spacing-snug);
+  }
+
+  .pet-info {
+    margin-top: 0;
+  }
+
+  .step-note {
+    padding-top: var(--spacing-tight);
+    border-top: 1px solid var(--line);
+  }
+
   .pet-copy .lede {
     margin-top: var(--spacing-cozy);
   }
@@ -892,10 +1168,8 @@
 
   .tile-foot {
     display: flex;
-    min-height: calc(2 * 1.35em + 1.4em);
     flex-direction: column;
     gap: var(--spacing-hair);
-    margin-top: auto;
   }
 
   .tile-title {
@@ -937,12 +1211,23 @@
     background: var(--highlight);
   }
 
-  .media-block {
-    margin: 0;
+  .media-frame .anim-btn {
+    position: absolute;
+    right: var(--spacing-tight);
+    bottom: var(--spacing-tight);
+    z-index: 2;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding-inline: var(--spacing-tight);
+    box-shadow: var(--elevation-soft);
   }
 
-  .media-block > .anim-btn {
-    margin-top: var(--spacing-tight);
+  .media-frame .anim-btn:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .media-block {
+    margin: 0;
   }
 
   .step-grid,
@@ -961,12 +1246,6 @@
 
   .step-panel {
     padding: var(--spacing-room);
-  }
-
-  .step-panel h2 {
-    font-size: var(--text-title);
-    font-weight: 800;
-    line-height: var(--text-title--line-height);
   }
 
   .split-grid {

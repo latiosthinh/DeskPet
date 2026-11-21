@@ -31,14 +31,14 @@ const { media, alt, name, eager = false, frameClass = '' } = Astro.props;
       decoding="async"
       fetchpriority={eager ? 'high' : 'auto'}
     />
+    <button
+      type="button"
+      class="anim-btn anim-btn-overlay js-only"
+      data-anim-toggle
+      data-playing="false"
+      aria-label={`Play ${name}`}
+    >
+      <span data-label>Play</span>
+    </button>
   </div>
-  <button
-    type="button"
-    class="anim-btn js-only"
-    data-anim-toggle
-    data-playing="false"
-    aria-label={`Play ${name}`}
-  >
-    <span data-label>Play</span>
-  </button>
 </div>

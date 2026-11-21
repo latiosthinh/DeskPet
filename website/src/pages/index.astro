@@ -72,13 +72,48 @@ const schema = [
 
       <div class="hero-stage">
         <figure class="panel hero-panel">
-          <AnimatedMedia
-            media={heroPet.hero}
-            alt={petImageAlt(heroPet)}
-            name={`${heroPet.name} the cat`}
-            eager
-            frameClass="frame-hero"
-          />
+          <div class="desktop-scene">
+            <div class="desktop-screen" aria-hidden="true">
+              <div class="desktop-window">
+                <span class="window-bar">
+                  <span class="window-dot"></span>
+                  <span class="window-dot"></span>
+                  <span class="window-dot"></span>
+                </span>
+                <span class="window-body">
+                  <span class="window-line window-line-lg"></span>
+                  <span class="window-line"></span>
+                  <span class="window-line window-line-sm"></span>
+                  <span class="window-cards">
+                    <span class="window-card"></span>
+                    <span class="window-card"></span>
+                  </span>
+                </span>
+              </div>
+              <span class="desktop-dock">
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+                <span class="dock-icon"></span>
+              </span>
+            </div>
+            <p class="scene-bubble">
+              <strong>Hi, I'm {heroPet.shortName}!</strong>
+              <span>Mind if I sit by your Dock?</span>
+            </p>
+            <div class="scene-pet">
+              <AnimatedMedia
+                media={heroPet.hero}
+                alt={petImageAlt(heroPet)}
+                name={`${heroPet.name} the cat`}
+                eager
+                frameClass="frame-scene"
+              />
+            </div>
+          </div>
           <figcaption class="hero-caption">
             <strong>{heroPet.name}</strong> comes with the app and is always ready for a little
             dance.
@@ -137,7 +172,6 @@ const schema = [
           appear here automatically.
         </p>
       </div>
-      <p class="count">{pets.length} pets</p>
     </div>
 
     <nav class="author-nav" aria-label="Authors">
@@ -146,7 +180,7 @@ const schema = [
         {groups.map((group) => (
           <li>
             <a class="badge" href={`#author-${group.slug}`}>
-              {group.name} · {group.pets.length}
+              {group.name}
             </a>
           </li>
         ))}
@@ -166,9 +200,6 @@ const schema = [
           <p class="count">
             {group.pets.length} {group.pets.length === 1 ? 'pet' : 'pets'}
           </p>
-          <a class="text-link" href="#gallery">
-            All authors
-          </a>
         </div>
         <ul class="gallery-grid">
           {group.pets.map((pet) => (

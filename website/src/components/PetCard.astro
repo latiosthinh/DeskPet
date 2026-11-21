@@ -1,6 +1,6 @@
 ---
 import type { Pet } from '../lib/site';
-import { INCLUDED_LABEL } from '../lib/site';
+import { INCLUDED_SHORT_LABEL } from '../lib/site';
 
 interface Props {
   pet: Pet;
@@ -12,23 +12,25 @@ const { pet } = Astro.props;
 <a class="card" href={`/pets/${pet.id}/`}>
   <span class="media-frame frame-gallery">
     <img
-      src={pet.hero.poster}
-      width={pet.hero.width}
-      height={pet.hero.height}
+      src={pet.gallery.src}
+      width={pet.gallery.width}
+      height={pet.gallery.height}
       alt=""
       loading="lazy"
       decoding="async"
     />
   </span>
   <span class="card-body">
-    <span class="card-title">{pet.name}</span>
+    <span class="card-title" title={pet.name}>
+      {pet.shortName}
+    </span>
     <span class="card-foot">
       <span class="card-meta">
         {pet.trickCount} {pet.trickCount === 1 ? 'trick' : 'tricks'}
       </span>
       <span class="card-status">
         {pet.builtin ? (
-          <span class="badge">{INCLUDED_LABEL}</span>
+          <span class="badge">{INCLUDED_SHORT_LABEL}</span>
         ) : (
           <span class="card-meta">Free add-on</span>
         )}

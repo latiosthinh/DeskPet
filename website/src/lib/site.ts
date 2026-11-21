@@ -28,6 +28,13 @@ export interface Trick extends Media {
   title: string;
 }
 
+/** Static, cropped, integer-scaled poster used only by gallery cards. */
+export interface GalleryImage {
+  src: string;
+  width: number;
+  height: number;
+}
+
 export interface Pet {
   id: string;
   name: string;
@@ -40,6 +47,7 @@ export interface Pet {
   fileSize: number | null;
   trickCount: number;
   hero: Media;
+  gallery: GalleryImage;
   og: string;
   tricks: Trick[];
 }
@@ -52,6 +60,7 @@ export const qr = generated.qr as { src: string; width: number; height: number }
 export const petsById = new Map(pets.map((pet) => [pet.id, pet]));
 
 export const INCLUDED_LABEL = "Included with DeskPet";
+export const INCLUDED_SHORT_LABEL = "Included";
 
 export interface AuthorGroup {
   name: string;
@@ -110,8 +119,7 @@ export function formatBytes(bytes: number | null): string | null {
 }
 
 export function formatDuration(ms: number): string {
-  const seconds = Math.max(0.1, ms / 1000);
-  return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
+  return `${Math.max(1, Math.round(ms / 1000))} s`;
 }
 
 export function categoryTitle(id: string): string {
