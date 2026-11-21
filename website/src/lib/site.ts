@@ -51,6 +51,42 @@ export const qr = generated.qr as { src: string; width: number; height: number }
 
 export const petsById = new Map(pets.map((pet) => [pet.id, pet]));
 
+export const INCLUDED_LABEL = "Included with DeskPet";
+
+export interface AuthorGroup {
+  name: string;
+  slug: string;
+  pets: Pet[];
+}
+
+export function authorSlug(name: string): string {
+  if (name === "DeskPet") return "deskpet";
+  const readable = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${readable || "author"}-${Buffer.from(name, "utf8").toString("base64url")}`;
+}
+
+/** Groups pets by author: DeskPet first, then every community author alphabetically. */
+export function authorGroups(list: readonly Pet[] = pets): AuthorGroup[] {
+  const groups = new Map<string, Pet[]>();
+  for (const pet of list) {
+    const group = groups.get(pet.author);
+    if (group) group.push(pet);
+    else groups.set(pet.author, [pet]);
+  }
+  return [...groups]
+    .map(([name, groupPets]) => ({ name, slug: authorSlug(name), pets: groupPets }))
+    .sort((a, b) => {
+      if (a.name === "DeskPet") return b.name === "DeskPet" ? 0 : -1;
+      if (b.name === "DeskPet") return 1;
+      return a.name.localeCompare(b.name);
+    });
+}
+
 export function petsInCategory(category: string): Pet[] {
   return pets.filter((pet) => pet.category === category);
 }

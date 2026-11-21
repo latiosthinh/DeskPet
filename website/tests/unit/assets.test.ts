@@ -4,6 +4,8 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import generated from "../../src/data/pets.generated.json";
 import {
+  authorGroups,
+  authorSlug,
   builtinShortNames,
   categories,
   formatBytes,
@@ -11,6 +13,7 @@ import {
   neighbors,
   pets,
   petsInCategory,
+  type Pet,
 } from "../../src/lib/site";
 import { makeFallbackGif, readGifInfo } from "../../scripts/lib/gif.mjs";
 
@@ -69,6 +72,51 @@ describe("pets data", () => {
       if (!pet.builtin) expect(pet.fileSize).toBeGreaterThan(0);
     }
     expect(existsSync(publicFile(generated.qr.src))).toBe(true);
+  });
+
+  it("groups authors with DeskPet first, then alphabetical names", () => {
+    const synthetic = [
+      { id: "z", author: "Zed" },
+      { id: "a", author: "Alice" },
+      { id: "m", author: "DeskPet" },
+      { id: "b", author: "DeskPet" },
+    ] as unknown as Pet[];
+    const groups = authorGroups(synthetic);
+    expect(groups.map((group) => group.name)).toEqual(["DeskPet", "Alice", "Zed"]);
+    expect(groups.map((group) => group.pets.length)).toEqual([2, 1, 1]);
+    expect(groups.map((group) => group.slug)).toEqual([
+      "deskpet",
+      authorSlug("Alice"),
+      authorSlug("Zed"),
+    ]);
+    expect(authorGroups(pets).map((group) => group.name)).toEqual(["DeskPet"]);
+    expect(authorSlug("Desk Pet Studio")).toMatch(/^desk-pet-studio-[A-Za-z0-9_-]+$/);
+  });
+
+  it("makes deterministic, collision-free anchors for any nonempty author name", () => {
+    const names = [
+      "DeskPet",
+      "Desk Pet Studio",
+      "A B",
+      "A-B",
+      "A  B",
+      "A B ",
+      "alice",
+      "Alice",
+      "ALICE",
+      "Mochi & Friends",
+      "Mochi, Friends",
+      "日本",
+      "日本語",
+      "Автор",
+      "作者",
+    ];
+    const slugs = names.map((name) => authorSlug(name));
+
+    expect(authorSlug("DeskPet")).toBe("deskpet");
+    expect(new Set(slugs).size).toBe(names.length);
+    expect(names.map((name) => authorSlug(name))).toEqual(slugs);
+    for (const slug of slugs) expect(slug).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 
   it("orders previous/next without wrapping", () => {

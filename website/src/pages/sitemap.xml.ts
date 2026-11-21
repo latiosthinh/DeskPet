@@ -2,7 +2,12 @@ import type { APIRoute } from 'astro';
 import { absoluteUrl, pets } from '../lib/site';
 
 export const GET: APIRoute = () => {
-  const paths = ['/', '/contribute/', ...pets.map((pet) => `/pets/${pet.id}/`)];
+  const paths = [
+    '/',
+    '/contribute/',
+    '/support/',
+    ...pets.map((pet) => `/pets/${pet.id}/`),
+  ];
   const urls = paths
     .map((path) => `  <url>\n    <loc>${absoluteUrl(path)}</loc>\n  </url>`)
     .join('\n');

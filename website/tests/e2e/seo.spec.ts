@@ -16,10 +16,11 @@ test("sitemap.xml is valid XML with every page location", async ({ request }) =>
   expect(body).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
   expect(body).toContain("<loc>https://deskpet.pages.dev/</loc>");
   expect(body).toContain("<loc>https://deskpet.pages.dev/contribute/</loc>");
+  expect(body).toContain("<loc>https://deskpet.pages.dev/support/</loc>");
   for (const pet of pets) {
     expect(body).toContain(`<loc>https://deskpet.pages.dev/pets/${pet.id}/</loc>`);
   }
-  expect(body.match(/<loc>/g)).toHaveLength(pets.length + 2);
+  expect(body.match(/<loc>/g)).toHaveLength(pets.length + 3);
 });
 
 test("robots.txt points search engines at sitemap.xml", async ({ request }) => {

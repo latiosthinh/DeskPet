@@ -12,15 +12,15 @@ const lost = pets.find((pet) => pet.id === 'mochi') ?? pets[0];
   path="/404/"
   noindex
 >
-  <div class="wrap py-16 sm:py-24">
-    <div class="mx-auto max-w-2xl text-center">
-      <p class="chip">404</p>
-      <h1 class="mt-4 text-4xl font-extrabold sm:text-5xl">This page wandered off.</h1>
-      <p class="mt-4 text-lg text-muted">
+  <div class="wrap">
+    <div class="not-found">
+      <p class="badge">404</p>
+      <h1 class="section-title">This page wandered off.</h1>
+      <p class="lede">
         Maybe a pet chased it under the taskbar. Everything is still where it should be on the
         shelf.
       </p>
-      <p class="mt-6 flex flex-wrap justify-center gap-3">
+      <p class="not-found-actions">
         <a class="btn btn-primary" href="/">
           See all pets
         </a>
@@ -30,7 +30,7 @@ const lost = pets.find((pet) => pet.id === 'mochi') ?? pets[0];
       </p>
     </div>
     {lost ? (
-      <div class="mx-auto mt-12 max-w-xs">
+      <div class="lost-pet">
         <PetCard pet={lost} />
       </div>
     ) : null}

@@ -1,0 +1,30 @@
+---
+import SupportContent from './SupportContent.astro';
+---
+
+<dialog
+  class="support-dialog"
+  id="support-dialog"
+  aria-labelledby="support-dialog-title"
+  data-support-dialog
+>
+  <div class="dialog-panel">
+    <form method="dialog">
+      <button type="submit" class="icon-btn dialog-close" aria-label="Close support dialog">
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </form>
+    <SupportContent titleId="support-dialog-title" />
+  </div>
+</dialog>

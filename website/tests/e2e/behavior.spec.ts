@@ -1,20 +1,121 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Locator } from "@playwright/test";
 import { expectNoHorizontalOverflow, gotoThemed, loadAllImages } from "../helpers";
 
+const pets = JSON.parse(
+  readFileSync(join(process.cwd(), "src", "data", "pets.generated.json"), "utf8"),
+).pets as { id: string; trickCount: number }[];
+
+const WIDTHS = [320, 375, 768, 1024, 1440, 1920];
+const FRAME = "rgb(241, 227, 200)";
+
 const RELEASE = "https://github.com/latiosthinh/DeskPet/releases/latest";
 
-test("gallery lists every pet, grouped, and cards navigate", async ({ page }) => {
+test("gallery lists every pet, grouped by author, and cards navigate", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.locator(".gallery-grid a.card")).toHaveCount(15);
-  await expect(page.locator("#g-critter")).toHaveText("Critters");
-  await expect(page.locator("#g-hero")).toHaveText("Heroes");
-  await expect(page.locator("#g-legend")).toHaveText("Legends");
-  await expect(page.locator(".chip", { hasText: "Comes with the app" })).toHaveCount(3);
+  await expect(page.locator("#author-deskpet")).toHaveCount(1);
+  await expect(page.locator("#author-deskpet-title")).toHaveText("By DeskPet");
+  await expect(page.locator(".author-nav a")).toContainText("DeskPet · 15");
+  await expect(page.locator(".gallery-grid .badge")).toHaveCount(3);
+  await expect(page.locator(".gallery-grid")).toHaveCount(1);
 
   await page.locator('a.card[href="/pets/ember/"]').click();
   await expect(page).toHaveURL(/\/pets\/ember\/$/);
   await expect(page.locator("h1")).toHaveText("Ember the fox");
+});
+
+test("More pets navigation keeps the page inset at every breakpoint", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/pets/mochi/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+
+    const inset = await page.locator(".crumbs").boundingBox();
+    const card = await page
+      .locator('nav[aria-label="More pets"] .pet-nav-card')
+      .first()
+      .boundingBox();
+    expect(inset, `${width}px content inset has no box`).not.toBeNull();
+    expect(card, `${width}px More pets card has no box`).not.toBeNull();
+    expect(inset!.x, `${width}px content is flush to the viewport`).toBeGreaterThan(0);
+    expect(
+      Math.abs(card!.x - inset!.x),
+      `${width}px More pets nav is not aligned with the page inset`,
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
+test("gallery card metadata and status rows share one reserved geometry", async ({ page }) => {
+  test.setTimeout(180_000);
+  for (const width of [375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+
+    const metrics = await page.locator(".gallery-grid a.card").evaluateAll((cards) =>
+      cards.map((card) => {
+        const box = card.getBoundingClientRect();
+        const title = card.querySelector(".card-title")!.getBoundingClientRect();
+        const meta = card.querySelector(".card-meta")!.getBoundingClientRect();
+        const status = card.querySelector(".card-status")!.getBoundingClientRect();
+        return {
+          titleTop: title.top - box.top,
+          metaTop: meta.top - box.top,
+          statusTop: status.top - box.top,
+          statusHeight: status.height,
+          footHeight: card.querySelector(".card-foot")!.getBoundingClientRect().height,
+        };
+      }),
+    );
+
+    expect(metrics.length, `${width}px gallery is empty`).toBe(15);
+    const first = metrics[0];
+    for (const [index, metric] of metrics.entries()) {
+      expect(metric.titleTop, `${width}px card ${index} title row`).toBeCloseTo(first.titleTop, 0);
+      expect(metric.metaTop, `${width}px card ${index} meta row`).toBeCloseTo(first.metaTop, 0);
+      expect(metric.statusTop, `${width}px card ${index} status row`).toBeCloseTo(
+        first.statusTop,
+        0,
+      );
+      expect(metric.statusHeight, `${width}px card ${index} status height`).toBeCloseTo(
+        first.statusHeight,
+        0,
+      );
+      expect(metric.footHeight, `${width}px card ${index} foot height`).toBeCloseTo(
+        first.footHeight,
+        0,
+      );
+    }
+  }
+});
+
+test("404 pet card matches the home gallery card at requested breakpoints", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+    const home = await cardShape(page.locator(".gallery-grid a.card").first(), 0);
+
+    await gotoThemed(page, "/this-page-does-not-exist/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+    const lostCard = page.locator(".lost-pet a.card");
+    const lost = await cardShape(lostCard, 0);
+    const box = await lostCard.boundingBox();
+
+    for (const key of ["outerWidth", "outerHeight", "mediaWidth", "mediaHeight"] as const) {
+      expect(Math.abs(lost[key] - home[key]), `${width}px 404 card ${key}`).toBeLessThanOrEqual(1);
+    }
+    expect(box, `${width}px 404 card has no box`).not.toBeNull();
+    expect(
+      Math.abs(box!.x + box!.width / 2 - width / 2),
+      `${width}px 404 card is not centred`,
+    ).toBeLessThanOrEqual(1);
+  }
 });
 
 test("header navigation and contribute page", async ({ page }) => {
@@ -33,7 +134,7 @@ test("header navigation and contribute page", async ({ page }) => {
 test("footer link targets meet the 24px minimum", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   const links = page.locator("footer nav a");
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(4);
   for (const link of await links.all()) {
     const box = await link.boundingBox();
     expect(box, "footer link has no layout box").not.toBeNull();
@@ -42,16 +143,28 @@ test("footer link targets meet the 24px minimum", async ({ page }) => {
   }
 });
 
-test("download link targets: add-on downloads, built-ins do not", async ({ page }) => {
+test("download link targets: add-ons download, every built-in is included", async ({ page }) => {
   await gotoThemed(page, "/pets/ember/", "light");
   const download = page.locator('a[href="/download/ember"]');
   await expect(download).toBeVisible();
   await expect(download).toHaveAttribute("download", "ember.deskpet");
   await expect(page.getByText("version 1.0.0").first()).toBeVisible();
 
+  for (const id of ["mochi", "ninja", "moona"]) {
+    await gotoThemed(page, `/pets/${id}/`, "light");
+    await expect(page.getByText("Included with DeskPet").first()).toBeVisible();
+    await expect(page.locator(`a[href="/download/${id}"]`)).toHaveCount(0);
+    await expect(page.locator(`a[download="${id}.deskpet"]`)).toHaveCount(0);
+  }
+});
+
+test("pet pages link the author back to the gallery group", async ({ page }) => {
   await gotoThemed(page, "/pets/mochi/", "light");
-  await expect(page.getByText("Comes with the app").first()).toBeVisible();
-  await expect(page.locator('a[href="/download/mochi"]')).toHaveCount(0);
+  const author = page.locator(".pet-meta a", { hasText: "DeskPet" });
+  await expect(author).toHaveAttribute("href", "/#author-deskpet");
+  await author.click();
+  await expect(page).toHaveURL(/\/#author-deskpet$/);
+  await expect(page.locator("#author-deskpet-title")).toHaveText("By DeskPet");
 });
 
 test("both OS downloads are present, labelled, and link to the latest release", async ({
@@ -174,100 +287,164 @@ test("trick GIFs animate when visible and pause individually", async ({ page }) 
   await expect(figure.locator("figcaption")).toContainText(/\d+(\.\d)?s/);
 });
 
-test("gallery frames show every pet's full artwork on a matching background", async ({ page }) => {
-  await gotoThemed(page, "/", "light", { reducedMotion: true });
-  await loadAllImages(page);
-  const cards = page.locator(".gallery-grid a.card");
-  await expect(cards).toHaveCount(15);
-
-  for (let index = 0; index < (await cards.count()); index++) {
-    const card = cards.nth(index);
-    await card.scrollIntoViewIfNeeded();
-    const result = await card.locator(".pet-card-media").evaluate((frame) => {
-      const image = frame.querySelector("img")!;
-      const style = getComputedStyle(image);
-      return {
-        frameWidth: frame.clientWidth,
-        frameHeight: frame.clientHeight,
-        ratio: frame.clientWidth / frame.clientHeight,
-        fit: style.objectFit,
-        position: style.objectPosition,
-        frameBackground: getComputedStyle(frame).backgroundColor,
-        imageBackground: style.backgroundColor,
-        loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
-      };
-    });
-
-    expect(result.loaded, `card ${index} image did not load`).toBe(true);
-    expect(result.fit, `card ${index} clips the full artwork`).toBe("contain");
-    expect(result.position, `card ${index} is not centred`).toMatch(/50% 50%|center/);
-    expect(result.ratio, `card ${index} frame is not 16:10`).toBeCloseTo(16 / 10, 2);
-    expect(result.frameBackground, `card ${index} frame background mismatch`).toBe(
-      "rgb(241, 227, 200)",
-    );
-    expect(result.imageBackground, `card ${index} image background mismatch`).toBe(
-      "rgb(241, 227, 200)",
-    );
-  }
-});
-
-test("trick frames follow each clip's natural aspect ratio, poster and GIF", async ({ page }) => {
-  await gotoThemed(page, "/pets/ember/", "light", { reducedMotion: true });
-  await loadAllImages(page);
-  const figures = page.locator('section[aria-labelledby="tricks"] figure');
-  await expect(figures).toHaveCount(4);
-
-  for (let index = 0; index < (await figures.count()); index++) {
-    const figure = figures.nth(index);
-    const media = figure.locator("[data-anim]");
-    const image = media.locator("img");
-    await figure.scrollIntoViewIfNeeded();
-    await expect(image).toHaveAttribute("src", /\.png$/);
-    await checkTrickGeometry(media, index, "poster");
-
-    await figure.locator("[data-anim-toggle]").click();
-    await expect(image).toHaveAttribute("src", /\.gif$/);
+test("every gallery card has one fixed image box at every breakpoint", async ({ page }) => {
+  test.setTimeout(180_000);
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
     await loadAllImages(page);
-    await checkTrickGeometry(media, index, "GIF");
+    const cards = page.locator(".gallery-grid a.card");
+    await expect(cards, `${width}px card count`).toHaveCount(15);
+
+    const shapes: Shape[] = [];
+    for (let index = 0; index < (await cards.count()); index++) {
+      shapes.push(await cardShape(cards.nth(index), index));
+    }
+    assertSameBoxes(shapes, `${width}px gallery`);
   }
 });
 
-async function checkTrickGeometry(frame: Locator, index: number, state: string) {
-  const result = await frame.evaluate((element) => {
-    const image = element.querySelector("img")!;
-    const frameBox = element.getBoundingClientRect();
-    const imageBox = image.getBoundingClientRect();
+test("every trick tile on every pet has one fixed image box at every breakpoint", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  for (const width of WIDTHS) {
+    for (const pet of pets) {
+      await page.setViewportSize({ width, height: 900 });
+      await gotoThemed(page, `/pets/${pet.id}/`, "light", { reducedMotion: true });
+      await loadAllImages(page);
+      const figures = page.locator(".trick-grid figure");
+      await expect(figures, `${width}px ${pet.id} trick count`).toHaveCount(pet.trickCount);
+
+      const shapes: Shape[] = [];
+      for (let index = 0; index < (await figures.count()); index++) {
+        shapes.push(await tileShape(figures.nth(index), index));
+      }
+      assertSameBoxes(shapes, `${width}px ${pet.id} tricks`);
+    }
+  }
+
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await gotoThemed(page, "/pets/ember/", "light", { reducedMotion: true });
+  const figure = page.locator(".trick-grid figure").first();
+  const media = figure.locator("[data-anim]");
+  const image = media.locator("img");
+  const before = await tileShape(figure, 0);
+  await expect(image).toHaveAttribute("src", /\.png$/);
+  await figure.locator("[data-anim-toggle]").click();
+  await expect(image).toHaveAttribute("src", /\.gif$/);
+  await loadAllImages(page);
+  const after = await tileShape(figure, 0);
+  expect(after.mediaWidth).toBeCloseTo(before.mediaWidth, 1);
+  expect(after.mediaHeight).toBeCloseTo(before.mediaHeight, 1);
+  await expect(figure.locator("figcaption")).toContainText(/\d+(\.\d)?s/);
+});
+
+interface Shape {
+  label: string;
+  outerWidth: number;
+  outerHeight: number;
+  mediaWidth: number;
+  mediaHeight: number;
+  mediaRatio: number;
+  fit: string;
+  position: string;
+  frameBackground: string;
+  imageBackground: string;
+  contained: boolean;
+  loaded: boolean;
+}
+
+async function cardShape(card: Locator, index: number): Promise<Shape> {
+  const shape = await card.evaluate((element, label) => {
+    const media = element.querySelector(".media-frame") as HTMLElement;
+    const image = media.querySelector("img") as HTMLImageElement;
+    const box = element.getBoundingClientRect();
+    const frame = media.getBoundingClientRect();
+    const picture = image.getBoundingClientRect();
+    const style = getComputedStyle(image);
     return {
-      frameWidth: element.clientWidth,
-      frameHeight: element.clientHeight,
-      frameRatio: element.clientWidth / element.clientHeight,
-      imageWidth: imageBox.width,
-      imageHeight: imageBox.height,
-      imageRatio: imageBox.width / imageBox.height,
-      naturalRatio: image.naturalWidth / image.naturalHeight,
-      fit: getComputedStyle(image).objectFit,
+      label,
+      outerWidth: box.width,
+      outerHeight: box.height,
+      mediaWidth: frame.width,
+      mediaHeight: frame.height,
+      mediaRatio: frame.width / frame.height,
+      fit: style.objectFit,
+      position: style.objectPosition,
+      frameBackground: getComputedStyle(media).backgroundColor,
+      imageBackground: style.backgroundColor,
       contained:
-        imageBox.left >= frameBox.left - 1 &&
-        imageBox.top >= frameBox.top - 1 &&
-        imageBox.right <= frameBox.right + 1 &&
-        imageBox.bottom <= frameBox.bottom + 1,
+        picture.left >= frame.left - 1 &&
+        picture.top >= frame.top - 1 &&
+        picture.right <= frame.right + 1 &&
+        picture.bottom <= frame.bottom + 1,
       loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
     };
-  });
+  }, `card ${index}`);
+  return shape;
+}
 
-  expect(result.loaded, `figure ${index} ${state} did not load`).toBe(true);
-  expect(result.contained, `figure ${index} ${state} clips its image`).toBe(true);
-  expect(result.fit, `figure ${index} ${state} is letterboxed`).not.toBe("contain");
-  expect(
-    Math.abs(result.frameRatio - result.naturalRatio),
-    `figure ${index} ${state} frame is fixed`,
-  ).toBeLessThanOrEqual(0.02);
-  expect(result.imageRatio, `figure ${index} ${state} is distorted`).toBeCloseTo(
-    result.naturalRatio,
-    2,
-  );
-  expect(Math.abs(result.imageWidth - result.frameWidth)).toBeLessThanOrEqual(1);
-  expect(Math.abs(result.imageHeight - result.frameHeight)).toBeLessThanOrEqual(1);
+async function tileShape(figure: Locator, index: number): Promise<Shape> {
+  const shape = await figure.evaluate((element, label) => {
+    const media = element.querySelector(".media-frame") as HTMLElement;
+    const image = media.querySelector("img") as HTMLImageElement;
+    const box = element.getBoundingClientRect();
+    const frame = media.getBoundingClientRect();
+    const picture = image.getBoundingClientRect();
+    const style = getComputedStyle(image);
+    return {
+      label,
+      outerWidth: box.width,
+      outerHeight: box.height,
+      mediaWidth: frame.width,
+      mediaHeight: frame.height,
+      mediaRatio: frame.width / frame.height,
+      fit: style.objectFit,
+      position: style.objectPosition,
+      frameBackground: getComputedStyle(media).backgroundColor,
+      imageBackground: style.backgroundColor,
+      contained:
+        picture.left >= frame.left - 1 &&
+        picture.top >= frame.top - 1 &&
+        picture.right <= frame.right + 1 &&
+        picture.bottom <= frame.bottom + 1,
+      loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
+    };
+  }, `tile ${index}`);
+  return shape;
+}
+
+function assertSameBoxes(shapes: readonly Shape[], where: string) {
+  expect(shapes.length, `${where}: no boxes measured`).toBeGreaterThan(0);
+  const first = shapes[0];
+  for (const shape of shapes) {
+    expect(shape.loaded, `${where} ${shape.label}: image did not load`).toBe(true);
+    expect(shape.fit, `${where} ${shape.label}: artwork is not contained`).toBe("contain");
+    expect(shape.position, `${where} ${shape.label}: artwork is not centred`).toMatch(
+      /50% 50%|center/,
+    );
+    expect(shape.mediaRatio, `${where} ${shape.label}: image box is not 4:3`).toBeCloseTo(4 / 3, 2);
+    expect(shape.contained, `${where} ${shape.label}: image is clipped`).toBe(true);
+    expect(shape.frameBackground, `${where} ${shape.label}: frame background mismatch`).toBe(FRAME);
+    expect(shape.imageBackground, `${where} ${shape.label}: image background mismatch`).toBe(FRAME);
+    expect(
+      Math.abs(shape.outerWidth - first.outerWidth),
+      `${where} ${shape.label}: outer width differs`,
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(shape.outerHeight - first.outerHeight),
+      `${where} ${shape.label}: outer height differs`,
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(shape.mediaWidth - first.mediaWidth),
+      `${where} ${shape.label}: image box width differs`,
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(shape.mediaHeight - first.mediaHeight),
+      `${where} ${shape.label}: image box height differs`,
+    ).toBeLessThanOrEqual(1);
+  }
 }
 
 test("download labels are single-line and buttons share a height in every OS state", async ({
@@ -339,18 +516,25 @@ test("download labels are single-line and buttons share a height in every OS sta
   }
 });
 
-test("footer and donation use honest privacy wording", async ({ page }) => {
+test("support and footer share the honest privacy wording", async ({ page }) => {
   await gotoThemed(page, "/", "light");
-  const donate = page.locator('section[aria-labelledby="donate"]');
   await expect(page.locator("footer")).toContainText("no ads, no cookies and no accounts");
-  await expect(donate).toContainText("no ads, no cookies and no accounts");
+  await expect(page.locator("#donate")).toHaveCount(0);
+  await expect(page.locator('section[aria-labelledby="donate"]')).toHaveCount(0);
+
+  await gotoThemed(page, "/support/", "light");
+  await expect(page.locator("main .support-content")).toContainText(
+    "no ads, no cookies and no accounts",
+  );
   await expect(page.getByText(/tracking/i)).toHaveCount(0);
 });
 
 test("inline text keeps its spaces at element boundaries", async ({ page }) => {
-  await gotoThemed(page, "/", "light");
+  await gotoThemed(page, "/support/", "light");
   await expect(
-    page.getByText(/no cookies and no accounts\. If DeskPet made your desk a little happier/),
+    page
+      .locator("main")
+      .getByText(/no cookies and no accounts\. If DeskPet made your desk a little happier/),
   ).toBeVisible();
 
   await gotoThemed(page, "/contribute/", "light");

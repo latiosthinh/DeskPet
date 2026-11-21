@@ -7,6 +7,7 @@ export const PAGES = [
   { name: "pet-builtin", path: "/pets/mochi/" },
   { name: "pet-addon", path: "/pets/ember/" },
   { name: "contribute", path: "/contribute/" },
+  { name: "support", path: "/support/" },
   { name: "not-found", path: "/this-page-does-not-exist/" },
 ] as const;
 

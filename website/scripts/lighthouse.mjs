@@ -11,9 +11,10 @@ import { ROOT, initLocalD1, startPages, testToken } from "./lib/server.mjs";
 
 const TARGETS = [
   { name: "home", path: "/" },
+  { name: "pet-builtin", path: "/pets/mochi/" },
   { name: "pet-addon", path: "/pets/ember/" },
 ];
-const THRESHOLDS = { performance: 95, accessibility: 100, "best-practices": 100, seo: 100 };
+const THRESHOLDS = { performance: 100, accessibility: 100, "best-practices": 100, seo: 100 };
 const OUT = join(ROOT, "qa", "lighthouse");
 const PORT = Number(process.env.LIGHTHOUSE_PORT || 8790);
 
@@ -48,7 +49,7 @@ try {
       if (score < minimum) failures.push(`${target.name} ${category}: ${score} < ${minimum}`);
     }
     const cls = lhr.audits["cumulative-layout-shift"]?.numericValue ?? Number.NaN;
-    if (!(cls < 0.05)) failures.push(`${target.name} CLS: ${cls} >= 0.05`);
+    if (cls !== 0) failures.push(`${target.name} CLS: ${cls} is not exactly 0`);
     const lcp = lhr.audits["largest-contentful-paint"]?.displayValue ?? "?";
     const tbt = lhr.audits["total-blocking-time"]?.displayValue ?? "?";
 

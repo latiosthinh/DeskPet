@@ -1,6 +1,7 @@
 ---
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import SupportDialog from '../components/SupportDialog.astro';
 import { SITE, absoluteUrl } from '../lib/site';
 import '../styles/global.css';
 
@@ -26,8 +27,7 @@ const {
 const canonical = absoluteUrl(path);
 const ogImage = absoluteUrl(image);
 const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : null;
-const favicon =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%235b3df5' d='M1 1h1v1h1v1h2V2h1V1h1v6H1z'/%3E%3Cpath fill='%23f3efff' d='M2 3h4v3H2z'/%3E%3Cpath fill='%23241d3a' d='M3 4h1v1H3zm2 0h1v1H5z'/%3E%3C/svg%3E";
+const favicon = '/pets/mochi/hero.png';
 ---
 
 <!doctype html>
@@ -66,8 +66,6 @@ const favicon =
     <link rel="icon" href={favicon} />
     <link rel="sitemap" href="/sitemap.xml" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f4ff" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100e17" />
     <meta property="og:site_name" content={SITE.name} />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content={type} />
@@ -87,6 +85,7 @@ const favicon =
       Skip to content
     </a>
     <Header />
+    <SupportDialog />
     <main id="main" tabindex="-1">
       <slot />
     </main>
@@ -238,6 +237,59 @@ const favicon =
           for (const element of animated) {
             if (visible.has(element)) play(element);
           }
+        }
+      });
+
+      const supportDialog = document.querySelector('[data-support-dialog]');
+      let supportTrigger = null;
+
+      function closeSupport() {
+        if (supportDialog && supportDialog.open) supportDialog.close();
+      }
+
+      for (const link of document.querySelectorAll('[data-support-open]')) {
+        link.addEventListener('click', (event) => {
+          if (!(supportDialog instanceof HTMLDialogElement)) return;
+          if (
+            event instanceof MouseEvent &&
+            (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+          ) {
+            return;
+          }
+          event.preventDefault();
+          supportTrigger = link;
+          supportDialog.showModal();
+          supportDialog.querySelector('[data-support-close], button')?.focus();
+        });
+      }
+
+      supportDialog?.addEventListener('click', (event) => {
+        if (event.target === supportDialog) closeSupport();
+      });
+
+      supportDialog?.addEventListener('close', () => {
+        if (supportTrigger) {
+          supportTrigger.focus();
+          supportTrigger = null;
+        }
+      });
+
+      supportDialog?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab') return;
+        const focusable = Array.from(
+          supportDialog.querySelectorAll(
+            'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((element) => element.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
         }
       });
     </script>

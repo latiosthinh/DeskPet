@@ -7,11 +7,11 @@ const description =
 ---
 
 <Base title="Make a pet · DeskPet" description={description} path="/contribute/">
-  <div class="wrap pt-10">
+  <div class="wrap">
     <section class="prose">
-      <p class="chip">Open to everyone</p>
-      <h1 class="mt-4 text-4xl font-extrabold sm:text-5xl">Make a pet</h1>
-      <p class="mt-4 text-lg">
+      <p class="badge">Open to everyone</p>
+      <h1>Make a pet</h1>
+      <p>
         Every pet on this site is a single small file. Anyone can make one, and good ones get a page
         here next to the rest, credited to you.
       </p>
@@ -24,30 +24,29 @@ const description =
       </p>
 
       <h2>The path in three steps</h2>
-      <ol class="step-list not-prose mt-4">
+      <ol class="step-list">
         <li>
           <span>
-            <strong class="text-ink">Read the guide.</strong> The{' '}
+            <strong>Read the guide.</strong> The{' '}
             <a href={SITE.contributing}>pet guide (CONTRIBUTING-PETS.md)</a> covers the SDK, the
             file layout and the rules the checker enforces.
           </span>
         </li>
         <li>
           <span>
-            <strong class="text-ink">Draw and build.</strong> Start from the template, draw your pet
-            and its tricks, then build the <code>.deskpet</code> file and try it on your own
-            desktop.
+            <strong>Draw and build.</strong> Start from the template, draw your pet and its tricks,
+            then build the <code>.deskpet</code> file and try it on your own desktop.
           </span>
         </li>
         <li>
           <span>
-            <strong class="text-ink">Send it in.</strong> Open a pull request. Once it is merged,
-            your pet gets its own page here with GIFs of every trick and your name on it.
+            <strong>Send it in.</strong> Open a pull request. Once it is merged, your pet gets its
+            own page here with GIFs of every trick and your name on it.
           </span>
         </li>
       </ol>
 
-      <p class="mt-6">
+      <p>
         <a class="btn btn-primary" href={SITE.contributing}>
           Read the pet guide
         </a>

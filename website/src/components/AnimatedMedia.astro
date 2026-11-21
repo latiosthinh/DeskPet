@@ -12,9 +12,9 @@ interface Props {
 const { media, alt, name, eager = false, frameClass = '' } = Astro.props;
 ---
 
-<div>
+<div class="media-block">
   <div
-    class:list={['pet-frame', frameClass]}
+    class:list={['media-frame', frameClass]}
     data-anim
     data-auto={eager ? 'eager' : 'visible'}
     data-name={name}
@@ -34,7 +34,7 @@ const { media, alt, name, eager = false, frameClass = '' } = Astro.props;
   </div>
   <button
     type="button"
-    class="anim-btn js-only mt-2"
+    class="anim-btn js-only"
     data-anim-toggle
     data-playing="false"
     aria-label={`Play ${name}`}

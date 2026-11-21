@@ -10,17 +10,15 @@ import {
 } from "../helpers";
 
 const themes = ["light", "dark"] as const;
-const widths = [
-  { width: 375, height: 812 },
-  { width: 1440, height: 1000 },
-];
+const widths = [320, 375, 768, 1024, 1440, 1920].map((width) => ({ width, height: 900 }));
 
 mkdirSync(join(process.cwd(), "qa", "screenshots"), { recursive: true });
 
 for (const theme of themes) {
   test.describe(`responsive + screenshots (${theme})`, () => {
     for (const target of PAGES) {
-      test(`${target.name} fits and screenshots at 375 and 1440`, async ({ page }) => {
+      test(`${target.name} fits and screenshots at every width`, async ({ page }) => {
+        test.setTimeout(240_000);
         for (const viewport of widths) {
           await page.setViewportSize(viewport);
           await gotoThemed(page, target.path, theme, { reducedMotion: true });

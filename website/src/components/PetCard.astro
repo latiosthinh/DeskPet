@@ -1,5 +1,6 @@
 ---
 import type { Pet } from '../lib/site';
+import { INCLUDED_LABEL } from '../lib/site';
 
 interface Props {
   pet: Pet;
@@ -9,7 +10,7 @@ const { pet } = Astro.props;
 ---
 
 <a class="card" href={`/pets/${pet.id}/`}>
-  <span class="pet-frame pet-card-media">
+  <span class="media-frame frame-gallery">
     <img
       src={pet.hero.poster}
       width={pet.hero.width}
@@ -19,13 +20,19 @@ const { pet } = Astro.props;
       decoding="async"
     />
   </span>
-  <span class="flex flex-col gap-1 p-3">
-    <span class="flex flex-wrap items-center gap-2 text-lg font-bold leading-tight">
-      {pet.name}
-      {pet.builtin ? <span class="chip">Comes with the app</span> : null}
-    </span>
-    <span class="text-sm text-muted">
-      {pet.trickCount} {pet.trickCount === 1 ? 'trick' : 'tricks'}
+  <span class="card-body">
+    <span class="card-title">{pet.name}</span>
+    <span class="card-foot">
+      <span class="card-meta">
+        {pet.trickCount} {pet.trickCount === 1 ? 'trick' : 'tricks'}
+      </span>
+      <span class="card-status">
+        {pet.builtin ? (
+          <span class="badge">{INCLUDED_LABEL}</span>
+        ) : (
+          <span class="card-meta">Free add-on</span>
+        )}
+      </span>
     </span>
   </span>
 </a>

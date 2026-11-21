@@ -2,18 +2,18 @@
 import { qr } from '../lib/site';
 
 interface Props {
+  headingLevel?: 1 | 2;
   name?: string;
+  titleId?: string;
 }
 
-const { name = 'DeskPet' } = Astro.props;
+const { headingLevel = 2, name = 'DeskPet', titleId = 'support-title' } = Astro.props;
+const Heading = headingLevel === 1 ? 'h1' : 'h2';
 ---
 
-<section
-  class="panel my-8 flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:gap-6"
-  aria-labelledby="donate"
->
+<section class="support-content" aria-labelledby={titleId}>
   <img
-    class="h-40 w-40 shrink-0 rounded-lg border-2 border-line bg-white p-2 [image-rendering:pixelated]"
+    class="support-qr"
     src={qr.src}
     width={qr.width}
     height={qr.height}
@@ -22,12 +22,12 @@ const { name = 'DeskPet' } = Astro.props;
     decoding="async"
   />
   <div>
-    <h2 id="donate" class="m-0 text-2xl font-extrabold">
-      Support DeskPet
-    </h2>
-    <p class="mt-2 mb-0 text-muted">
+    <p class="eyebrow">Support</p>
+    <Heading id={titleId}>Support DeskPet</Heading>
+    <p>
       DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
       your desk a little happier, you can chip in by scanning the code. It keeps new pets coming.
     </p>
+    <p class="support-thanks">Thank you for keeping DeskPet free for everyone.</p>
   </div>
 </section>

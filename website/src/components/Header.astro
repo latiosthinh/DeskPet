@@ -5,12 +5,13 @@ const path = Astro.url.pathname;
 const links = [
   { href: '/', label: 'Pets' },
   { href: '/contribute/', label: 'Make a pet' },
+  { href: '/support/', label: 'Support' },
 ];
 ---
 
-<header class="sticky top-0 z-50 border-b border-line bg-canvas/90 backdrop-blur">
-  <div class="wrap flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-    <a href="/" class="flex min-h-11 items-center gap-2 text-xl font-extrabold no-underline">
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="/" class="brand">
       <svg
         aria-hidden="true"
         focusable="false"
@@ -18,7 +19,7 @@ const links = [
         height="32"
         viewBox="0 0 8 8"
         shape-rendering="crispEdges"
-        class="shrink-0"
+        class="brand-mark"
       >
         <path fill="var(--brand)" d="M1 1h1v1h1v1h2V2h1V1h1v6H1z"></path>
         <path fill="var(--frame)" d="M2 3h4v3H2z"></path>
@@ -27,7 +28,7 @@ const links = [
       <span>DeskPet</span>
     </a>
 
-    <div class="order-2 ml-auto flex items-center gap-2 sm:order-3">
+    <div class="header-actions">
       <button
         type="button"
         class="icon-btn js-only"
@@ -94,30 +95,27 @@ const links = [
           <path d="M7 4.5v15l13-7.5z"></path>
         </svg>
       </button>
-      <a class="btn btn-primary hidden sm:inline-flex" href={SITE.release}>
+      <a class="btn btn-primary header-download" href={SITE.release}>
         Download
       </a>
     </div>
 
-    <nav aria-label="Main" class="order-3 w-full sm:order-2 sm:ml-2 sm:w-auto">
-      <ul class="flex flex-wrap items-center gap-1">
+    <nav aria-label="Main" class="main-nav">
+      <ul class="nav-list">
         {links.map((link) => (
           <li>
             <a
               href={link.href}
               aria-current={path === link.href ? 'page' : undefined}
-              class="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold no-underline hover:bg-surface-2 aria-[current=page]:bg-surface-2"
+              class="nav-link"
+              data-support-open={link.href === '/support/' ? '' : undefined}
             >
               {link.label}
             </a>
           </li>
         ))}
         <li>
-          <a
-            href={SITE.repo}
-            rel="noreferrer"
-            class="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold no-underline hover:bg-surface-2"
-          >
+          <a href={SITE.repo} rel="noreferrer" class="nav-link">
             GitHub
           </a>
         </li>

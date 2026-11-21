@@ -15,12 +15,14 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { makeFallbackGif, readGifInfo } from "./lib/gif.mjs";
+import { hexToRgb, lightPalette } from "./lib/palette.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PUBLIC = join(ROOT, "public");
 const PETS_FILE = join(ROOT, "pets.json");
 const DATA_FILE = join(ROOT, "src", "data", "pets.generated.json");
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
+const palette = lightPalette();
 
 export const CATEGORIES = [
   { id: "critter", title: "Critters", blurb: "Small, soft and always up to something." },
@@ -164,13 +166,13 @@ async function ensureQr() {
   const file = join(PUBLIC, "donate-qr.png");
   if (!existsSync(file)) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">
-      <rect width="360" height="360" fill="#fff"/>
-      <g fill="#241d3a">
+      <rect width="360" height="360" fill="${palette.surface}"/>
+      <g fill="${palette.ink}">
         <rect x="24" y="24" width="84" height="84"/><rect x="252" y="24" width="84" height="84"/>
-        <rect x="24" y="252" width="84" height="84"/><rect x="48" y="48" width="36" height="36" fill="#fff"/>
-        <rect x="276" y="48" width="36" height="36" fill="#fff"/><rect x="48" y="276" width="36" height="36" fill="#fff"/>
+        <rect x="24" y="252" width="84" height="84"/><rect x="48" y="48" width="36" height="36" fill="${palette.surface}"/>
+        <rect x="276" y="48" width="36" height="36" fill="${palette.surface}"/><rect x="48" y="276" width="36" height="36" fill="${palette.surface}"/>
       </g>
-      <text x="180" y="196" font-family="monospace" font-size="22" text-anchor="middle" fill="#241d3a">DONATION QR</text>
+      <text x="180" y="196" font-family="monospace" font-size="22" text-anchor="middle" fill="${palette.ink}">DONATION QR</text>
     </svg>`;
     await sharp(Buffer.from(svg)).png().toFile(file);
     console.warn(
@@ -193,28 +195,28 @@ async function makeOg(posterPaths, out, label) {
   const frames = posterPaths
     .map((_, index) => {
       const x = startX + index * (size + gap);
-      return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="18" fill="#f3efff" stroke="#0b0718" stroke-width="6"/>`;
+      return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="18" fill="${palette.surface}" stroke="${palette.ink}" stroke-width="6"/>`;
     })
     .join("");
 
   const background = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#1b1140"/><stop offset="0.55" stop-color="#312e81"/><stop offset="1" stop-color="#4c1d95"/>
+        <stop offset="0" stop-color="${palette.canvas}"/><stop offset="0.55" stop-color="${palette.frame}"/><stop offset="1" stop-color="${palette.accent}"/>
       </linearGradient>
       <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
-        <circle cx="2" cy="2" r="2" fill="#a78bfa" opacity="0.22"/>
+        <circle cx="2" cy="2" r="2" fill="${palette.brand}" opacity="0.22"/>
       </pattern>
     </defs>
     <rect width="1200" height="630" fill="url(#g)"/>
     <rect width="1200" height="630" fill="url(#dots)"/>
-    <circle cx="1030" cy="90" r="150" fill="#7c3aed" opacity="0.28"/>
-    <circle cx="140" cy="560" r="170" fill="#a78bfa" opacity="0.16"/>
+    <circle cx="1030" cy="90" r="150" fill="${palette.accent}" opacity="0.35"/>
+    <circle cx="140" cy="560" r="170" fill="${palette.highlight}" opacity="0.3"/>
     ${frames}
     <text x="600" y="74" font-family="system-ui, Segoe UI, sans-serif" font-size="40" font-weight="700"
-      fill="#efeaf9" text-anchor="middle" letter-spacing="1">DeskPet</text>
+      fill="${palette.ink}" text-anchor="middle" letter-spacing="1">DeskPet</text>
     <text x="600" y="596" font-family="system-ui, Segoe UI, sans-serif" font-size="24"
-      fill="#d8ccff" text-anchor="middle">${escapeXml(label)} · tiny pixel pets for your desktop</text>
+      fill="${palette.muted}" text-anchor="middle">${escapeXml(label)} · tiny pixel pets for your desktop</text>
   </svg>`;
 
   const layers = [];
@@ -225,7 +227,7 @@ async function makeOg(posterPaths, out, label) {
       .resize(inner, inner, {
         fit: "contain",
         kernel: "nearest",
-        background: { r: 243, g: 239, b: 255, alpha: 1 },
+        background: hexToRgb(palette.frame),
       })
       .png()
       .toBuffer();
