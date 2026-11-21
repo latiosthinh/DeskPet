@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoHorizontalOverflow, gotoThemed, loadAllImages } from "../helpers";
 
 const pets = JSON.parse(
@@ -659,38 +659,121 @@ test("layout holds from 320px to 1920px", async ({ page }) => {
   }
 });
 
-test("mobile header: Download hidden, brand+controls row1, nav row2 at 375px", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 900 });
-  await gotoThemed(page, "/", "light", { reducedMotion: true });
-  await loadAllImages(page);
+const MOBILE_HEADER_WIDTHS = [320, 375, 639];
 
-  const header = page.locator(".header-inner");
-  const headerBox = await header.boundingBox();
-  expect(headerBox, "header has no box").not.toBeNull();
-  expect(headerBox!.height, "header is taller than expected").toBeLessThanOrEqual(120);
+async function expectMobileHeader(page: Page, width: number) {
+  const headerBox = await page.locator(".header-inner").boundingBox();
+  expect(headerBox, `${width}px header has no box`).not.toBeNull();
+  expect(headerBox!.height, `${width}px header is taller than 120px`).toBeLessThanOrEqual(120);
 
-  const download = page.locator("header .header-download");
-  await expect(download, "header Download should be hidden at 375px").toBeHidden();
+  await expect(
+    page.locator("header .header-download"),
+    `${width}px header Download should be hidden`,
+  ).toBeHidden();
 
-  const brand = page.locator(".brand");
-  const brandBox = await brand.boundingBox();
-  expect(brandBox, "brand has no box").not.toBeNull();
+  const brandBox = await page.locator(".brand").boundingBox();
+  const themeBox = await page.locator("[data-theme-toggle]").boundingBox();
+  const animBox = await page.locator("[data-anim-global]").boundingBox();
+  const navBox = await page.locator(".main-nav").boundingBox();
+  expect(brandBox, `${width}px brand has no box`).not.toBeNull();
+  expect(themeBox, `${width}px theme toggle has no box`).not.toBeNull();
+  expect(animBox, `${width}px animation toggle has no box`).not.toBeNull();
+  expect(navBox, `${width}px nav has no box`).not.toBeNull();
 
-  const themeBtn = page.locator("[data-theme-toggle]");
-  const themeBox = await themeBtn.boundingBox();
-  expect(themeBox, "theme toggle has no box").not.toBeNull();
-
-  expect(
-    Math.abs(brandBox!.y - themeBox!.y),
-    "brand and theme toggle should share first row",
-  ).toBeLessThanOrEqual(2);
-
-  const nav = page.locator(".main-nav");
-  const navBox = await nav.boundingBox();
-  expect(navBox, "nav has no box").not.toBeNull();
-  expect(navBox!.y, "nav should be below brand row at 375px").toBeGreaterThanOrEqual(
-    brandBox!.y + brandBox!.height - 2,
+  const rowOneBottom = Math.max(
+    brandBox!.y + brandBox!.height,
+    themeBox!.y + themeBox!.height,
+    animBox!.y + animBox!.height,
   );
+  expect(
+    Math.abs(themeBox!.y - brandBox!.y),
+    `${width}px brand and theme toggle should share the first row`,
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(animBox!.y - brandBox!.y),
+    `${width}px brand and animation toggle should share the first row`,
+  ).toBeLessThanOrEqual(2);
+  expect(navBox!.y, `${width}px nav should be below the brand row`).toBeGreaterThanOrEqual(
+    rowOneBottom - 2,
+  );
+
+  const nav = await page.locator(".nav-list").evaluate((list) => {
+    const listBox = list.getBoundingClientRect();
+    return {
+      scrollWidth: list.scrollWidth,
+      clientWidth: list.clientWidth,
+      left: listBox.left,
+      right: listBox.right,
+      links: [...list.querySelectorAll<HTMLElement>(".nav-link")].map((link) => {
+        const box = link.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(link);
+        return {
+          text: link.textContent?.trim() ?? "",
+          x: box.x,
+          right: box.right,
+          y: box.y,
+          height: box.height,
+          lines: range.getClientRects().length,
+          scrollWidth: link.scrollWidth,
+          clientWidth: link.clientWidth,
+        };
+      }),
+    };
+  });
+
+  expect(nav.scrollWidth, `${width}px nav list overflows horizontally`).toBeLessThanOrEqual(
+    nav.clientWidth + 1,
+  );
+  expect(
+    nav.links.map((link) => link.text),
+    `${width}px nav labels`,
+  ).toEqual(["Pets", "Make a pet", "Support", "GitHub"]);
+
+  const rowY = nav.links[0].y;
+  for (const [index, link] of nav.links.entries()) {
+    expect(link.height, `${width}px ${link.text} touch height`).toBeGreaterThanOrEqual(44);
+    expect(
+      Math.abs(link.y - rowY),
+      `${width}px ${link.text} is on the nav row`,
+    ).toBeLessThanOrEqual(1);
+    expect(link.lines, `${width}px ${link.text} label wrapped`).toBe(1);
+    expect(link.scrollWidth, `${width}px ${link.text} label is clipped`).toBeLessThanOrEqual(
+      link.clientWidth + 1,
+    );
+    expect(link.x, `${width}px ${link.text} starts inside the nav`).toBeGreaterThanOrEqual(
+      nav.left - 1,
+    );
+    expect(link.right, `${width}px ${link.text} ends inside the nav`).toBeLessThanOrEqual(
+      nav.right + 1,
+    );
+    if (index > 0) {
+      expect(link.x, `${width}px ${link.text} overlaps the previous link`).toBeGreaterThanOrEqual(
+        nav.links[index - 1].right,
+      );
+    }
+  }
+}
+
+test("mobile header: brand and both controls row 1, every nav link row 2 at 320-639px", async ({
+  page,
+}) => {
+  for (const width of MOBILE_HEADER_WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+    await expectMobileHeader(page, width);
+  }
+});
+
+test("mobile header survives deterministic wide font metrics at 320-639px", async ({ page }) => {
+  for (const width of MOBILE_HEADER_WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+    await loadAllImages(page);
+    await page.addStyleTag({ content: "body { font-family: monospace !important; }" });
+    await expectMobileHeader(page, width);
+  }
 });
 
 test("desktop header keeps Download visible at 1440px", async ({ page }) => {

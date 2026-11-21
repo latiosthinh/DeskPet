@@ -318,6 +318,19 @@
     background: var(--surface-2);
   }
 
+  @media (max-width: 639px) {
+    .nav-list {
+      flex-wrap: nowrap;
+      justify-content: space-between;
+    }
+
+    .nav-link {
+      padding-inline: var(--spacing-hair);
+      font-size: 0.875rem;
+      white-space: nowrap;
+    }
+  }
+
   .icon-btn {
     display: inline-flex;
     min-width: 2.75rem;
