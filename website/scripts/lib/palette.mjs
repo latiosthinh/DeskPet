@@ -1,4 +1,4 @@
-// Reads the light-theme colours from src/styles/global.css so build-time artwork
+// Reads the theme colours from src/styles/global.css so build-time artwork
 // (Open Graph images, placeholder QR, contact sheets) uses the same palette as the site.
 
 import { readFileSync } from "node:fs";
@@ -26,13 +26,16 @@ const NAMES = {
   focus: "--focus",
 };
 
-export function lightPalette(file = TOKENS) {
+function readTokens(file, blockPattern, missingBlock) {
   const css = readFileSync(file, "utf8");
-  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/);
-  if (!root) throw new Error(`${file}: no :root token block`);
+  const block = css.match(blockPattern);
+  if (!block) throw new Error(missingBlock);
 
   const values = new Map(
-    [...root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((match) => [match[1], match[2].trim()]),
+    [...block[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((match) => [
+      match[1],
+      match[2].trim(),
+    ]),
   );
 
   return Object.fromEntries(
@@ -42,6 +45,14 @@ export function lightPalette(file = TOKENS) {
       return [key, value];
     }),
   );
+}
+
+export function lightPalette(file = TOKENS) {
+  return readTokens(file, /:root\s*\{([\s\S]*?)\n\}/, `${file}: no :root token block`);
+}
+
+export function darkPalette(file = TOKENS) {
+  return readTokens(file, /\.dark\s*\{([\s\S]*?)\n\}/, `${file}: no .dark token block`);
 }
 
 export function hexToRgb(hex) {

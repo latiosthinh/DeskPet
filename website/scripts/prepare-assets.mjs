@@ -9,6 +9,7 @@
 //     to every raw GIF (the raw GIFs are never edited)
 //   * writes one Open Graph image per pet and src/data/pets.generated.json with
 //     the true canvas sizes, durations and poster paths
+//   * derives square favicons, app icons and site.webmanifest from Mochi's poster
 //
 // It never overwrites donate-qr.png, raw GIFs or .deskpet modules produced by petshot.
 
@@ -168,6 +169,8 @@ const generated = {
   pets: built,
 };
 writeFileSync(DATA_FILE, `${JSON.stringify(generated, null, 2)}\n`);
+
+await makeIcons();
 
 if (fallbacks.length) {
   console.warn(
@@ -525,6 +528,124 @@ async function makeOg(posterPaths, out, label) {
   }
 
   await sharp(Buffer.from(background)).composite(layers).png({ compressionLevel: 9 }).toFile(out);
+}
+
+/**
+ * Square favicon/app icons from Mochi's hero poster. The poster is mostly empty
+ * canvas, so a browser tab would shrink the pet to a few pixels. Crop to the
+ * opaque bbox, pad to a square with a margin and scale nearest-neighbour so the
+ * pixel art stays crisp at every size.
+ */
+async function makeIcons() {
+  const mochi = built.find((p) => p.id === "mochi");
+  if (!mochi?.hero?.poster) {
+    throw new Error("prepare-assets: mochi hero poster is required for icons");
+  }
+
+  const poster = join(PUBLIC, mochi.hero.poster.slice(1));
+  const { data, info } = await sharp(poster)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const box = opaqueBox(data, info.width, info.height);
+  if (!box) throw new Error(`prepare-assets: ${mochi.hero.poster} has no opaque pixels`);
+  const body = await sharp(poster).extract(box).png().toBuffer();
+
+  const clear = { r: 0, g: 0, b: 0, alpha: 0 };
+  const brand = hexToRgb(palette.canvas);
+  const sizes = [16, 32, 48];
+  const favicons = [];
+  for (const size of sizes) {
+    const png = await iconPng(body, box, size, 0.06, clear, false);
+    writeFileSync(join(PUBLIC, `favicon-${size}.png`), png);
+    favicons.push(png);
+  }
+  for (const [name, size] of [
+    ["apple-touch-icon.png", 180],
+    ["icon-512.png", 512],
+  ]) {
+    const png = await iconPng(body, box, size, 0.12, brand, true);
+    writeFileSync(join(PUBLIC, name), png);
+  }
+
+  // PNG-in-ICO container; no extra dependency needed for three small entries.
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(sizes.length, 4);
+  let offset = 6 + sizes.length * 16;
+  const entries = favicons.map((png, index) => {
+    const entry = Buffer.alloc(16);
+    entry[0] = sizes[index];
+    entry[1] = sizes[index];
+    entry[2] = 0;
+    entry[3] = 0;
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(png.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    offset += png.length;
+    return entry;
+  });
+  writeFileSync(join(PUBLIC, "favicon.ico"), Buffer.concat([header, ...entries, ...favicons]));
+
+  const manifest = {
+    name: "DeskPet",
+    short_name: "DeskPet",
+    icons: [
+      { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    theme_color: palette.canvas,
+    background_color: palette.canvas,
+  };
+  writeFileSync(join(PUBLIC, "site.webmanifest"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+  console.log(
+    "[prepare-assets] icons: favicon 16/32/48, apple-touch 180, icon 512, favicon.ico, site.webmanifest",
+  );
+}
+
+/** Bounding box of pixels with alpha > 16, or null when the image is empty. */
+function opaqueBox(data, width, height) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] <= 16) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0) return null;
+  return { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/** Fit the body crop into a square SxS canvas at a margin, nearest-neighbour. */
+async function iconPng(body, box, size, marginRatio, background, opaque) {
+  const margin = Math.round(size * marginRatio);
+  const inner = Math.max(1, size - 2 * margin);
+  const maxDim = Math.max(box.width, box.height);
+  const scaledWidth = Math.max(1, Math.round((box.width * inner) / maxDim));
+  const scaledHeight = Math.max(1, Math.round((box.height * inner) / maxDim));
+  const scaled = await sharp(body)
+    .resize(scaledWidth, scaledHeight, { kernel: "nearest" })
+    .png()
+    .toBuffer();
+
+  let canvas = sharp({ create: { width: size, height: size, channels: 4, background } }).composite([
+    {
+      input: scaled,
+      left: Math.round((size - scaledWidth) / 2),
+      top: Math.round((size - scaledHeight) / 2),
+    },
+  ]);
+  if (opaque) canvas = canvas.flatten({ background: palette.canvas });
+  return canvas.png().toBuffer();
 }
 
 function escapeXml(value) {
