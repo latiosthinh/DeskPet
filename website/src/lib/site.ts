@@ -1,5 +1,8 @@
 import generated from "../data/pets.generated.json";
 
+/** BNB Smart Chain (BEP-20) support address. Stored once; never log it with card data. */
+export const BNB_ADDRESS = "0x4d809c797169fa32448f075c15c4ad0c500bb109";
+
 export const SITE = {
   name: "DeskPet",
   url: "https://deskpet.pages.dev",

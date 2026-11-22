@@ -1,5 +1,6 @@
 ---
-import { qr } from '../lib/site';
+import { renderSVG } from 'uqr';
+import { BNB_ADDRESS, qr } from '../lib/site';
 
 interface Props {
   headingLevel?: 1 | 2;
@@ -9,29 +10,103 @@ interface Props {
 
 const { headingLevel = 2, name = 'DeskPet', titleId = 'support-title' } = Astro.props;
 const Heading = headingLevel === 1 ? 'h1' : 'h2';
+const CryptoHeading = headingLevel === 1 ? 'h2' : 'h3';
+const cryptoTitleId = `${titleId}-crypto`;
+const bnbQr = renderSVG(BNB_ADDRESS, { ecc: 'M', border: 2 });
 ---
 
 <section class="support-content" aria-labelledby={titleId}>
-  <picture class="support-card">
-    <source srcset={qr.webp} type="image/webp" />
-    <img
-      class="support-qr"
-      src={qr.src}
-      width={qr.width}
-      height={qr.height}
-      alt="MoMo and VietQR donation QR code for DeskPet"
-      loading="lazy"
-      decoding="async"
-    />
-  </picture>
-  <div class="support-copy">
-    <p class="eyebrow">Support</p>
-    <Heading id={titleId}>Support DeskPet</Heading>
-    <p>
-      DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
-      your desk a little happier, you can chip in by scanning the card. It works with MoMo and
-      Vietnamese banking apps (VietQR / napas 247), and it keeps new pets coming.
-    </p>
-    <p class="support-thanks">Thank you for keeping DeskPet free for everyone.</p>
+  <div class="support-momo">
+    <picture class="support-card">
+      <source srcset={qr.webp} type="image/webp" />
+      <img
+        class="support-qr"
+        src={qr.src}
+        width={qr.width}
+        height={qr.height}
+        alt="MoMo and VietQR donation QR code for DeskPet"
+        loading="lazy"
+        decoding="async"
+      />
+    </picture>
+    <div class="support-copy">
+      <p class="eyebrow">Support</p>
+      <Heading id={titleId}>Support DeskPet</Heading>
+      <p>
+        DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
+        your desk a little happier, you can chip in by scanning the card. It works with MoMo and
+        Vietnamese banking apps (VietQR / napas 247), and it keeps new pets coming.
+      </p>
+      <p class="support-thanks">Thank you for keeping DeskPet free for everyone.</p>
+    </div>
   </div>
+
+  <section class="support-crypto" aria-labelledby={cryptoTitleId}>
+    <div class="support-crypto-copy">
+      <CryptoHeading id={cryptoTitleId}>Or send BNB / BEP-20 tokens</CryptoHeading>
+      <p class="support-network">BNB Smart Chain (BEP-20)</p>
+      <p class="support-warning">
+        Send only on BNB Smart Chain. Funds sent on another network can't be recovered.
+      </p>
+      <div class="bnb-address" data-bnb>
+        <code class="bnb-address-text" data-bnb-address tabindex="0">
+          {BNB_ADDRESS}
+        </code>
+        <button
+          type="button"
+          class="btn btn-secondary bnb-copy js-only"
+          data-bnb-copy
+          aria-label="Copy BNB address"
+        >
+          Copy
+        </button>
+        <span class="bnb-status" role="status" aria-live="polite" data-bnb-status></span>
+      </div>
+    </div>
+    <div
+      class="bnb-qr"
+      data-bnb-qr
+      role="img"
+      aria-label="QR code for the BNB Smart Chain address"
+      set:html={bnbQr}
+    />
+  </section>
 </section>
+
+<script>
+  const RESET_MS = 2500;
+
+  function selectAddress(field: HTMLElement) {
+    const range = document.createRange();
+    range.selectNodeContents(field);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    field.focus({ preventScroll: true });
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-bnb-copy]')) {
+    button.addEventListener('click', async () => {
+      const group = button.closest<HTMLElement>('[data-bnb]');
+      const field = group?.querySelector<HTMLElement>('[data-bnb-address]');
+      const status = group?.querySelector<HTMLElement>('[data-bnb-status]');
+      if (!group || !field || !status) return;
+
+      const address = field.textContent?.trim() ?? '';
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+        await navigator.clipboard.writeText(address);
+        button.textContent = 'Copied';
+        status.textContent = 'Address copied to the clipboard.';
+      } catch {
+        selectAddress(field);
+        button.textContent = 'Select';
+        status.textContent = 'Clipboard unavailable - the address is selected, copy it manually.';
+      }
+
+      window.setTimeout(() => {
+        button.textContent = 'Copy';
+      }, RESET_MS);
+    });
+  }
+</script>

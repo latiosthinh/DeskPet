@@ -1570,6 +1570,12 @@
 
   .support-content {
     display: grid;
+    gap: var(--spacing-loose);
+    align-items: start;
+  }
+
+  .support-momo {
+    display: grid;
     gap: var(--spacing-room);
     align-items: start;
   }
@@ -1592,7 +1598,7 @@
   }
 
   @media (min-width: 900px) {
-    .support-content {
+    .support-momo {
       grid-template-columns: minmax(0, 42rem) minmax(0, 1fr);
     }
   }
@@ -1604,9 +1610,91 @@
     line-height: var(--text-title--line-height);
   }
 
+  .support-crypto h2,
+  .support-crypto h3 {
+    font-size: var(--text-heading);
+    font-weight: 750;
+    line-height: var(--text-heading--line-height);
+  }
+
   .support-content p {
     margin: var(--spacing-snug) 0 0;
     color: var(--muted);
+  }
+
+  .support-crypto {
+    display: grid;
+    gap: var(--spacing-room);
+    align-items: center;
+    border-top: 1px solid var(--line);
+    padding-top: var(--spacing-room);
+  }
+
+  .support-crypto .support-network {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .support-warning {
+    max-width: 38rem;
+  }
+
+  @media (min-width: 560px) {
+    .support-crypto {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
+  .bnb-address {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-cozy);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    padding: var(--spacing-tight);
+  }
+
+  .bnb-address-text {
+    flex: 1 1 12rem;
+    min-width: 0;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    user-select: all;
+  }
+
+  .bnb-copy {
+    flex-shrink: 0;
+  }
+
+  .bnb-status {
+    flex-basis: 100%;
+    color: var(--muted);
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    min-block-size: 1.45em;
+  }
+
+  .bnb-qr {
+    width: var(--size-qr);
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-mini);
+    background: var(--surface);
+    padding: var(--spacing-tight);
+    box-shadow: var(--elevation-soft);
+  }
+
+  .bnb-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .support-page {
