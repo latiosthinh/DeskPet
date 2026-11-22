@@ -531,32 +531,48 @@ async function makeOg(posterPaths, out, label) {
 }
 
 /**
- * Square favicon/app icons from Mochi's hero poster. The poster is mostly empty
- * canvas, so a browser tab would shrink the pet to a few pixels. Crop to the
- * opaque bbox, pad to a square with a margin and scale nearest-neighbour so the
- * pixel art stays crisp at every size.
+ * Square favicon/app icons from Mochi's settled hero frame. Crop the body-only
+ * mask on the native 1x pixel grid (heart/props excluded), then area/box
+ * downsample with an alpha threshold when shrinking so the outline survives;
+ * nearest-neighbour when enlarging.
  */
 async function makeIcons() {
-  const mochi = built.find((p) => p.id === "mochi");
-  if (!mochi?.hero?.poster) {
-    throw new Error("prepare-assets: mochi hero poster is required for icons");
-  }
+  const mochiRaw = rawPets.find((r) => r.pet.id === "mochi");
+  if (!mochiRaw) throw new Error("prepare-assets: mochi hero is required for icons");
 
-  const poster = join(PUBLIC, mochi.hero.poster.slice(1));
-  const { data, info } = await sharp(poster)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const box = opaqueBox(data, info.width, info.height);
-  if (!box) throw new Error(`prepare-assets: ${mochi.hero.poster} has no opaque pixels`);
-  const body = await sharp(poster).extract(box).png().toBuffer();
+  const frames = mochiRaw.heroFrames;
+  const { grid } = heroScale.get("mochi");
+  const idx = settledFrameIndex(frames, heroBodyHeight(frames));
+  const data = frameView(frames, idx);
+  const bubble = findBubble(data, frames.width, frames.height);
+  const { box, mask } = largestBody(data, frames.width, frames.height, bubble);
+  if (!box || !mask) throw new Error("prepare-assets: no mochi body found for icons");
+
+  const nw = Math.ceil(box.width / grid);
+  const nh = Math.ceil(box.height / grid);
+  const native = Buffer.alloc(nw * nh * 4);
+  for (let y = 0; y < nh; y++) {
+    for (let x = 0; x < nw; x++) {
+      const sx = box.minX + x * grid;
+      const sy = box.minY + y * grid;
+      const p = sy * frames.width + sx;
+      if (mask[p]) {
+        const o = p * 4;
+        const t = (y * nw + x) * 4;
+        native[t] = data[o];
+        native[t + 1] = data[o + 1];
+        native[t + 2] = data[o + 2];
+        native[t + 3] = 255;
+      }
+    }
+  }
 
   const clear = { r: 0, g: 0, b: 0, alpha: 0 };
   const brand = hexToRgb(palette.canvas);
   const sizes = [16, 32, 48];
   const favicons = [];
   for (const size of sizes) {
-    const png = await iconPng(body, box, size, 0.06, clear, false);
+    const png = await iconPng(native, nw, nh, size, 0.06, clear, false);
     writeFileSync(join(PUBLIC, `favicon-${size}.png`), png);
     favicons.push(png);
   }
@@ -564,7 +580,7 @@ async function makeIcons() {
     ["apple-touch-icon.png", 180],
     ["icon-512.png", 512],
   ]) {
-    const png = await iconPng(body, box, size, 0.12, brand, true);
+    const png = await iconPng(native, nw, nh, size, 0.12, brand, true);
     writeFileSync(join(PUBLIC, name), png);
   }
 
@@ -606,46 +622,82 @@ async function makeIcons() {
   );
 }
 
-/** Bounding box of pixels with alpha > 16, or null when the image is empty. */
-function opaqueBox(data, width, height) {
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (data[(y * width + x) * 4 + 3] <= 16) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (maxX < 0) return null;
-  return { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
-}
-
-/** Fit the body crop into a square SxS canvas at a margin, nearest-neighbour. */
-async function iconPng(body, box, size, marginRatio, background, opaque) {
+/** Fit the native crop into a square SxS canvas; shrink with area filter, grow nearest. */
+async function iconPng(native, nw, nh, size, marginRatio, background, opaque) {
   const margin = Math.round(size * marginRatio);
   const inner = Math.max(1, size - 2 * margin);
-  const maxDim = Math.max(box.width, box.height);
-  const scaledWidth = Math.max(1, Math.round((box.width * inner) / maxDim));
-  const scaledHeight = Math.max(1, Math.round((box.height * inner) / maxDim));
-  const scaled = await sharp(body)
-    .resize(scaledWidth, scaledHeight, { kernel: "nearest" })
+  const maxDim = Math.max(nw, nh);
+  const tw = Math.max(1, Math.round((nw * inner) / maxDim));
+  const th = Math.max(1, Math.round((nh * inner) / maxDim));
+
+  let scaledRaw;
+  if (tw >= nw && th >= nh) {
+    scaledRaw = await sharp(native, { raw: { width: nw, height: nh, channels: 4 } })
+      .resize(tw, th, { kernel: "nearest" })
+      .raw()
+      .toBuffer();
+  } else {
+    scaledRaw = boxDownsample(native, nw, nh, tw, th);
+  }
+
+  const scaledPng = await sharp(scaledRaw, { raw: { width: tw, height: th, channels: 4 } })
     .png()
     .toBuffer();
 
   let canvas = sharp({ create: { width: size, height: size, channels: 4, background } }).composite([
     {
-      input: scaled,
-      left: Math.round((size - scaledWidth) / 2),
-      top: Math.round((size - scaledHeight) / 2),
+      input: scaledPng,
+      left: Math.round((size - tw) / 2),
+      top: Math.round((size - th) / 2),
     },
   ]);
   if (opaque) canvas = canvas.flatten({ background: palette.canvas });
   return canvas.png().toBuffer();
+}
+
+/** Premultiplied area/box downsample with a light alpha threshold (outline survives). */
+function boxDownsample(src, sw, sh, tw, th) {
+  const out = Buffer.alloc(tw * th * 4);
+  const xr = sw / tw;
+  const yr = sh / th;
+  for (let ty = 0; ty < th; ty++) {
+    const sy0 = ty * yr;
+    const sy1 = (ty + 1) * yr;
+    for (let tx = 0; tx < tw; tx++) {
+      const sx0 = tx * xr;
+      const sx1 = (tx + 1) * xr;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let wt = 0;
+      for (let sy = Math.floor(sy0); sy < Math.ceil(sy1); sy++) {
+        const wy = Math.min(sy1, sy + 1) - Math.max(sy0, sy);
+        if (wy <= 0) continue;
+        for (let sx = Math.floor(sx0); sx < Math.ceil(sx1); sx++) {
+          const wx = Math.min(sx1, sx + 1) - Math.max(sx0, sx);
+          if (wx <= 0) continue;
+          const w = wx * wy;
+          const o = (sy * sw + sx) * 4;
+          const al = src[o + 3] / 255;
+          r += src[o] * al * w;
+          g += src[o + 1] * al * w;
+          b += src[o + 2] * al * w;
+          a += al * w;
+          wt += w;
+        }
+      }
+      const avgA = wt ? a / wt : 0;
+      const o = (ty * tw + tx) * 4;
+      if (avgA >= 0.5 && a > 0) {
+        out[o] = Math.round(r / a);
+        out[o + 1] = Math.round(g / a);
+        out[o + 2] = Math.round(b / a);
+        out[o + 3] = 255;
+      }
+    }
+  }
+  return out;
 }
 
 function escapeXml(value) {

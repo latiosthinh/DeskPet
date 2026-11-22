@@ -72,6 +72,34 @@ describe("favicons and app icons", () => {
     expect(box!.height).toBeLessThanOrEqual(32);
     if (mochi && !mochi.hero.fallback) {
       expect(box!.height / 32).toBeGreaterThanOrEqual(0.8);
+      expect(
+        box!.width,
+        "32px icon should be body-only (wider than tall, no heart)",
+      ).toBeGreaterThanOrEqual(box!.height);
+    }
+  });
+
+  it("keeps a closed dark outline on both sides of the 16px icon", async () => {
+    const file = publicFile("/favicon-16.png");
+    const { data, info } = await sharp(file)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const box = alphaBox(data, info.width, info.height);
+    expect(box, "favicon-16 has no visible pixels").not.toBeNull();
+    if (mochi && !mochi.hero.fallback) {
+      const isOutline = (x: number, y: number) => {
+        const o = (y * info.width + x) * 4;
+        return data[o + 3] > 16 && data[o] < 128 && data[o + 1] < 128 && data[o + 2] < 128;
+      };
+      let left = 0;
+      let right = 0;
+      for (let y = box!.minY; y <= box!.maxY; y++) {
+        if (isOutline(box!.minX, y)) left++;
+        if (isOutline(box!.maxX, y)) right++;
+      }
+      expect(left, "left side outline").toBeGreaterThanOrEqual(4);
+      expect(right, "right side outline").toBeGreaterThanOrEqual(4);
     }
   });
 
