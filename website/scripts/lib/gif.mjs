@@ -1,6 +1,8 @@
 // Tiny GIF reader/encoder helpers used by the build-time asset step.
 // The reader only needs the canvas size and the total animation time.
 
+import { SPRITE_BG } from "./sprite.mjs";
+
 export function readGifInfo(buf) {
   if (buf.length < 13) throw new Error("GIF is too short");
   const signature = buf.toString("ascii", 0, 6);
@@ -60,7 +62,7 @@ function skipSubBlocks(buf, pos) {
 /** Deterministic, tiny "art missing" GIF. Only used when a real GIF is absent (fresh checkout). */
 export function makeFallbackGif(width = 64, height = 40) {
   const palette = [
-    [243, 239, 255], // 0 frame
+    SPRITE_BG, // 0 frame (must match the paper background so it reads as background)
     [49, 46, 129], // 1 indigo outline
     [124, 58, 237], // 2 violet body
     [255, 255, 255], // 3 highlight
@@ -79,7 +81,7 @@ export function makeFallbackGif(width = 64, height = 40) {
           (x - bodyLeft < 3 || bodyRight - 1 - x < 3) &&
           (y - bodyTop < 3 || bodyBottom - 1 - y < 3);
         if (corner) continue;
-        px[(y + shift) * width + x] = edge ? 1 : (x - bodyLeft) % 8 < 4 ? 2 : 1;
+        px[(y + shift) * width + x] = edge ? 1 : (x - bodyLeft) % 6 < 3 ? 2 : 1;
       }
     }
     for (const [x, y] of [
