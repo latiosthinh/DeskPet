@@ -36,6 +36,7 @@ export interface GalleryImage {
   src: string;
   width: number;
   height: number;
+  zoom: number;
 }
 
 export interface Pet {
@@ -92,7 +93,7 @@ export function authorSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `${readable || "author"}-${Buffer.from(name, "utf8").toString("base64url")}`;
+  return `${readable || "author"}-${Buffer.from(name, "utf8").toString("hex")}`;
 }
 
 /** Groups pets by author: DeskPet first, then every community author alphabetically. */

@@ -118,7 +118,8 @@ for (const { pet, heroFrames, tricks } of rawPets) {
     ...trick,
     ...normalised.get(`${pet.id}/${trick.id}`),
   }));
-  const gallery = await galleryPoster(pet, heroFrames, heroScale.get(pet.id).scale);
+  const { grid, scale } = heroScale.get(pet.id);
+  const gallery = await galleryPoster(pet, heroFrames, scale, grid);
 
   const ogRel = `pets/${pet.id}/og.png`;
   await makeOg([join(PUBLIC, heroMedia.poster.slice(1))], join(PUBLIC, ogRel), pet.shortName);
@@ -188,7 +189,7 @@ if (!fallbacks.length) {
  * bubble, no detached hearts/props), integer-enlarged and centred on the shared
  * 4:3 canvas. Kept separate from the animation clips so tricks stay uncropped.
  */
-async function galleryPoster(pet, frames, scale) {
+async function galleryPoster(pet, frames, scale, grid) {
   const median = heroBodyHeight(frames);
   const index = settledFrameIndex(frames, median);
   const data = frameView(frames, index);
@@ -198,6 +199,8 @@ async function galleryPoster(pet, frames, scale) {
 
   const width = body.width;
   const height = body.height;
+  const zoom =
+    grid === 1 ? Math.min(1.35, Math.max(1, Math.round((108 / height) * 1000) / 1000)) : 1;
   const cropped = Buffer.alloc(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -249,7 +252,7 @@ async function galleryPoster(pet, frames, scale) {
     .png({ compressionLevel: 9 })
     .toFile(join(PUBLIC, rel));
 
-  return { src: `/${rel}`, width: GALLERY_WIDTH, height: GALLERY_HEIGHT };
+  return { src: `/${rel}`, width: GALLERY_WIDTH, height: GALLERY_HEIGHT, zoom };
 }
 
 async function normalise(job, width, height) {

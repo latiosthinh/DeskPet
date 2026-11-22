@@ -17,7 +17,7 @@ export interface CataloguePet {
 export interface IndexPet extends CataloguePet {
   shortName: string;
   authorSlug: string;
-  gallery: { src: string; width: number; height: number };
+  gallery: { src: string; width: number; height: number; zoom: number };
 }
 
 export interface CatalogueState {

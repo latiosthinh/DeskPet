@@ -47,6 +47,24 @@ const fixture = [
     trickCount: 2,
     description: "Beta of the grove.",
   },
+  {
+    id: "uni1",
+    name: "Unicode One",
+    category: "critter",
+    author: "一",
+    builtin: false,
+    trickCount: 1,
+    description: "First unicode friend.",
+  },
+  {
+    id: "uni2",
+    name: "Unicode Two",
+    category: "critter",
+    author: "业",
+    builtin: false,
+    trickCount: 1,
+    description: "Second unicode friend.",
+  },
 ] as unknown as Pet[];
 
 describe("listingRecords", () => {
@@ -69,8 +87,8 @@ describe("listingRecords", () => {
 
     const all = records.filter((record) => record.scope.kind === "all");
     expect(all.map((record) => [record.page, record.pageCount, record.total])).toEqual([
-      [1, 2, 15],
-      [2, 2, 15],
+      [1, 2, 17],
+      [2, 2, 17],
     ]);
     expect(all[0].pets.map((pet) => pet.name)).toEqual([
       "Alpha One",
@@ -86,7 +104,7 @@ describe("listingRecords", () => {
       "Forest 09",
       "Forest 10",
     ]);
-    expect(all[1].pets.map((pet) => pet.id)).toEqual(["f11", "f12", "f13"]);
+    expect(all[1].pets.map((pet) => pet.id)).toEqual(["f11", "f12", "f13", "uni1", "uni2"]);
 
     const forestRecords = records.filter(
       (record) => record.scope.kind === "category" && record.scope.id === "forest-friend",
@@ -102,11 +120,15 @@ describe("listingRecords", () => {
       (record) => record.scope.kind === "category" && record.scope.id === "critter",
     );
     expect(critter?.pageCount).toBe(1);
-    expect(critter?.total).toBe(2);
+    expect(critter?.total).toBe(4);
 
     const similar = authorGroups(fixture).filter((group) => group.slug !== "deskpet");
-    expect(similar).toHaveLength(2);
-    expect(similar[0].slug).not.toBe(similar[1].slug);
+    expect(similar).toHaveLength(4);
+    for (let i = 0; i < similar.length; i++) {
+      for (let j = i + 1; j < similar.length; j++) {
+        expect(similar[i].slug).not.toBe(similar[j].slug);
+      }
+    }
     for (const group of similar) {
       expect(
         records.filter(
@@ -114,6 +136,13 @@ describe("listingRecords", () => {
         ),
       ).toHaveLength(1);
     }
+  });
+
+  it("keeps a single all-scope record at the 12-pet page boundary", () => {
+    const records = listingRecords(fixture.slice(0, 12));
+    const all = records.filter((record) => record.scope.kind === "all");
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ page: 1, pageCount: 1, total: 12 });
   });
 
   it("keeps one empty record for an empty list", () => {
@@ -150,6 +179,14 @@ describe("deriveCategories", () => {
 describe("stable ordering", () => {
   it("keeps author slugs unique and listings stable under input order", () => {
     expect(authorSlug("A B")).not.toBe(authorSlug("A-B"));
+    expect(authorSlug("一")).not.toBe(authorSlug("业"));
+    expect(authorSlug("一").toLowerCase()).not.toBe(authorSlug("业").toLowerCase());
+    const names = [...new Set(fixture.map((pet) => pet.author))];
+    for (let i = 0; i < names.length; i++) {
+      for (let j = i + 1; j < names.length; j++) {
+        expect(authorSlug(names[i]).toLowerCase()).not.toBe(authorSlug(names[j]).toLowerCase());
+      }
+    }
     const slugs = authorGroups(fixture).map((group) => group.slug);
     for (const slug of slugs) expect(slug).toMatch(/^[A-Za-z0-9_-]+$/);
 
@@ -222,7 +259,7 @@ describe("filterPets", () => {
       ),
     ).toEqual(["f01"]);
     expect(filterPets(fixture, { q: "", category: "", author: "", type: "addon" })).toHaveLength(
-      14,
+      16,
     );
     expect(
       filterPets(fixture, { q: "", category: "", author: authorSlug("A B"), type: "" }).map(

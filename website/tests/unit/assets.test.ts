@@ -199,10 +199,12 @@ describe("normalised sprites", () => {
 
   it("builds a centred 4:3 gallery poster with comparable body sizes", async () => {
     const bodies: number[] = [];
+    const effective: number[] = [];
     for (const pet of pets) {
       expect(pet.gallery.src).toMatch(/^\/pets\/.+\/gallery\.png$/);
       expect(pet.gallery.width).toBe(GALLERY_WIDTH);
       expect(pet.gallery.height).toBe(GALLERY_HEIGHT);
+      expect(pet.gallery.zoom, `${pet.id} gallery zoom below 1`).toBeGreaterThanOrEqual(1);
       const file = publicFile(pet.gallery.src);
       expect(existsSync(file), pet.gallery.src).toBe(true);
 
@@ -251,11 +253,20 @@ describe("normalised sprites", () => {
           0.67,
         );
         bodies.push(boxHeight);
+        const visible = boxHeight * pet.gallery.zoom;
+        expect(visible, `${pet.id} effective gallery body is too small`).toBeGreaterThanOrEqual(84);
+        expect(visible, `${pet.id} effective gallery body is too large`).toBeLessThanOrEqual(116);
+        effective.push(visible);
       }
     }
     if (bodies.length > 0) {
       expect(Math.max(...bodies) / Math.min(...bodies)).toBeLessThanOrEqual(1.35);
     }
+    if (effective.length > 0) {
+      expect(Math.max(...effective) / Math.min(...effective)).toBeLessThanOrEqual(1.3);
+    }
+    expect(pets.find((pet) => pet.id === "moona")?.gallery.zoom).toBeGreaterThan(1);
+    expect(pets.find((pet) => pet.id === "witcher")?.gallery.zoom).toBeGreaterThan(1);
   });
 
   it("keeps the raw GIFs beside the clean derivatives", async () => {
