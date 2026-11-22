@@ -2,8 +2,8 @@
   <img src="docs/readme/hero.gif" alt="Mochi the pixel cat saying hi" width="330">
   <h1>DeskPet</h1>
   <p>A tiny pixel pet that lives on your desktop, next to the Dock on a Mac and on top of the taskbar on Windows.</p>
-  <p><strong><a href="https://github.com/latiosthinh/DeskPet/releases/latest">Download for Mac</a></strong> · <strong><a href="https://github.com/latiosthinh/DeskPet/releases/latest">Download for Windows</a></strong> · <strong><a href="https://deskpet.pages.dev/pets/">Browse all pets</a></strong></p>
-  <p><img src="https://img.shields.io/github/v/release/latiosthinh/DeskPet" alt="latest release"> <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-7a5c3e" alt="platforms: macOS and Windows"></p>
+  <p><a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Mac-a75d2b?style=for-the-badge&amp;logo=apple&amp;logoColor=white" alt="Download for Mac"></a> <a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Windows-a75d2b?style=for-the-badge&amp;logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTAgMy40NDlMOS43NSAyLjF2OS40NTFIMG0xMC45NDktOS42MDJMMjQgMHYxMS40SDEwLjk0OU0wIDEyLjZoOS43NXY5LjQ1MUwwIDIwLjY5OU0xMC45NDkgMTIuNkgyNFYyNGwtMTIuOS0xLjgwMSIvPjwvc3ZnPg%3D%3D&amp;logoColor=white" alt="Download for Windows"></a> <a href="https://deskpet.pages.dev/pets/"><img src="https://img.shields.io/badge/Browse_all_pets-7a5c3e?style=for-the-badge" alt="Browse all pets"></a></p>
+  <p><img src="https://img.shields.io/github/v/release/latiosthinh/DeskPet" alt="latest release" height="18"> <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-7a5c3e" alt="platforms: macOS and Windows" height="18"></p>
 </div>
 
 ## See it in action
@@ -11,28 +11,18 @@
 <div align="center">
   <img src="docs/readme/desktop.png" alt="Mochi the pixel cat saying hi on the Windows taskbar, next to the clock" width="730">
   <br>
-  Mochi, on the taskbar, next to the clock. That's home.
+  <p>Mochi, on the taskbar, next to the clock. That's home.</p>
 </div>
 
 Every pet has a pocketful of tricks. Three of them, live:
 
-<div align="center">
-  <img src="docs/readme/trick-mochi-yarn.gif" alt="Mochi batting at a ball of yarn" width="368">
-  <br>
-  Mochi — Play with Yarn
-</div>
-
-<div align="center">
-  <img src="docs/readme/trick-ninja-smoke.gif" alt="Kage vanishing in a puff of smoke" width="242">
-  <br>
-  Kage — Smoke Bomb
-</div>
-
-<div align="center">
-  <img src="docs/readme/trick-moona-glaive.gif" alt="Moona throwing her glaive" width="292">
-  <br>
-  Moona — Throw the Glaive
-</div>
+<table>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/trick-mochi-yarn.gif" alt="Mochi batting at a ball of yarn" width="368"><br>Mochi — Play with Yarn</td>
+<td align="center" valign="top"><img src="docs/readme/trick-ninja-smoke.gif" alt="Kage vanishing in a puff of smoke" width="242"><br>Kage — Smoke Bomb</td>
+<td align="center" valign="top"><img src="docs/readme/trick-moona-glaive.gif" alt="Moona throwing her glaive" width="292"><br>Moona — Throw the Glaive</td>
+</tr>
+</table>
 
 ## Meet the pets
 
@@ -47,9 +37,9 @@ The rest are one-click add-ons from the website: open **Pet → Get More Pets…
 <td align="center" valign="top"><img src="docs/readme/pet-mochi.png" width="96" height="64" alt="Mochi"><br><strong>Mochi</strong> · <em>included</em><br><sub>A sleepy little cat who naps on your taskbar, chases your cursor and sweeps up after you type.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-ember.png" width="96" height="64" alt="Ember the fox"><br><strong>Ember the fox</strong><br><sub>A curious fox who lights fireworks, explores with a flashlight and toasts marshmallows by the fire.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-pip.png" width="96" height="64" alt="Pip the penguin"><br><strong>Pip the penguin</strong><br><sub>A splashy penguin who swims, blows bubbles and hides in a puddle when you get too close.</sub></td>
-<td align="center" valign="top"><img src="docs/readme/pet-puddle.png" width="96" height="64" alt="Puddle the slime"><br><strong>Puddle the slime</strong><br><sub>A wobbly slime who changes colour, splits in two to play and always has a snack inside.</sub></td>
 </tr>
 <tr>
+<td align="center" valign="top"><img src="docs/readme/pet-puddle.png" width="96" height="64" alt="Puddle the slime"><br><strong>Puddle the slime</strong><br><sub>A wobbly slime who changes colour, splits in two to play and always has a snack inside.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-sprout.png" width="96" height="64" alt="Sprout the seedling"><br><strong>Sprout the seedling</strong><br><sub>A tiny seedling who plants itself, grows up, chases butterflies and gives you flowers.</sub></td>
 </tr>
 </table>
@@ -61,11 +51,13 @@ The rest are one-click add-ons from the website: open **Pet → Get More Pets…
 <td align="center" valign="top"><img src="docs/readme/pet-grumbo.png" width="96" height="64" alt="Grumbo the warrior"><br><strong>Grumbo the warrior</strong><br><sub>A small warrior with a big helmet. Spins until dizzy and tries, really tries, to chop a log.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-wispaling.png" width="96" height="64" alt="Wisp-a-ling the spirit"><br><strong>Wisp-a-ling the spirit</strong><br><sub>A floating little spirit who reaches for your pointer and gets tied up in its own thread.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-hexley.png" width="96" height="64" alt="Hexley the apprentice"><br><strong>Hexley the apprentice</strong><br><sub>An apprentice wizard whose spells mostly turn them into frogs and sheep. The book bites.</sub></td>
-<td align="center" valign="top"><img src="docs/readme/pet-mossback.png" width="96" height="64" alt="Mossback the pebble giant"><br><strong>Mossback the pebble giant</strong><br><sub>A gentle pebble giant who sprouts flowers, enjoys the rain and naps after any effort.</sub></td>
 </tr>
 <tr>
+<td align="center" valign="top"><img src="docs/readme/pet-mossback.png" width="96" height="64" alt="Mossback the pebble giant"><br><strong>Mossback the pebble giant</strong><br><sub>A gentle pebble giant who sprouts flowers, enjoys the rain and naps after any effort.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-sirclank.png" width="96" height="64" alt="Sir Clank"><br><strong>Sir Clank</strong><br><sub>A wind-up knight who runs down, needs winding up again and never misses tea time.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-lunette.png" width="96" height="64" alt="Lunette the moon rabbit"><br><strong>Lunette the moon rabbit</strong><br><sub>A moon rabbit who pounds rice cakes, wishes on shooting stars and naps in a crescent moon.</sub></td>
+</tr>
+<tr>
 <td align="center" valign="top"><img src="docs/readme/pet-ninja.png" width="96" height="64" alt="Kage the ninja"><br><strong>Kage the ninja</strong> · <em>included</em><br><sub>A quiet ninja who vanishes in smoke, throws shuriken, makes clones and hides in a bush.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-samurai.png" width="96" height="64" alt="Ronin the samurai"><br><strong>Ronin the samurai</strong><br><sub>A calm samurai with a lightning quick draw, a proper bow and a tea ceremony between duels.</sub></td>
 </tr>

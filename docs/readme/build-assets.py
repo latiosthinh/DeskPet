@@ -114,12 +114,28 @@ def merge_frames(frames, durations):
     return out_f, out_d
 
 
-def build_gif(src, dst, margin):
+def build_gif(src, dst, margin, fill_first=False):
     frames, src_durations = read_frames(src)
     frames = [drop_cream(f) for f in frames]
     total_src = sum(src_durations)
 
     box = union_bbox(frames)
+    if fill_first:
+        union_top = box[1]
+        for i, frame in enumerate(frames):
+            b = frame.getbbox()
+            if b and b[1] <= union_top + 2:
+                frames = frames[i:] + frames[:i]
+                src_durations = src_durations[i:] + src_durations[:i]
+                break
+    # Never start on a blank frame: GitHub shows frame 0 as a still image.
+    while frames[0].getbbox() is None:
+        if len(frames) == 1:
+            raise AssertionError(f"{dst.name}: every frame is blank")
+        src_durations[1] += src_durations[0]
+        frames.pop(0)
+        src_durations.pop(0)
+
     w, h = frames[0].size
     box = (max(0, box[0] - margin), max(0, box[1] - margin), min(w, box[2] + margin), min(h, box[3] + margin))
     cropped_size = (box[2] - box[0], box[3] - box[1])
@@ -164,6 +180,11 @@ def build_gif(src, dst, margin):
         raise AssertionError(f"{dst.name}: duration {total_out} != source {total_src}")
     if check.size != (cropped_size[0] * 2, cropped_size[1] * 2):
         raise AssertionError(f"{dst.name}: size {check.size} != 2x {cropped_size}")
+    if fill_first:
+        check.seek(0)
+        b = check.convert("RGBA").getbbox()
+        if b is None or b[1] > 2 * margin + 4:
+            raise AssertionError(f"{dst.name}: frame 0 does not fill the top: {b}")
     return check.size
 
 
@@ -198,9 +219,9 @@ def grid_html():
         lines.append(f"<!-- shelf: {shelf} -->")
         lines.append("<table>")
         row = [p for p in pets if p["category"] == shelf]
-        for start in range(0, len(row), 4):
+        for start in range(0, len(row), 3):
             lines.append("<tr>")
-            for pet in row[start:start + 4]:
+            for pet in row[start:start + 3]:
                 name = html.escape(pet["name"], quote=False)
                 desc = html.escape(pet["description"], quote=False)
                 builtin = " · <em>included</em>" if pet.get("builtin") else ""
@@ -229,7 +250,7 @@ def main():
     ]
     for dst_name, pet_id, trick in tricks:
         dst = OUT / dst_name
-        report(dst_name, dst, build_gif(PETS / pet_id / f"{trick}.gif", dst, 2))
+        report(dst_name, dst, build_gif(PETS / pet_id / f"{trick}.gif", dst, 2, fill_first=True))
 
     pets = json.loads((ROOT / "website" / "pets.json").read_text(encoding="utf-8"))
     for pet in pets:
