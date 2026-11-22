@@ -1,0 +1,19 @@
+---
+import { SITE } from '../lib/site';
+---
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>DeskPet is free, with no ads, no cookies and no accounts. Built by the DeskPet community.</p>
+    <nav aria-label="Footer" class="footer-nav">
+      <a href="/pets/">Pets</a>
+      <a href="/authors/">Authors</a>
+      <a href="/support/">Support</a>
+      <a href="/contribute/">Make a pet</a>
+      <a href={SITE.repo} target="_blank" rel="noopener noreferrer">
+        Source on GitHub<span class="visually-hidden"> (opens in a new tab)</span>
+      </a>
+      <a href={SITE.release}>Download</a>
+    </nav>
+  </div>
+</footer>

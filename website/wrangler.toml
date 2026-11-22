@@ -1,0 +1,14 @@
+﻿# Cloudflare Pages project for the DeskPet pet website.
+# Run wrangler from this folder (website/).
+name = "deskpet"
+compatibility_date = "2026-06-01"
+# `npm run build` writes the static site to dist/ (Astro). public/ holds the pet GIFs,
+# .deskpet modules and donation QR that get copied into dist/.
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "deskpet"
+# Replace with the id printed by `npx wrangler d1 create deskpet`.
+# Local dev (`wrangler pages dev`) works with this placeholder.
+database_id = "00000000-0000-0000-0000-000000000000"

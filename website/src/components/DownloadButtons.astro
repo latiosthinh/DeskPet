@@ -1,0 +1,21 @@
+---
+import { SITE } from '../lib/site';
+---
+
+<div class="download-row">
+  <a class="btn btn-secondary os-mac" href={SITE.release} data-os-link="mac">
+    <span class="os-label">Download for macOS</span>
+    <span class="os-meta">
+      <span class="os-sub">.dmg</span>
+      <span class="os-flag">Recommended</span>
+    </span>
+  </a>
+  <a class="btn btn-secondary os-windows" href={SITE.release} data-os-link="windows">
+    <span class="os-label">Download for Windows</span>
+    <span class="os-meta">
+      <span class="os-sub">.zip</span>
+      <span class="os-flag">Recommended</span>
+    </span>
+  </a>
+</div>
+<p class="fine-print">Free for Mac and Windows. Both buttons open the latest GitHub release.</p>

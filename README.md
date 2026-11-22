@@ -54,12 +54,12 @@ On a Mac, click the pet's face in the menu bar, or right-click the pet. On Windo
 Requires the Xcode Command Line Tools and [Rust](https://rustup.rs). macOS 13 or later.
 
 ```bash
-mac/build.sh          # build and install to ~/Applications
-mac/build.sh --dmg    # build a release disk image in build/
+macos/build.sh          # build and install to ~/Applications
+macos/build.sh --dmg    # build a release disk image in build/
 open ~/Applications/DeskPet.app --args --demo     # cycle through every activity, reminder and trick
 open ~/Applications/DeskPet.app --args --tricks   # only the current pet's tricks
 open ~/Applications/DeskPet.app --args --typing   # what the current pet does while you type
-mac/build-pets.sh                                  # every pet, into build/pets
+macos/build-pets.sh                                  # every pet, into build/pets
 build/DeskPet.app/Contents/MacOS/DeskPet --pets build/pets --pet witcher --tricks   # try one without adding it
 ```
 
@@ -97,22 +97,22 @@ build\DeskPet.exe --pets build\pets --pet witcher --tricks                    # 
 
 ## How it fits together
 
-The apps and the pets are one Cargo workspace at the top of the repo. Each pet is its own crate in `pets/<id>` (one file per trick), written against the pet API in `sdk/petkit`, and built as a WebAssembly module. `host/` runs those modules in the wasmi interpreter and draws what they render into a pixel buffer. Both apps use it: the Windows app directly, the Mac app through a small C interface (`mac/core`, declared in `mac/core/deskpet.h`). Each app only adds the native parts: window, menus, mouse, reminders, settings, text and HTTP.
+The apps and the pets are one Cargo workspace at the top of the repo. Each pet is its own crate in `pets/<id>` (one file per trick), written against the pet API in `shared/petkit`, and built as a WebAssembly module. `shared/host/` runs those modules in the wasmi interpreter and draws what they render into a pixel buffer. Both apps use it: the Windows app directly, the Mac app through a small C interface (`macos/core`, declared in `macos/core/deskpet.h`). Each app only adds the native parts: window, menus, mouse, reminders, settings, text and HTTP.
 
 To make a pet of your own, see [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md): `windows\new-pet.ps1` starts one from a template, `windows\try-pet.ps1` shows it on the taskbar and `windows\check-pet.ps1` checks it and makes its GIFs.
 
-`DESKPET_SITE` points either app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `site/` locally.
+`DESKPET_SITE` points either app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `website/` locally.
 
 ## Repository layout
 
 | Folder | What's in it |
 | --- | --- |
-| `mac/` | The Mac app (`main.swift`), `build.sh` and `build-pets.sh`. `core/` is the C interface to the shared host |
+| `macos/` | The Mac app (`main.swift`), `build.sh` and `build-pets.sh`. `core/` is the C interface to the shared host |
 | `windows/` | The Windows app (Rust), `build.ps1`, and the pet scripts (`new-pet.ps1`, `try-pet.ps1`, `check-pet.ps1`, `build-pets.ps1`). `src/bin/petshot` is the pet checker and GIF maker |
-| `host/` | What both apps share: running pet modules, drawing them, and the list of pets (built in, added, updated) |
-| `sdk/petkit/` | The pet API every pet is written against, and the shared behaviour (walking, sleeping, reminders, picking tricks) |
+| `shared/host/` | What both apps share: running pet modules, drawing them, and the list of pets (built in, added, updated) |
+| `shared/petkit/` | The pet API every pet is written against, and the shared behaviour (walking, sleeping, reminders, picking tricks) |
 | `pets/` | One Rust crate per pet: its art, one file per trick, and what it does while you type. `pets/_template` is the starting point for a new pet ([CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md)) |
-| `site/` | The pet website: gallery, pet pages, downloads and counters |
+| `website/` | The pet website: gallery, pet pages, downloads and counters |
 | `prototypes/` | HTML mock-ups of the pets and their tricks |
 | `.github/workflows/` | The build check and the release build |
 

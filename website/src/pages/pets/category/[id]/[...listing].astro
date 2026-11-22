@@ -1,0 +1,66 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Breadcrumbs from '../../../../components/Breadcrumbs.astro';
+import CategoryNav from '../../../../components/CategoryNav.astro';
+import Pagination from '../../../../components/Pagination.astro';
+import PetGrid from '../../../../components/PetGrid.astro';
+import Base from '../../../../layouts/Base.astro';
+import { breadcrumbSchema, listingRecords, type ListingRecord } from '../../../../lib/catalogue';
+import { categories } from '../../../../lib/site';
+
+interface Props {
+  record: ListingRecord;
+}
+
+export const getStaticPaths = (() =>
+  listingRecords()
+    .filter((record) => record.scope.kind === 'category')
+    .map((record) => ({
+      params: {
+        id: record.scope.kind === 'category' ? record.scope.id : '',
+        listing: record.page === 1 ? undefined : `page/${record.page}`,
+      },
+      props: { record },
+    }))) satisfies GetStaticPaths;
+
+const { record } = Astro.props;
+const { page, pageCount, total } = record;
+const categoryId = record.scope.kind === 'category' ? record.scope.id : '';
+const category = categories.find((entry) => entry.id === categoryId)!;
+const items = [
+  { label: 'All pets', path: '/pets/' },
+  { label: category.title, path: record.basePath },
+  ...(page > 1 ? [{ label: `Page ${page}`, path: record.path }] : []),
+];
+const title =
+  page === 1 ? `${category.title} · DeskPet` : `${category.title} · Page ${page} · DeskPet`;
+const description =
+  `${category.blurb} ${total} pixel pets for your desktop.` +
+  (page > 1 ? ` Page ${page} of ${pageCount}.` : '');
+---
+
+<Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
+  <section class="wrap section-listing">
+    <Breadcrumbs items={items} />
+    <div class="listing-head">
+      <h1 class="page-title">{category.title}</h1>
+      <p class="lede">{category.blurb}</p>
+    </div>
+    <CategoryNav active={category.id} />
+    <p class="count" data-count aria-live="polite">
+      {total} {total === 1 ? 'pet' : 'pets'}
+    </p>
+    <PetGrid pets={record.pets} compact />
+    <Pagination record={record} />
+  </section>
+</Base>
+
+<style>
+  .listing-head {
+    margin-top: var(--spacing-cozy);
+  }
+
+  .count[data-count] {
+    margin-top: var(--spacing-snug);
+  }
+</style>

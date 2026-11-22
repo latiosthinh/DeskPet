@@ -1,0 +1,95 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import Pagination from '../../../components/Pagination.astro';
+import PetGrid from '../../../components/PetGrid.astro';
+import Base from '../../../layouts/Base.astro';
+import { breadcrumbSchema, listingRecords, type ListingRecord } from '../../../lib/catalogue';
+import { authorGroups, categories, categoryTitle } from '../../../lib/site';
+
+interface Props {
+  record: ListingRecord;
+}
+
+export const getStaticPaths = (() =>
+  listingRecords()
+    .filter((record) => record.scope.kind === 'author')
+    .map((record) => ({
+      params: {
+        slug: record.scope.kind === 'author' ? record.scope.slug : '',
+        listing: record.page === 1 ? undefined : `page/${record.page}`,
+      },
+      props: { record },
+    }))) satisfies GetStaticPaths;
+
+const { record } = Astro.props;
+const { page, pageCount, total } = record;
+const slug = record.scope.kind === 'author' ? record.scope.slug : '';
+const group = authorGroups().find((entry) => entry.slug === slug)!;
+const present = new Set(group.pets.map((pet) => pet.category));
+const authorCategories = categories
+  .filter((category) => present.has(category.id))
+  .map((category) => ({
+    id: category.id,
+    title: categoryTitle(category.id),
+    count: group.pets.filter((pet) => pet.category === category.id).length,
+  }));
+const items = [
+  { label: 'Authors', path: '/authors/' },
+  { label: group.name, path: record.basePath },
+  ...(page > 1 ? [{ label: `Page ${page}`, path: record.path }] : []),
+];
+const title =
+  page === 1 ? `Pets by ${group.name} · DeskPet` : `Pets by ${group.name} · Page ${page} · DeskPet`;
+const description =
+  `Pixel pets made by ${group.name}. ${total} ${total === 1 ? 'pet' : 'pets'} for your desktop.` +
+  (page > 1 ? ` Page ${page} of ${pageCount}.` : '');
+---
+
+<Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
+  <section class="wrap section-listing">
+    <Breadcrumbs items={items} />
+    <div class="listing-head">
+      <span class="author-avatar" aria-hidden="true">
+        {group.name.charAt(0).toUpperCase()}
+      </span>
+      <div>
+        <h1 class="page-title">{group.name}</h1>
+        <div class="author-meta">
+          <span class="count" data-count aria-live="polite">
+            {total} {total === 1 ? 'pet' : 'pets'}
+          </span>
+          {authorCategories.map((category) => (
+            <a class="cat-chip" href={`/pets/?author=${slug}&category=${category.id}`}>
+              {category.title}
+              <span class="cat-count">{category.count}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+    <PetGrid pets={record.pets} compact />
+    <Pagination record={record} />
+  </section>
+</Base>
+
+<style>
+  .listing-head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-snug);
+    margin-top: var(--spacing-cozy);
+  }
+
+  .listing-head > div {
+    min-width: 0;
+  }
+
+  .author-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-snug);
+  }
+</style>

@@ -1,0 +1,255 @@
+---
+import type { GetStaticPaths } from 'astro';
+import AnimatedMedia from '../../components/AnimatedMedia.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import SupportButton from '../../components/SupportButton.astro';
+import Base from '../../layouts/Base.astro';
+import { breadcrumbSchema } from '../../lib/catalogue';
+import {
+  INCLUDED_LABEL,
+  SITE,
+  absoluteUrl,
+  authorSlug,
+  categoryTitle,
+  formatBytes,
+  formatDuration,
+  neighbors,
+  petImageAlt,
+  pets,
+  type Pet,
+} from '../../lib/site';
+
+interface Props {
+  pet: Pet;
+}
+
+export const getStaticPaths = (() =>
+  pets.map((pet) => ({ params: { id: pet.id }, props: { pet } }))) satisfies GetStaticPaths;
+
+const { pet } = Astro.props;
+const path = `/pets/${pet.id}/`;
+const category = categoryTitle(pet.category);
+const authorAnchor = `/authors/${authorSlug(pet.author)}/`;
+const size = formatBytes(pet.fileSize);
+const { previous, next } = neighbors(pet.id);
+const items = [
+  { label: 'All pets', path: '/pets/' },
+  { label: category, path: `/pets/category/${pet.category}/` },
+  { label: pet.name, path },
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: pet.name,
+    description: pet.description,
+    url: absoluteUrl(path),
+    image: absoluteUrl(pet.og),
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'macOS, Windows',
+    softwareVersion: pet.version,
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    author: { '@type': 'Organization', name: pet.author },
+    isPartOf: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE.url },
+  },
+  breadcrumbSchema(items),
+];
+---
+
+<Base
+  title={`${pet.name} · DeskPet`}
+  description={pet.description}
+  path={path}
+  image={pet.og}
+  schema={schema}
+>
+  <div class="wrap">
+    <Breadcrumbs items={items} />
+
+    <section class="pet-hero">
+      <div class="panel pet-stage">
+        <div class="pet-scene">
+          <AnimatedMedia
+            media={pet.hero}
+            alt={petImageAlt(pet)}
+            name={`${pet.name} the hero animation`}
+            eager
+            frameClass="frame-hero"
+          />
+          <p class="scene-bubble pet-bubble">
+            <strong>Hi, I'm {pet.shortName}!</strong>
+            <span>Nice to meet you.</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="pet-copy">
+        <p class="badge">
+          {category}
+          {pet.builtin ? ` · ${INCLUDED_LABEL}` : ' · Add-on'}
+        </p>
+        <h1 class="page-title">{pet.name}</h1>
+        <p class="lede">{pet.description}</p>
+
+        <dl class="pet-meta">
+          <div>
+            <dt>Made by</dt>
+            <dd>
+              <a href={authorAnchor}>{pet.author}</a>
+            </dd>
+          </div>
+          <div>
+            <dt>Version</dt>
+            <dd>{pet.version}</dd>
+          </div>
+          <div>
+            <dt>Tricks</dt>
+            <dd>{pet.trickCount}</dd>
+          </div>
+          {!pet.builtin && size ? (
+            <div>
+              <dt>File size</dt>
+              <dd>{size}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <div class="pet-action">
+          {pet.builtin ? (
+            <div class="included-box">
+              <span class="badge">{INCLUDED_LABEL}</span>
+              <p>
+                {pet.shortName} is already inside DeskPet. <a href={SITE.release}>Get the app</a>{' '}
+                and pick {pet.shortName} from the pet list.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <a
+                class="btn btn-primary"
+                href={`/download/${pet.id}`}
+                download={`${pet.id}.deskpet`}
+              >
+                Download {pet.shortName}
+              </a>
+              <p class="fine-print">
+                {pet.id}.deskpet{size ? ` · ${size}` : ''} · version {pet.version}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <aside class="support-prompt">
+          <SupportButton />
+          <p>Enjoying {pet.shortName}? Help keep DeskPet free.</p>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <section class="wrap section" aria-labelledby="tricks">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Tricks</p>
+        <h2 id="tricks" class="section-title">
+          Every little move
+        </h2>
+      </div>
+      <p class="fine-print">Each clip loops. Pause any of them.</p>
+    </div>
+    <ul class="trick-grid">
+      {pet.tricks.map((trick) => (
+        <li>
+          <figure class="tile">
+            <AnimatedMedia
+              media={trick}
+              alt=""
+              name={`${pet.name}: ${trick.title}`}
+              frameClass="frame-trick"
+            />
+            <figcaption class="tile-foot">
+              <span class="tile-title">{trick.title}</span>
+              <span class="duration">{formatDuration(trick.durationMs)}</span>
+            </figcaption>
+          </figure>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <div class="wrap pet-info">
+    <section class="panel step-panel" aria-labelledby="install">
+      <h2 id="install" class="card-title">
+        {pet.builtin ? `Get ${pet.shortName}` : 'How to install'}
+      </h2>
+      {pet.builtin ? (
+        <ol class="step-list">
+          <li>
+            <span>
+              <a href={SITE.release}>Download DeskPet</a>: the <strong>.dmg</strong> for a Mac (drag
+              DeskPet to Applications), or the <strong>windows .zip</strong> (unzip it and run
+              DeskPet.exe).
+            </span>
+          </li>
+          <li>
+            <span>
+              {pet.shortName} is already inside. Pick {pet.shortName} from the DeskPet menu and say
+              hello.
+            </span>
+          </li>
+        </ol>
+      ) : (
+        <ol class="step-list">
+          <li>
+            <span>
+              Have <a href={SITE.release}>DeskPet</a> running: the <strong>.dmg</strong> on macOS or
+              the <strong>.zip</strong> on Windows.
+            </span>
+          </li>
+          <li>
+            <span>
+              Download <strong>{pet.id}.deskpet</strong> with the button above.
+            </span>
+          </li>
+          <li>
+            <span>Double-click the file, or drag it and drop it on your pet.</span>
+          </li>
+          <li>
+            <span>{pet.shortName} joins your desktop and stays in the pet list for next time.</span>
+          </li>
+        </ol>
+      )}
+      <p class="fine-print step-note">
+        DeskPet is free, with no ads, no cookies and no accounts. Pets are small modules anyone can
+        build, so the shelf keeps growing.{' '}
+        <a class="text-link" href="/contribute/">
+          Make a pet
+        </a>
+        .
+      </p>
+    </section>
+  </div>
+
+  <nav class="wrap" aria-label="More pets">
+    <div class="pet-nav-grid">
+      {previous ? (
+        <a class="panel pet-nav-card" href={`/pets/${previous.id}/`} rel="prev">
+          <span class="card-meta">Previous pet</span>
+          <span class="card-title">{previous.name}</span>
+        </a>
+      ) : null}
+      {next ? (
+        <a class="panel pet-nav-card" href={`/pets/${next.id}/`} rel="next">
+          <span class="card-meta">Next pet</span>
+          <span class="card-title">{next.name}</span>
+        </a>
+      ) : null}
+    </div>
+  </nav>
+
+  <script is:inline define:vars={{ id: pet.id }}>
+    fetch('/api/visit/' + id, { method: 'POST', keepalive: true }).catch(function () {});
+  </script>
+</Base>

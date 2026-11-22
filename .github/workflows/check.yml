@@ -5,7 +5,7 @@ name: Build check
 
 on:
   push:
-    paths: ["mac/**", "windows/**", "host/**", "sdk/**", "pets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/check.yml"]
+    paths: ["macos/**", "windows/**", "shared/**", "pets/**", "website/**", "Cargo.toml", "Cargo.lock", ".github/workflows/check.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: mac/build.sh
+        run: macos/build.sh
       - name: Run the shared host's tests
         run: cargo test --release -p deskpet-host -p deskpet-mac
       - name: The app starts, runs a pet and keeps running
@@ -57,3 +57,33 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File windows\new-pet.ps1 ci-template "Template Check" -Author CI
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.1"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install (committed lockfile)
+        run: npm ci
+      - name: Install the browser for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Lint
+        run: npm run lint
+      - name: Format check
+        run: npm run format:check
+      - name: Build (fresh checkout uses clearly marked fallback art)
+        run: npm run build
+      - name: Unit tests
+        run: npm run test:unit
+      - name: End-to-end and axe tests
+        run: npm run test:e2e
+      - name: Backend against wrangler pages dev + local D1 (no secrets)
+        run: npm run backend

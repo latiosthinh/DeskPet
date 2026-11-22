@@ -1,0 +1,97 @@
+---
+import type { ListingRecord } from '../lib/catalogue';
+import { pagePath } from '../lib/catalogue';
+
+interface Props {
+  record: ListingRecord;
+}
+
+const { record } = Astro.props;
+const { basePath, page, pageCount } = record;
+const pages = Array.from({ length: pageCount }, (_, index) => index + 1);
+---
+
+<nav class="pagination" aria-label="Pagination" data-pagination hidden={pageCount <= 1}>
+  {pageCount > 1 ? (
+    <>
+      <span class="pagination-status">
+        Page {page} of {pageCount}
+      </span>
+      {page > 1 ? (
+        <a
+          href={pagePath(basePath, page - 1)}
+          rel="prev"
+          data-page={page - 1}
+          aria-label="Previous page"
+        >
+          Previous
+        </a>
+      ) : null}
+      {pages.map((n) => (
+        <a
+          href={pagePath(basePath, n)}
+          data-page={n}
+          aria-current={n === page ? 'page' : undefined}
+        >
+          {n}
+        </a>
+      ))}
+      {page < pageCount ? (
+        <a
+          href={pagePath(basePath, page + 1)}
+          rel="next"
+          data-page={page + 1}
+          aria-label="Next page"
+        >
+          Next
+        </a>
+      ) : null}
+    </>
+  ) : null}
+</nav>
+
+<style is:global>
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-room);
+  }
+
+  .pagination[hidden] {
+    display: none;
+  }
+
+  .pagination-status {
+    color: var(--muted);
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+  }
+
+  .pagination a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding-inline: var(--spacing-snug);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .pagination a[aria-current='page'] {
+    border-color: var(--brand);
+    background: var(--badge-bg);
+    color: var(--badge-ink);
+  }
+
+  .pagination a:hover {
+    border-color: var(--brand);
+  }
+</style>

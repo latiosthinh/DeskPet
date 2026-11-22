@@ -1,0 +1,182 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import CatalogueControls from '../../components/CatalogueControls.astro';
+import CategoryNav from '../../components/CategoryNav.astro';
+import Pagination from '../../components/Pagination.astro';
+import PetCard from '../../components/PetCard.astro';
+import PetGrid from '../../components/PetGrid.astro';
+import Base from '../../layouts/Base.astro';
+import {
+  CATALOGUE_DESCRIPTION,
+  breadcrumbSchema,
+  listingRecords,
+  type ListingRecord,
+} from '../../lib/catalogue';
+import { pets } from '../../lib/site';
+
+interface Props {
+  record: ListingRecord;
+}
+
+export const getStaticPaths = (() =>
+  listingRecords()
+    .filter((record) => record.scope.kind === 'all')
+    .map((record) => ({
+      params: { listing: record.page === 1 ? undefined : `page/${record.page}` },
+      props: { record },
+    }))) satisfies GetStaticPaths;
+
+const { record } = Astro.props;
+const { page, pageCount, total } = record;
+const items =
+  page === 1
+    ? [{ label: 'All pets', path: '/pets/' }]
+    : [
+        { label: 'All pets', path: '/pets/' },
+        { label: `Page ${page}`, path: record.path },
+      ];
+const title = page === 1 ? 'Pets · DeskPet' : `Pets · Page ${page} · DeskPet`;
+const description = CATALOGUE_DESCRIPTION + (page > 1 ? ` Page ${page} of ${pageCount}.` : '');
+---
+
+<Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
+  <section class="wrap section-listing">
+    <div data-crumbs>
+      <Breadcrumbs items={items} />
+    </div>
+    <div class="listing-head">
+      <h1 class="page-title">Pets</h1>
+      <p class="lede">Search and filter the whole shelf, or browse by category.</p>
+    </div>
+    <CategoryNav />
+    <CatalogueControls />
+    <div class="results-row">
+      <p class="count" data-count aria-live="polite">
+        {total} {total === 1 ? 'pet' : 'pets'}
+      </p>
+      <div class="chips-row" data-chips-row hidden>
+        <ul class="chips" data-chip-list aria-label="Active filters"></ul>
+        <button type="button" class="clear-all" data-clear>
+          Clear all
+        </button>
+      </div>
+    </div>
+    <PetGrid pets={record.pets} id="catalogue-grid" compact />
+    <div class="empty-state" data-empty hidden>
+      <p class="lede">No pets match your search.</p>
+      <button type="button" class="btn btn-secondary" data-reset>
+        Reset filters
+      </button>
+    </div>
+    <Pagination record={record} />
+    <template id="pet-card-template">
+      <PetCard pet={pets[0]} template />
+    </template>
+  </section>
+</Base>
+
+<script>
+  import { initCatalogue } from '../../lib/catalogue-client';
+
+  initCatalogue();
+</script>
+
+<style>
+  .listing-head {
+    margin-top: var(--spacing-cozy);
+  }
+
+  .empty-state {
+    margin-top: var(--spacing-room);
+  }
+
+  .empty-state[hidden] {
+    display: none;
+  }
+</style>
+
+<style is:global>
+  .results-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-snug);
+  }
+
+  .results-row .count {
+    margin: 0;
+  }
+
+  .chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    max-width: 100%;
+  }
+
+  .chips-row[hidden] {
+    display: none;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-hair);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-width: 100%;
+  }
+
+  .chips li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    padding: var(--spacing-hair) var(--spacing-tight);
+    font-size: var(--text-small);
+    font-weight: 650;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .chips li > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .chips li button {
+    display: inline-flex;
+    flex: none;
+    min-width: 2rem;
+    min-height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--radius-mini);
+    background: none;
+    color: var(--ink);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .chips li button:hover {
+    background: var(--badge-bg);
+  }
+
+  .clear-all {
+    border: 0;
+    background: none;
+    color: var(--brand-strong);
+    font-weight: 700;
+    font-size: var(--text-small);
+    min-height: 1.5rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>

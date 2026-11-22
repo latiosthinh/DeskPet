@@ -1,0 +1,71 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../lib/site';
+
+const description =
+  'Make your own DeskPet pet: draw a tiny pixel friend, give it tricks and share it with everyone.';
+---
+
+<Base title="Make a pet · DeskPet" description={description} path="/contribute/">
+  <div class="wrap">
+    <section class="prose">
+      <p class="badge">Open to everyone</p>
+      <h1>Make a pet</h1>
+      <p>
+        Every pet on this site is a single small file. Anyone can make one, and good ones get a page
+        here next to the rest, credited to you.
+      </p>
+
+      <h2>What a pet is</h2>
+      <p>
+        A pet is a <code>.deskpet</code> file: a tiny WebAssembly module built with the DeskPet pet
+        SDK. It holds the pixel art, the walk and sleep poses, and the tricks. DeskPet runs it
+        safely in a sandbox, so a pet can only draw itself and react to your desktop.
+      </p>
+
+      <h2>The path in three steps</h2>
+      <ol class="step-list">
+        <li>
+          <span>
+            <strong>Read the guide.</strong> The{' '}
+            <a href={SITE.contributing}>pet guide (CONTRIBUTING-PETS.md)</a> covers the SDK, the
+            file layout and the rules the checker enforces.
+          </span>
+        </li>
+        <li>
+          <span>
+            <strong>Draw and build.</strong> Start from the template, draw your pet and its tricks,
+            then build the <code>.deskpet</code> file and try it on your own desktop.
+          </span>
+        </li>
+        <li>
+          <span>
+            <strong>Send it in.</strong> Open a pull request. Once it is merged, your pet gets its
+            own page here with GIFs of every trick and your name on it.
+          </span>
+        </li>
+      </ol>
+
+      <p>
+        <a class="btn btn-primary" href={SITE.contributing}>
+          Read the pet guide
+        </a>
+      </p>
+
+      <h2>A few house rules</h2>
+      <ul>
+        <li>Original art only, or art you have the rights to share.</li>
+        <li>Keep it friendly: pets live on people's work screens.</li>
+        <li>Small is good. Most pets are a 16×16 grid with a handful of colours.</li>
+        <li>Every pet must pass the checker before it can join the shelf.</li>
+      </ul>
+
+      <h2>Good companions</h2>
+      <p>
+        Make something you would like to see out of the corner of your eye all day: a creature with
+        a tiny hobby, a hero with one funny flaw, or a legend with a dramatic entrance. The best
+        pets do one small thing very well.
+      </p>
+    </section>
+  </div>
+</Base>

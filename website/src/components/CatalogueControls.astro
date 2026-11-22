@@ -1,0 +1,263 @@
+---
+import { INCLUDED_LABEL, authorGroups } from '../lib/site';
+
+const authors = authorGroups();
+---
+
+<div class="catalogue-controls" data-controls>
+  <div class="controls-row">
+    <div class="field field-search">
+      <label for="catalogue-q" class="visually-hidden search-label">
+        Search pets
+      </label>
+      <span class="search-control">
+        <svg class="search-icon" aria-hidden="true" viewBox="0 0 20 20" focusable="false">
+          <path
+            d="M8.5 3a5.5 5.5 0 0 1 4.4 8.8l3.9 3.9-1.2 1.2-3.9-3.9A5.5 5.5 0 1 1 8.5 3Zm0 1.8a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4Z"
+            fill="currentColor"
+          ></path>
+        </svg>
+        <input
+          id="catalogue-q"
+          data-q
+          type="search"
+          placeholder="Search by name, description or author"
+          autocomplete="off"
+        />
+      </span>
+    </div>
+    <button
+      type="button"
+      class="filters-toggle"
+      data-filters-toggle
+      aria-expanded="false"
+      aria-controls="catalogue-filters"
+    >
+      <svg class="filters-icon" aria-hidden="true" viewBox="0 0 20 20" focusable="false">
+        <path
+          d="M3 5h14M6 10h8M8 15h4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        ></path>
+      </svg>
+      <span>Filters</span>
+      <span class="filters-count" data-filter-count hidden>
+        0
+      </span>
+    </button>
+  </div>
+  <div class="filters-panel" id="catalogue-filters" data-filters-panel>
+    <div class="field field-author">
+      <label for="catalogue-author">Author</label>
+      <select id="catalogue-author" data-author>
+        <option value="">All authors</option>
+        {authors.map((author) => (
+          <option value={author.slug}>{author.name}</option>
+        ))}
+      </select>
+    </div>
+    <div class="field field-type">
+      <label for="catalogue-type">Type</label>
+      <select id="catalogue-type" data-type>
+        <option value="">All types</option>
+        <option value="included">{INCLUDED_LABEL}</option>
+        <option value="addon">Add-on</option>
+      </select>
+    </div>
+  </div>
+  <div class="field field-sort">
+    <label for="catalogue-sort" class="visually-hidden sort-label">
+      Sort by
+    </label>
+    <select id="catalogue-sort" data-sort>
+      <option value="az">A–Z</option>
+      <option value="newest">Newest</option>
+      <option value="tricks">Most tricks</option>
+    </select>
+  </div>
+</div>
+
+<style>
+  .catalogue-controls {
+    display: none;
+  }
+
+  html.js .catalogue-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--spacing-tight);
+    visibility: hidden;
+    margin-top: var(--spacing-cozy);
+  }
+
+  html.js .catalogue-controls[data-ready='true'] {
+    visibility: visible;
+  }
+
+  .controls-row {
+    display: contents;
+  }
+
+  .field {
+    display: grid;
+    min-width: 0;
+    gap: var(--spacing-hair);
+  }
+
+  .field label {
+    font-size: var(--text-small);
+    font-weight: 650;
+  }
+
+  .field input,
+  .field select {
+    min-height: 2.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    padding-inline: var(--spacing-snug);
+    font-size: var(--text-body);
+    width: 100%;
+  }
+
+  .field-search {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
+  .search-control {
+    position: relative;
+    display: block;
+  }
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: var(--spacing-snug);
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--muted);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .field-search input {
+    padding-left: var(--spacing-loose);
+  }
+
+  .field-sort {
+    flex: 1 1 0;
+    order: 3;
+  }
+
+  .filters-toggle {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-tight);
+    order: 2;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    padding-inline: var(--spacing-snug);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .filters-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .filters-count {
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .filters-count::before {
+    content: '·';
+    margin-right: var(--spacing-hair);
+  }
+
+  .filters-panel {
+    display: none;
+    flex: 1 1 100%;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-tight);
+    order: 4;
+  }
+
+  .filters-panel[data-open='true'] {
+    display: grid;
+  }
+
+  @media (min-width: 641px) {
+    html.js .catalogue-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--spacing-tight);
+    }
+
+    .controls-row,
+    .filters-panel,
+    .filters-panel[data-open='true'] {
+      display: contents;
+    }
+
+    .field-search {
+      grid-column: 1 / -1;
+      order: 1;
+    }
+
+    .field-author {
+      order: 2;
+    }
+
+    .field-type {
+      order: 3;
+    }
+
+    .field-sort {
+      order: 4;
+    }
+
+    .sort-label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
+    }
+
+    .filters-toggle {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html.js .catalogue-controls {
+      display: flex;
+      align-items: end;
+      gap: var(--spacing-tight);
+    }
+
+    .field-search {
+      flex: 1 1 auto;
+    }
+
+    .field-author,
+    .field-type,
+    .field-sort {
+      flex: 0 0 auto;
+    }
+  }
+</style>

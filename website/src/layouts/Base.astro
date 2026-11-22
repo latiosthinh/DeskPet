@@ -1,0 +1,272 @@
+---
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import SupportDialog from '../components/SupportDialog.astro';
+import { SITE, absoluteUrl } from '../lib/site';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  image?: string;
+  type?: 'website' | 'article';
+  schema?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  path,
+  image = '/og-default.png',
+  type = 'website',
+  schema,
+  noindex,
+} = Astro.props;
+const canonical = absoluteUrl(path);
+const ogImage = absoluteUrl(image);
+const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : null;
+const favicon = '/pets/mochi/hero.sprite.png';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+        var stored = null;
+        try {
+          stored = localStorage.getItem('deskpet-theme');
+        } catch (error) {
+          stored = null;
+        }
+        var dark = stored
+          ? stored === 'dark'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) root.classList.add('dark');
+        root.dataset.theme = dark ? 'dark' : 'light';
+        var platform =
+          (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        root.dataset.os = /mac/i.test(platform)
+          ? 'mac'
+          : /win/i.test(platform)
+            ? 'windows'
+            : 'other';
+      })();
+    </script>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : null}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={favicon} />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <meta name="generator" content={Astro.generator} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content={`${SITE.name} pixel pets`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {schemaJson ? <script type="application/ld+json" set:html={schemaJson} /> : null}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">
+      Skip to content
+    </a>
+    <Header />
+    <SupportDialog />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      const root = document.documentElement;
+      const themeButton = document.querySelector('[data-theme-toggle]');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      const animated = Array.from(document.querySelectorAll('[data-anim]'));
+      const visible = new Set();
+      const userPaused = new WeakSet();
+
+      function storedTheme() {
+        try {
+          return localStorage.getItem('deskpet-theme');
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function paintTheme(dark) {
+        root.classList.toggle('dark', dark);
+        root.dataset.theme = dark ? 'dark' : 'light';
+        if (themeButton) {
+          themeButton.setAttribute(
+            'aria-label',
+            dark ? 'Switch to light theme' : 'Switch to dark theme',
+          );
+          themeButton.setAttribute('aria-pressed', String(dark));
+        }
+      }
+
+      paintTheme(root.classList.contains('dark'));
+
+      themeButton?.addEventListener('click', () => {
+        const dark = !root.classList.contains('dark');
+        paintTheme(dark);
+        try {
+          localStorage.setItem('deskpet-theme', dark ? 'dark' : 'light');
+        } catch (error) {
+          /* private mode: the choice still lasts for this page */
+        }
+      });
+
+      darkScheme.addEventListener('change', (event) => {
+        if (!storedTheme()) paintTheme(event.matches);
+      });
+
+      function imageOf(element) {
+        return element.querySelector('img');
+      }
+
+      function buttonOf(element) {
+        return element.parentElement?.querySelector('[data-anim-toggle]') ?? null;
+      }
+
+      function labelButton(element, playing) {
+        const button = buttonOf(element);
+        if (!button) return;
+        const name = element.dataset.name || 'animation';
+        button.dataset.playing = String(playing);
+        button.setAttribute('aria-label', playing ? `Pause ${name}` : `Play ${name}`);
+        const text = button.querySelector('[data-label]');
+        if (text) text.textContent = playing ? 'Pause' : 'Play';
+      }
+
+      function play(element, force = false) {
+        if ((!force && reduceMotion.matches) || userPaused.has(element)) return;
+        const image = imageOf(element);
+        if (!image || !image.dataset.gif) return;
+        if (image.getAttribute('src') !== image.dataset.gif) image.src = image.dataset.gif;
+        element.dataset.playing = 'true';
+        labelButton(element, true);
+      }
+
+      function still(element) {
+        const image = imageOf(element);
+        if (!image || !image.dataset.poster) return;
+        if (image.getAttribute('src') !== image.dataset.poster) image.src = image.dataset.poster;
+        element.dataset.playing = 'false';
+        labelButton(element, false);
+      }
+
+      for (const element of animated) {
+        labelButton(element, false);
+        buttonOf(element)?.addEventListener('click', () => {
+          if (element.dataset.playing === 'true') {
+            userPaused.add(element);
+            still(element);
+          } else {
+            userPaused.delete(element);
+            play(element, true);
+          }
+        });
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const element = entry.target;
+            if (entry.isIntersecting) {
+              visible.add(element);
+              if (element.dataset.auto !== 'manual') play(element);
+            } else {
+              visible.delete(element);
+              if (element.dataset.playing === 'true') still(element);
+            }
+          }
+        },
+        { rootMargin: '160px 0px' },
+      );
+
+      for (const element of animated) observer.observe(element);
+
+      for (const element of animated) {
+        if (element.dataset.auto === 'eager' && !reduceMotion.matches) play(element);
+      }
+
+      reduceMotion.addEventListener('change', (event) => {
+        if (event.matches) {
+          for (const element of animated) still(element);
+        } else {
+          for (const element of animated) {
+            if (visible.has(element)) play(element);
+          }
+        }
+      });
+
+      const supportDialog = document.querySelector('[data-support-dialog]');
+      let supportTrigger = null;
+
+      function closeSupport() {
+        if (supportDialog && supportDialog.open) supportDialog.close();
+      }
+
+      for (const link of document.querySelectorAll('[data-support-open]')) {
+        link.addEventListener('click', (event) => {
+          if (!(supportDialog instanceof HTMLDialogElement)) return;
+          if (
+            event instanceof MouseEvent &&
+            (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+          ) {
+            return;
+          }
+          event.preventDefault();
+          supportTrigger = link;
+          supportDialog.showModal();
+          supportDialog.querySelector('[data-support-close], button')?.focus();
+        });
+      }
+
+      supportDialog?.addEventListener('click', (event) => {
+        if (event.target === supportDialog) closeSupport();
+      });
+
+      supportDialog?.addEventListener('close', () => {
+        if (supportTrigger) {
+          supportTrigger.focus();
+          supportTrigger = null;
+        }
+      });
+
+      supportDialog?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab') return;
+        const focusable = Array.from(
+          supportDialog.querySelectorAll(
+            'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((element) => element.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+    </script>
+  </body>
+</html>

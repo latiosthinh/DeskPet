@@ -10,4 +10,4 @@ publish = false
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-petkit = { path = "../../sdk/petkit" }
+petkit = { path = "../../shared/petkit" }

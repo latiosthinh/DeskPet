@@ -1,0 +1,166 @@
+---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Base from '../../layouts/Base.astro';
+import { breadcrumbSchema } from '../../lib/catalogue';
+import { authorGroups } from '../../lib/site';
+
+const items = [{ label: 'Authors', path: '/authors/' }];
+const groups = authorGroups().map((group) => ({
+  ...group,
+  petCount: group.pets.length,
+  categoryCount: new Set(group.pets.map((pet) => pet.category)).size,
+  sprites: group.pets.slice(0, 4),
+}));
+---
+
+<Base
+  title="Authors · DeskPet"
+  description="Meet the makers who share pixel pets with the DeskPet community."
+  path="/authors/"
+  schema={breadcrumbSchema(items)}
+>
+  <section class="wrap section-listing">
+    <Breadcrumbs items={items} />
+    <div class="listing-head">
+      <h1 class="page-title">Authors</h1>
+      <p class="lede">Every maker who has shared a pet with the DeskPet community.</p>
+    </div>
+    <ul class="author-grid">
+      {groups.map((group) => (
+        <li>
+          <a class="panel author-card" href={`/authors/${group.slug}/`}>
+            <span class="author-top">
+              <span class="author-avatar" aria-hidden="true">
+                {group.name.charAt(0).toUpperCase()}
+              </span>
+              <span class="author-name">
+                <span class="card-title">{group.name}</span>
+                <span class="count">
+                  {group.petCount} {group.petCount === 1 ? 'pet' : 'pets'} · {group.categoryCount}{' '}
+                  {group.categoryCount === 1 ? 'category' : 'categories'}
+                </span>
+              </span>
+            </span>
+            <span class="author-pets" aria-hidden="true">
+              {group.sprites.map((pet) => (
+                <img
+                  src={pet.gallery.src}
+                  width={pet.gallery.width}
+                  height={pet.gallery.height}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
+            </span>
+          </a>
+        </li>
+      ))}
+      <li>
+        <a class="panel author-cta" href="/contribute/">
+          <span class="card-title">Made a pet? Share it</span>
+          <span class="count">Add your pixel pet to the shelf.</span>
+          <span class="author-cta-action">Make a pet →</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .listing-head {
+    margin-top: var(--spacing-cozy);
+  }
+
+  .author-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--spacing-grid);
+    margin: var(--spacing-cozy) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .author-grid > li {
+    display: flex;
+  }
+
+  .author-grid > li > a {
+    flex: 1;
+  }
+
+  .author-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-snug);
+    padding: var(--spacing-cozy);
+    text-decoration: none;
+  }
+
+  .author-card:hover,
+  .author-cta:hover {
+    border-color: var(--brand);
+  }
+
+  .author-top {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-cozy);
+  }
+
+  .author-name {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--spacing-hair);
+  }
+
+  .author-pets {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+  }
+
+  .author-pets img {
+    width: auto;
+    height: 44px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  @media (min-width: 641px) {
+    .author-card {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-cozy);
+    }
+
+    .author-pets {
+      min-width: 0;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+  }
+
+  .author-cta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-tight);
+    padding: var(--spacing-cozy);
+    border-style: dashed;
+    text-decoration: none;
+  }
+
+  .author-cta .count {
+    white-space: normal;
+  }
+
+  .author-cta-action {
+    color: var(--brand-strong);
+    font-weight: 650;
+  }
+</style>

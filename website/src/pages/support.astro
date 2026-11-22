@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import SupportContent from '../components/SupportContent.astro';
+
+const description =
+  'Support DeskPet: free pixel pets with no ads, no cookies and no accounts, kept alive by people who enjoy them.';
+---
+
+<Base title="Support · DeskPet" description={description} path="/support/">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">All pets</a>
+      <span aria-hidden="true">/</span>
+      <span>Support</span>
+    </nav>
+    <div class="support-page">
+      <div class="panel">
+        <SupportContent headingLevel={1} />
+      </div>
+      <p class="fine-print">
+        Prefer to help another way?{' '}
+        <a class="text-link" href="/contribute/">
+          Make a pet
+        </a>{' '}
+        or{' '}
+        <a class="text-link" href="https://github.com/latiosthinh/DeskPet" rel="noreferrer">
+          share the project
+        </a>
+        .
+      </p>
+    </div>
+  </div>
+</Base>

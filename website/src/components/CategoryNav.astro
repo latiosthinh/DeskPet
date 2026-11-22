@@ -1,0 +1,41 @@
+---
+import { categories, pets, petsInCategory } from '../lib/site';
+
+interface Props {
+  active?: string;
+}
+
+const { active = '' } = Astro.props;
+const shelves = categories
+  .map((category) => ({ ...category, count: petsInCategory(category.id).length }))
+  .filter((category) => category.count > 0);
+---
+
+<nav class="category-nav" aria-label="Categories" data-category-nav>
+  <ul>
+    <li>
+      <a
+        class="cat-chip"
+        href="/pets/"
+        data-cat=""
+        aria-current={active === '' ? 'page' : undefined}
+      >
+        All pets
+        <span class="cat-count">{pets.length}</span>
+      </a>
+    </li>
+    {shelves.map((category) => (
+      <li>
+        <a
+          class="cat-chip"
+          href={`/pets/category/${category.id}/`}
+          data-cat={category.id}
+          aria-current={active === category.id ? 'page' : undefined}
+        >
+          {category.title}
+          <span class="cat-count">{category.count}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
