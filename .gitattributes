@@ -1,2 +1,7 @@
-# Prettier formats Astro files with LF; keep Windows checkouts identical.
-*.astro text eol=lf
+# The website formatters (Prettier for Astro, oxfmt for the rest) expect LF.
+# Pin LF so a fresh Windows checkout (core.autocrlf=true) passes format:check.
+website/**/*.astro text eol=lf
+website/**/*.ts text eol=lf
+website/**/*.mjs text eol=lf
+website/**/*.css text eol=lf
+website/**/*.json text eol=lf
