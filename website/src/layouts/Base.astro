@@ -27,6 +27,10 @@ const {
 const canonical = absoluteUrl(path);
 const ogImage = absoluteUrl(image);
 const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : null;
+const cfBeaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+const cfBeacon = cfBeaconToken
+  ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token: cfBeaconToken }).replace(/</g, '\\u003c')}'></script>`
+  : null;
 ---
 
 <!doctype html>
@@ -81,6 +85,7 @@ const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : nu
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     {schemaJson ? <script type="application/ld+json" set:html={schemaJson} /> : null}
+    {cfBeacon ? <Fragment set:html={cfBeacon} /> : null}
   </head>
   <body>
     <a class="skip-link" href="#main">

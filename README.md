@@ -115,7 +115,7 @@ Pets are sandboxed WebAssembly modules: they can't touch your files, the network
 
 The only network use is keeping added pets up to date: about 20 seconds after launch, then once a day, the app asks `https://deskpet-vn.pages.dev/api/update/<pet-id>` for each added pet. All that request carries is the pet's id in the address and the user agent "DeskPet" — no body, no cookies, nothing about you or your computer. If a newer version exists it downloads the pet file from `/download/<pet-id>`. The three built-in pets never check.
 
-The website keeps anonymous per-pet counters (how many downloads/updates a pet got); nothing identifies you.
+The website keeps anonymous per-pet counters (how many downloads/updates a pet got); nothing identifies you. The website (not the app) also counts anonymous page views with Cloudflare Web Analytics — no cookies, nothing that identifies you.
 
 **Get More Pets…** opens the website in your own browser; the app itself never browses.
 

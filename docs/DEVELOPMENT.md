@@ -128,6 +128,16 @@ npx wrangler pages project create deskpet-vn --production-branch main
 npx wrangler pages secret put STATS_TOKEN --project-name deskpet-vn
 ```
 
+Visitor analytics: the preferred path needs no code. One-time, in the Cloudflare dashboard go to **Workers & Pages → deskpet-vn → Metrics → Web Analytics** and choose **Enable**; Cloudflare then injects the beacon at the edge. Read the data under **Analytics & Logs → Web Analytics** (page views, referrers, countries; cookieless and aggregate, so no consent banner is needed).
+
+A build can also include the beacon itself by setting the site's beacon token when building, from `website/`:
+
+```bash
+PUBLIC_CF_BEACON_TOKEN=<token> npm run build
+```
+
+The layout then adds the deferred Cloudflare beacon script; left unset (the default) it adds nothing. Never commit a real token. The `/stats?token=` page still covers per-pet visits, downloads and update checks.
+
 For each deploy, from the repository root run `powershell -ExecutionPolicy Bypass -File windows\check-pet.ps1` and `target\release\petshot.exe site build\pets website`, then from `website/` run `npm run build` and `npx wrangler pages deploy`. Full detail is in [website/README.md](../website/README.md), under **Deploying (owner, not CI)**.
 
 ## Releasing
