@@ -1,6 +1,6 @@
 ---
 import { renderSVG } from 'uqr';
-import { BNB_ADDRESS, qr } from '../lib/site';
+import { BNB_ADDRESS, momoCard } from '../lib/site';
 
 interface Props {
   headingLevel?: 1 | 2;
@@ -12,56 +12,101 @@ const { headingLevel = 2, name = 'DeskPet', titleId = 'support-title' } = Astro.
 const Heading = headingLevel === 1 ? 'h1' : 'h2';
 const CryptoHeading = headingLevel === 1 ? 'h2' : 'h3';
 const cryptoTitleId = `${titleId}-crypto`;
+const momoTabId = `${titleId}-tab-momo`;
+const bnbTabId = `${titleId}-tab-bnb`;
+const momoPanelId = `${titleId}-panel-momo`;
+const bnbPanelId = `${titleId}-panel-bnb`;
 const bnbQr = renderSVG(BNB_ADDRESS, { ecc: 'M', border: 2 });
 ---
 
 <section class="support-content" aria-labelledby={titleId}>
-  <div class="support-momo">
-    <picture class="support-card">
-      <source srcset={qr.webp} type="image/webp" />
-      <img
-        class="support-qr"
-        src={qr.src}
-        width={qr.width}
-        height={qr.height}
-        alt="MoMo and VietQR donation QR code for DeskPet"
-        loading="lazy"
-        decoding="async"
-      />
-    </picture>
-    <div class="support-copy">
-      <p class="eyebrow">Support</p>
-      <Heading id={titleId}>Support DeskPet</Heading>
-      <p>
-        DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
-        your desk a little happier, you can chip in by scanning the card. It works with MoMo and
-        Vietnamese banking apps (VietQR / napas 247), and it keeps new pets coming.
-      </p>
-      <p class="support-thanks">Thank you for keeping DeskPet free for everyone.</p>
-    </div>
+  <div class="support-intro">
+    <p class="eyebrow">Support</p>
+    <Heading id={titleId}>Support DeskPet</Heading>
+    <p>
+      DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
+      your desk a little happier, a tip keeps new pets coming.
+    </p>
   </div>
 
-  <section class="support-crypto" aria-labelledby={cryptoTitleId}>
+  <div class="support-tabs" role="tablist" aria-label="Payment method" data-support-tablist>
+    <button
+      type="button"
+      class="support-tab"
+      role="tab"
+      id={momoTabId}
+      aria-controls={momoPanelId}
+      aria-selected="true"
+      tabindex="0"
+      data-support-tab
+    >
+      MoMo / VietQR
+    </button>
+    <button
+      type="button"
+      class="support-tab"
+      role="tab"
+      id={bnbTabId}
+      aria-controls={bnbPanelId}
+      aria-selected="false"
+      tabindex="-1"
+      data-support-tab
+    >
+      BNB
+    </button>
+  </div>
+
+  <section
+    class="support-momo"
+    id={momoPanelId}
+    aria-labelledby={momoTabId}
+    data-support-panel="momo"
+  >
+    <figure class="support-card">
+      <picture>
+        <source srcset={momoCard.webp} type="image/webp" />
+        <img
+          class="support-card-image"
+          src={momoCard.src}
+          width={momoCard.width}
+          height={momoCard.height}
+          alt="MoMo and VietQR donation QR code for DeskPet, paying NGUYEN QUOC THINH"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+      <figcaption class="support-card-caption">
+        MoMo / VietQR / napas 247. Pay to NGUYEN QUOC THINH, account ending 991.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section
+    class="support-crypto"
+    id={bnbPanelId}
+    aria-labelledby={bnbTabId}
+    data-support-panel="bnb"
+  >
     <div class="support-crypto-copy">
       <CryptoHeading id={cryptoTitleId}>Or send BNB / BEP-20 tokens</CryptoHeading>
       <p class="support-network">BNB Smart Chain (BEP-20)</p>
       <p class="support-warning">
         Send only on BNB Smart Chain. Funds sent on another network can't be recovered.
       </p>
-      <div class="bnb-address" data-bnb>
-        <code class="bnb-address-text" data-bnb-address tabindex="0">
-          {BNB_ADDRESS}
-        </code>
-        <button
-          type="button"
-          class="btn btn-secondary bnb-copy js-only"
-          data-bnb-copy
-          aria-label="Copy BNB address"
-        >
-          Copy
-        </button>
-        <span class="bnb-status" role="status" aria-live="polite" data-bnb-status></span>
-      </div>
+    </div>
+    <div class="bnb-address" data-bnb>
+      <code class="bnb-address-text" data-bnb-address tabindex="0">
+        {BNB_ADDRESS}
+      </code>
+      <button
+        type="button"
+        class="btn btn-secondary bnb-copy js-only"
+        data-bnb-copy
+        aria-label="Copy BNB address"
+      >
+        Copy
+      </button>
+      <span class="bnb-status" role="status" aria-live="polite" data-bnb-status></span>
     </div>
     <div
       class="bnb-qr"
@@ -75,6 +120,7 @@ const bnbQr = renderSVG(BNB_ADDRESS, { ecc: 'M', border: 2 });
 
 <script>
   const RESET_MS = 2500;
+  const mobileTabs = window.matchMedia('(max-width: 1023px)');
 
   function selectAddress(field: HTMLElement) {
     const range = document.createRange();
@@ -108,5 +154,61 @@ const bnbQr = renderSVG(BNB_ADDRESS, { ecc: 'M', border: 2 });
         button.textContent = 'Copy';
       }, RESET_MS);
     });
+  }
+
+  for (const tablist of document.querySelectorAll<HTMLElement>('[data-support-tablist]')) {
+    const tabs = Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const panels = new Map(
+      tabs.map((tab) => [tab, document.getElementById(tab.getAttribute('aria-controls') ?? '')]),
+    );
+    let selected = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true') ?? tabs[0];
+    if (!selected) continue;
+
+    // Panels are plain sections until the tab UI is live, so tabpanel roles are only
+    // exposed on mobile where exactly one payment panel is shown.
+    function sync() {
+      const tabsActive = mobileTabs.matches;
+      for (const item of tabs) {
+        const active = item === selected;
+        item.setAttribute('aria-selected', String(active));
+        item.tabIndex = active ? 0 : -1;
+        const panel = panels.get(item);
+        if (!panel) continue;
+        panel.hidden = tabsActive && !active;
+        if (tabsActive) {
+          panel.setAttribute('role', 'tabpanel');
+          panel.tabIndex = 0;
+        } else {
+          panel.removeAttribute('role');
+          panel.removeAttribute('tabindex');
+        }
+      }
+    }
+
+    function select(tab: HTMLButtonElement, moveFocus = false) {
+      selected = tab;
+      sync();
+      if (moveFocus) tab.focus();
+    }
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => select(tab));
+    }
+
+    tablist.addEventListener('keydown', (event) => {
+      const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      if (index === -1) return;
+      let next = -1;
+      if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+      else if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = tabs.length - 1;
+      if (next === -1) return;
+      event.preventDefault();
+      select(tabs[next], true);
+    });
+
+    mobileTabs.addEventListener('change', sync);
+    sync();
   }
 </script>

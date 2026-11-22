@@ -151,10 +151,22 @@ const builtinPosters = built
   .map((p) => join(PUBLIC, p.hero.poster.slice(1)));
 if (builtinPosters.length) await makeOg(builtinPosters, join(PUBLIC, "og-default.png"), "DeskPet");
 
+// donate-qr.png is pixel-locked (see tests/unit/qr.test.ts), so the crops that build
+// the compact support card are fixed source rectangles. The QR card is lifted to a
+// 640px-wide canvas (2x a 320px card) so the QR stays sharp and decodes at 200px+.
+const MOMO_CARD_CROPS = {
+  logo: { left: 430, top: 60, width: 180, height: 120 },
+  qr: { left: 286, top: 305, width: 436, height: 475 },
+  payee: { left: 230, top: 900, width: 550, height: 140 },
+};
+const MOMO_CARD_WIDTH = 640;
+
 const qr = await ensureQr();
+const momoCard = await ensureMomoCard();
 const generated = {
   categories: CATEGORIES,
   qr,
+  momoCard,
   builtinShortNames: built.filter((p) => p.builtin).map((p) => p.shortName),
   pets: built,
 };
@@ -390,6 +402,80 @@ async function ensureQr() {
     webp: "/donate-qr.webp",
     width: info.width,
     height: info.height,
+  };
+}
+
+async function ensureMomoCard() {
+  const file = join(PUBLIC, "donate-qr.png");
+  const out = join(PUBLIC, "support-momo-card.png");
+  const webp = join(PUBLIC, "support-momo-card.webp");
+
+  const logoWidth = 120;
+  const logoHeight = Math.round(
+    (MOMO_CARD_CROPS.logo.height * logoWidth) / MOMO_CARD_CROPS.logo.width,
+  );
+  const logo = await sharp(file)
+    .extract(MOMO_CARD_CROPS.logo)
+    .resize({ width: logoWidth })
+    .png()
+    .toBuffer();
+
+  const qrWidth = 566;
+  const qrHeight = Math.round((MOMO_CARD_CROPS.qr.height * qrWidth) / MOMO_CARD_CROPS.qr.width);
+  const qrMask = Buffer.from(
+    `<svg width="${qrWidth}" height="${qrHeight}"><rect width="${qrWidth}" height="${qrHeight}" rx="${Math.round((qrWidth * 28) / 436)}" ry="${Math.round((qrWidth * 28) / 436)}" fill="#fff"/></svg>`,
+  );
+  const qrCard = await sharp(
+    await sharp(file)
+      .extract(MOMO_CARD_CROPS.qr)
+      .resize({ width: qrWidth })
+      .ensureAlpha()
+      .png()
+      .toBuffer(),
+  )
+    .composite([{ input: qrMask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  const payeeWidth = 410;
+  const payeeHeight = Math.round(
+    (MOMO_CARD_CROPS.payee.height * payeeWidth) / MOMO_CARD_CROPS.payee.width,
+  );
+  const payee = await sharp(file)
+    .extract(MOMO_CARD_CROPS.payee)
+    .resize({ width: payeeWidth })
+    .png()
+    .toBuffer();
+
+  const pad = 8;
+  const height = pad + logoHeight + pad + qrHeight + pad + payeeHeight + pad;
+  const background = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${MOMO_CARD_WIDTH}" height="${height}"><defs><linearGradient id="pm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffec77"/><stop offset="0.4" stop-color="#ffec77"/><stop offset="0.8" stop-color="#fdfad7"/><stop offset="1" stop-color="#fdfad7"/></linearGradient></defs><rect width="${MOMO_CARD_WIDTH}" height="${height}" fill="url(#pm)"/></svg>`,
+  );
+
+  await sharp({ create: { width: MOMO_CARD_WIDTH, height, channels: 3, background: "#fdfad7" } })
+    .composite([
+      { input: background, left: 0, top: 0 },
+      { input: logo, left: Math.round((MOMO_CARD_WIDTH - logoWidth) / 2), top: pad },
+      {
+        input: qrCard,
+        left: Math.round((MOMO_CARD_WIDTH - qrWidth) / 2),
+        top: pad + logoHeight + pad,
+      },
+      {
+        input: payee,
+        left: Math.round((MOMO_CARD_WIDTH - payeeWidth) / 2),
+        top: pad + logoHeight + pad + qrHeight + pad,
+      },
+    ])
+    .png()
+    .toFile(out);
+  await sharp(out).webp({ lossless: true }).toFile(webp);
+  return {
+    src: "/support-momo-card.png",
+    webp: "/support-momo-card.webp",
+    width: MOMO_CARD_WIDTH,
+    height,
   };
 }
 

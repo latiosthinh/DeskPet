@@ -65,6 +65,14 @@ export const qr = generated.qr as {
   height: number;
 };
 
+/** Compact MoMo card built from the pixel-locked poster, QR quiet zone included. */
+export const momoCard = generated.momoCard as {
+  src: string;
+  webp: string;
+  width: number;
+  height: number;
+};
+
 export const petsById = new Map(pets.map((pet) => [pet.id, pet]));
 
 export const INCLUDED_LABEL = "Included with DeskPet";
