@@ -6,7 +6,6 @@ import Base from '../layouts/Base.astro';
 import {
   SITE,
   absoluteUrl,
-  authorGroups,
   builtinShortNames,
   listText,
   petImageAlt,
@@ -15,7 +14,10 @@ import {
 } from '../lib/site';
 
 const heroPet = petsById.get('mochi') ?? pets[0];
-const groups = authorGroups();
+const featured = [
+  ...pets.filter((pet) => pet.builtin),
+  ...pets.filter((pet) => !pet.builtin),
+].slice(0, 4);
 const description =
   'Free pixel pets that live on your desktop. Pick a pet, watch its tricks and add it to DeskPet in one click.';
 
@@ -65,8 +67,8 @@ const schema = [
           <DownloadButtons />
         </div>
         <p class="fine-print">
-          Comes with {listText(builtinShortNames)}. Every other pet is a free one-click add-on
-          below.
+          Comes with {listText(builtinShortNames)}. Every other pet is a free one-click add-on in
+          the catalogue.
         </p>
       </div>
 
@@ -165,51 +167,22 @@ const schema = [
       <div>
         <p class="eyebrow">The shelf</p>
         <h2 id="gallery-title" class="section-title">
-          Every pet, by author
+          Featured pets
         </h2>
-        <p class="lede">
-          Built-in pets come with the app; everything else is a free download. New community authors
-          appear here automatically.
-        </p>
+        <p class="lede">A few favourites to start with — the full shelf has every community pet.</p>
       </div>
+      <a class="btn btn-secondary" href="/pets/">
+        Browse all pets
+      </a>
     </div>
 
-    <nav class="author-nav" aria-label="Authors">
-      <span class="author-nav-label">By author</span>
-      <ul>
-        {groups.map((group) => (
-          <li>
-            <a class="badge" href={`#author-${group.slug}`}>
-              {group.name}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-
-    {groups.map((group) => (
-      <section
-        class="author-group"
-        id={`author-${group.slug}`}
-        aria-labelledby={`author-${group.slug}-title`}
-      >
-        <div class="group-head">
-          <h3 id={`author-${group.slug}-title`} class="group-title">
-            By {group.name}
-          </h3>
-          <p class="count">
-            {group.pets.length} {group.pets.length === 1 ? 'pet' : 'pets'}
-          </p>
-        </div>
-        <ul class="gallery-grid">
-          {group.pets.map((pet) => (
-            <li>
-              <PetCard pet={pet} />
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
+    <ul class="gallery-grid">
+      {featured.map((pet) => (
+        <li>
+          <PetCard pet={pet} />
+        </li>
+      ))}
+    </ul>
   </section>
 
   <section class="wrap section" aria-labelledby="make">

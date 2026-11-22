@@ -12,19 +12,22 @@ const FRAME = "rgb(241, 227, 200)";
 
 const RELEASE = "https://github.com/latiosthinh/DeskPet/releases/latest";
 
-test("gallery lists every pet, grouped by author, and cards navigate", async ({ page }) => {
+test("home shows a featured shelf and links into the catalogue", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   await expect(page.locator("h1")).toHaveCount(1);
-  await expect(page.locator(".gallery-grid a.card")).toHaveCount(15);
-  await expect(page.locator("#author-deskpet")).toHaveCount(1);
-  await expect(page.locator("#author-deskpet-title")).toHaveText("By DeskPet");
-  await expect(page.locator(".author-nav a")).toHaveCount(1);
-  await expect(page.locator(".author-nav a")).toHaveText("DeskPet");
-  await expect(page.locator(".section-head .count")).toHaveCount(0);
-  await expect(page.locator(".group-head .count")).toHaveText("15 pets");
-  await expect(page.locator(".gallery-grid .badge")).toHaveCount(3);
-  await expect(page.locator(".gallery-grid")).toHaveCount(1);
+  await expect(page.locator("#gallery")).toHaveCount(1);
+  await expect(page.locator(".gallery-grid a.card")).toHaveCount(4);
+  await expect(page.locator("#author-deskpet")).toHaveCount(0);
+  await expect(page.locator(".author-nav")).toHaveCount(0);
+  await expect(page.locator(".group-head")).toHaveCount(0);
 
+  const browse = page.locator('#gallery a[href="/pets/"]', { hasText: "Browse all pets" });
+  await expect(browse).toHaveText("Browse all pets");
+  await browse.click();
+  await expect(page).toHaveURL(/\/pets\/$/);
+  await expect(page.locator("h1")).toHaveText("Pets");
+
+  await gotoThemed(page, "/", "light");
   await page.locator('a.card[href="/pets/ember/"]').click();
   await expect(page).toHaveURL(/\/pets\/ember\/$/);
   await expect(page.locator("h1")).toHaveText("Ember the fox");
@@ -75,7 +78,7 @@ test("gallery card metadata and status rows share one reserved geometry", async 
       }),
     );
 
-    expect(metrics.length, `${width}px gallery is empty`).toBe(15);
+    expect(metrics.length, `${width}px gallery is empty`).toBe(4);
     const first = metrics[0];
     for (const [index, metric] of metrics.entries()) {
       expect(metric.titleTop, `${width}px card ${index} title row`).toBeCloseTo(first.titleTop, 0);
@@ -134,10 +137,24 @@ test("header navigation and contribute page", async ({ page }) => {
   await expect(page.locator("ol.step-list li")).toHaveCount(3);
 });
 
+test("header Pets and Authors links reach the catalogue and directory", async ({ page }) => {
+  await gotoThemed(page, "/", "light");
+  const header = page.locator("header");
+
+  await header.getByRole("link", { name: "Pets", exact: true }).click();
+  await expect(page).toHaveURL(/\/pets\/$/);
+  await expect(page.locator("h1")).toHaveText("Pets");
+
+  await gotoThemed(page, "/", "light");
+  await header.getByRole("link", { name: "Authors", exact: true }).click();
+  await expect(page).toHaveURL(/\/authors\/$/);
+  await expect(page.locator("h1")).toHaveText("Authors");
+});
+
 test("footer link targets meet the 24px minimum", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   const links = page.locator("footer nav a");
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(6);
   for (const link of await links.all()) {
     const box = await link.boundingBox();
     expect(box, "footer link has no layout box").not.toBeNull();
@@ -161,13 +178,13 @@ test("download link targets: add-ons download, every built-in is included", asyn
   }
 });
 
-test("pet pages link the author back to the gallery group", async ({ page }) => {
+test("pet pages link the author to their profile", async ({ page }) => {
   await gotoThemed(page, "/pets/mochi/", "light");
   const author = page.locator(".pet-meta a", { hasText: "DeskPet" });
-  await expect(author).toHaveAttribute("href", "/#author-deskpet");
+  await expect(author).toHaveAttribute("href", "/authors/deskpet/");
   await author.click();
-  await expect(page).toHaveURL(/\/#author-deskpet$/);
-  await expect(page.locator("#author-deskpet-title")).toHaveText("By DeskPet");
+  await expect(page).toHaveURL(/\/authors\/deskpet\/$/);
+  await expect(page.locator("h1")).toHaveText("DeskPet");
 });
 
 test("both OS downloads are present, labelled, and link to the latest release", async ({
@@ -343,7 +360,7 @@ test("every gallery card has one fixed image box at every breakpoint", async ({ 
     await gotoThemed(page, "/", "light", { reducedMotion: true });
     await loadAllImages(page);
     const cards = page.locator(".gallery-grid a.card");
-    await expect(cards, `${width}px card count`).toHaveCount(15);
+    await expect(cards, `${width}px card count`).toHaveCount(4);
 
     const shapes: Shape[] = [];
     for (let index = 0; index < (await cards.count()); index++) {
@@ -735,7 +752,7 @@ async function expectMobileHeader(page: Page, width: number) {
   expect(
     nav.links.map((link) => link.text),
     `${width}px nav labels`,
-  ).toEqual(["Pets", "Make a pet", "GitHub"]);
+  ).toEqual(["Pets", "Authors", "Make a pet", "GitHub"]);
 
   const rowY = nav.links[0].y;
   for (const [index, link] of nav.links.entries()) {

@@ -1113,59 +1113,6 @@
     font-weight: 650;
   }
 
-  /* ---------------------------------------------------------------- author groups */
-
-  .author-nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-tight) var(--spacing-snug);
-    margin-top: var(--spacing-room);
-    padding-bottom: var(--spacing-snug);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .author-nav-label {
-    color: var(--muted);
-    font-size: var(--text-small);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .author-nav ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-tight);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .author-group {
-    margin-top: var(--spacing-loose);
-  }
-
-  .group-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--spacing-tight) var(--spacing-snug);
-    padding-bottom: var(--spacing-tight);
-  }
-
-  .group-title {
-    font-size: var(--text-title);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: var(--text-title--line-height);
-  }
-
-  .group-head .text-link {
-    margin-left: auto;
-    font-size: var(--text-small);
-  }
-
   /* ---------------------------------------------------------------- pet page */
 
   .crumbs {
