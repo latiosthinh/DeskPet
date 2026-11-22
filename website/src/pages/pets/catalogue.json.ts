@@ -17,6 +17,7 @@ export const GET: APIRoute = () => {
       src: pet.gallery.src,
       width: pet.gallery.width,
       height: pet.gallery.height,
+      zoom: pet.gallery.zoom,
     },
   }));
 

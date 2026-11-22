@@ -38,18 +38,28 @@ const description =
 ---
 
 <Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
-  <section class="wrap section">
-    <Breadcrumbs items={items} />
+  <section class="wrap section-listing">
+    <div data-crumbs>
+      <Breadcrumbs items={items} />
+    </div>
     <div class="listing-head">
       <h1 class="page-title">Pets</h1>
       <p class="lede">Search and filter the whole shelf, or browse by category.</p>
     </div>
     <CategoryNav />
-    <p class="count" data-count aria-live="polite">
-      {total} {total === 1 ? 'pet' : 'pets'}
-    </p>
     <CatalogueControls />
-    <PetGrid pets={record.pets} id="catalogue-grid" />
+    <div class="results-row">
+      <p class="count" data-count aria-live="polite">
+        {total} {total === 1 ? 'pet' : 'pets'}
+      </p>
+      <div class="chips-row" data-chips-row hidden>
+        <ul class="chips" data-chip-list aria-label="Active filters"></ul>
+        <button type="button" class="clear-all" data-clear>
+          Clear all
+        </button>
+      </div>
+    </div>
+    <PetGrid pets={record.pets} id="catalogue-grid" compact />
     <div class="empty-state" data-empty hidden>
       <p class="lede">No pets match your search.</p>
       <button type="button" class="btn btn-secondary" data-reset>
@@ -74,10 +84,6 @@ const description =
     margin-top: var(--spacing-cozy);
   }
 
-  .count[data-count] {
-    margin-top: var(--spacing-snug);
-  }
-
   .empty-state {
     margin-top: var(--spacing-room);
   }
@@ -88,7 +94,76 @@ const description =
 </style>
 
 <style is:global>
-  [hidden] {
-    display: none !important;
+  .results-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-snug);
+  }
+
+  .results-row .count {
+    margin: 0;
+  }
+
+  .chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+  }
+
+  .chips-row[hidden] {
+    display: none;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-hair);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chips li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    padding: var(--spacing-hair) var(--spacing-tight);
+    font-size: var(--text-small);
+    font-weight: 650;
+  }
+
+  .chips li button {
+    display: inline-flex;
+    min-width: 2rem;
+    min-height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--radius-mini);
+    background: none;
+    color: var(--ink);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .chips li button:hover {
+    background: var(--badge-bg);
+  }
+
+  .clear-all {
+    border: 0;
+    background: none;
+    color: var(--brand-strong);
+    font-weight: 700;
+    font-size: var(--text-small);
+    min-height: 1.5rem;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>

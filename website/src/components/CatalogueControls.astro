@@ -1,5 +1,5 @@
 ---
-import { INCLUDED_LABEL, authorGroups, categories } from '../lib/site';
+import { INCLUDED_LABEL, authorGroups } from '../lib/site';
 
 const authors = authorGroups();
 ---
@@ -8,21 +8,21 @@ const authors = authorGroups();
   <div class="controls-row">
     <div class="field field-search">
       <label for="catalogue-q">Search pets</label>
-      <input
-        id="catalogue-q"
-        data-q
-        type="search"
-        placeholder="Search by name, description or author"
-        autocomplete="off"
-      />
-    </div>
-    <div class="field">
-      <label for="catalogue-sort">Sort by</label>
-      <select id="catalogue-sort" data-sort>
-        <option value="az">A–Z</option>
-        <option value="newest">Newest</option>
-        <option value="tricks">Most tricks</option>
-      </select>
+      <span class="search-control">
+        <svg class="search-icon" aria-hidden="true" viewBox="0 0 20 20" focusable="false">
+          <path
+            d="M8.5 3a5.5 5.5 0 0 1 4.4 8.8l3.9 3.9-1.2 1.2-3.9-3.9A5.5 5.5 0 1 1 8.5 3Zm0 1.8a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4Z"
+            fill="currentColor"
+          ></path>
+        </svg>
+        <input
+          id="catalogue-q"
+          data-q
+          type="search"
+          placeholder="Search by name, description or author"
+          autocomplete="off"
+        />
+      </span>
     </div>
     <button
       type="button"
@@ -31,20 +31,23 @@ const authors = authorGroups();
       aria-expanded="false"
       aria-controls="catalogue-filters"
     >
-      Filters
+      <svg class="filters-icon" aria-hidden="true" viewBox="0 0 20 20" focusable="false">
+        <path
+          d="M3 5h14M6 10h8M8 15h4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        ></path>
+      </svg>
+      <span>Filters</span>
+      <span class="filters-count" data-filter-count hidden>
+        0
+      </span>
     </button>
   </div>
   <div class="filters-panel" id="catalogue-filters" data-filters-panel>
-    <div class="field">
-      <label for="catalogue-category">Category</label>
-      <select id="catalogue-category" data-category>
-        <option value="">All categories</option>
-        {categories.map((category) => (
-          <option value={category.id}>{category.title}</option>
-        ))}
-      </select>
-    </div>
-    <div class="field">
+    <div class="field field-author">
       <label for="catalogue-author">Author</label>
       <select id="catalogue-author" data-author>
         <option value="">All authors</option>
@@ -53,7 +56,7 @@ const authors = authorGroups();
         ))}
       </select>
     </div>
-    <div class="field">
+    <div class="field field-type">
       <label for="catalogue-type">Type</label>
       <select id="catalogue-type" data-type>
         <option value="">All types</option>
@@ -62,11 +65,13 @@ const authors = authorGroups();
       </select>
     </div>
   </div>
-  <div class="chips-row" data-chips-row hidden>
-    <ul class="chips" data-chip-list aria-label="Active filters"></ul>
-    <button type="button" class="clear-all" data-clear>
-      Clear all
-    </button>
+  <div class="field field-sort">
+    <label for="catalogue-sort">Sort by</label>
+    <select id="catalogue-sort" data-sort>
+      <option value="az">A–Z</option>
+      <option value="newest">Newest</option>
+      <option value="tricks">Most tricks</option>
+    </select>
   </div>
 </div>
 
@@ -76,7 +81,10 @@ const authors = authorGroups();
   }
 
   html.js .catalogue-controls {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--spacing-tight);
     visibility: hidden;
     margin-top: var(--spacing-cozy);
   }
@@ -86,13 +94,12 @@ const authors = authorGroups();
   }
 
   .controls-row {
-    display: grid;
-    gap: var(--spacing-tight);
-    grid-template-columns: 1fr;
+    display: contents;
   }
 
   .field {
     display: grid;
+    min-width: 0;
     gap: var(--spacing-hair);
   }
 
@@ -113,107 +120,152 @@ const authors = authorGroups();
     width: 100%;
   }
 
+  .field-search {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
+  .field-search > label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .search-control {
+    position: relative;
+    display: block;
+  }
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: var(--spacing-snug);
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--muted);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .field-search input {
+    padding-left: 2.5rem;
+  }
+
+  .field-sort {
+    flex: 1 1 0;
+    order: 3;
+  }
+
   .filters-toggle {
     display: inline-flex;
     min-height: 2.75rem;
     align-items: center;
     justify-content: center;
+    gap: var(--spacing-tight);
+    order: 2;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     background: var(--surface);
     color: var(--ink);
-    padding-inline: var(--spacing-cozy);
+    padding-inline: var(--spacing-snug);
     font-weight: 700;
     cursor: pointer;
   }
 
+  .filters-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .filters-count {
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .filters-count::before {
+    content: '·';
+    margin-right: var(--spacing-hair);
+  }
+
   .filters-panel {
     display: none;
+    flex: 1 1 100%;
+    grid-template-columns: 1fr;
     gap: var(--spacing-tight);
     margin-top: var(--spacing-tight);
+    order: 4;
   }
 
   .filters-panel[data-open='true'] {
     display: grid;
   }
 
-  .chips-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-tight);
-    margin-top: var(--spacing-tight);
-  }
+  @media (min-width: 641px) {
+    html.js .catalogue-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--spacing-tight);
+    }
 
-  .chips-row[hidden] {
-    display: none;
-  }
+    .controls-row,
+    .filters-panel,
+    .filters-panel[data-open='true'] {
+      display: contents;
+    }
 
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-hair);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
+    .field-search {
+      grid-column: 1 / -1;
+      order: 1;
+    }
 
-  .chips li {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-hair);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-control);
-    background: var(--surface-2);
-    padding: var(--spacing-hair) var(--spacing-tight);
-    font-size: var(--text-small);
-    font-weight: 650;
-  }
+    .field-search > label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
+    }
 
-  .chips li button {
-    display: inline-flex;
-    min-width: 1.5rem;
-    min-height: 1.5rem;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: var(--radius-mini);
-    background: none;
-    color: var(--ink);
-    font-weight: 700;
-    cursor: pointer;
-  }
+    .field-author {
+      order: 2;
+    }
 
-  .chips li button:hover {
-    background: var(--badge-bg);
-  }
+    .field-type {
+      order: 3;
+    }
 
-  .clear-all {
-    border: 0;
-    background: none;
-    color: var(--brand-strong);
-    font-weight: 700;
-    font-size: var(--text-small);
-    min-height: 1.5rem;
-    text-decoration: underline;
-    cursor: pointer;
-  }
-
-  @media (min-width: 900px) {
-    .controls-row {
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      align-items: end;
+    .field-sort {
+      order: 4;
     }
 
     .filters-toggle {
       display: none;
     }
+  }
 
-    .filters-panel,
-    .filters-panel[data-open='true'] {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-top: var(--spacing-tight);
+  @media (min-width: 1024px) {
+    html.js .catalogue-controls {
+      display: flex;
+      align-items: end;
+      gap: var(--spacing-tight);
+    }
+
+    .field-search {
+      flex: 1 1 auto;
+    }
+
+    .field-author,
+    .field-type,
+    .field-sort {
+      flex: 0 0 auto;
     }
   }
 </style>

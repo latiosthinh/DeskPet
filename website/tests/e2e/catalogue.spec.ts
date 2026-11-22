@@ -16,6 +16,10 @@ async function openCatalogue(page: Page) {
   await ready(page);
 }
 
+async function clickCategory(page: Page, id: string) {
+  await page.locator(`[data-category-nav] a[data-cat="${id}"]`).click();
+}
+
 test("the static index exposes only the compact catalogue fields", async ({ request }) => {
   const response = await request.get("/pets/catalogue.json");
   expect(response.status()).toBe(200);
@@ -64,7 +68,7 @@ test("keystrokes during one burst coalesce into a single history entry", async (
 
 test("filters, type and sorts reflect in the URL without defaults", async ({ page }) => {
   await openCatalogue(page);
-  await page.selectOption("[data-category]", "hero");
+  await clickCategory(page, "hero");
   await expect(cards(page)).toHaveCount(8);
   await expect.poll(() => page.url()).toContain("category=hero");
 
@@ -83,7 +87,7 @@ test("filters, type and sorts reflect in the URL without defaults", async ({ pag
   await expect(cards(page)).toHaveCount(12);
 
   await openCatalogue(page);
-  await page.selectOption("[data-category]", "hero");
+  await clickCategory(page, "hero");
   await page.selectOption("[data-type]", "included");
   await expect(cards(page)).toHaveCount(1);
   await expect.poll(() => page.url()).toContain("category=hero");
@@ -111,7 +115,10 @@ test("a direct query URL hydrates controls, chips and results", async ({ page })
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page).first()).toHaveAttribute("href", "/pets/ember/");
   await expect(page.locator("input[data-q]")).toHaveValue("fox");
-  await expect(page.locator("[data-category]")).toHaveValue("critter");
+  await expect(page.locator('[data-category-nav] a[data-cat="critter"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await expect(page.locator("[data-sort]")).toHaveValue("tricks");
   await expect(page.locator("[data-chip-list] li")).toHaveCount(2);
 
@@ -124,17 +131,17 @@ test("a direct query URL hydrates controls, chips and results", async ({ page })
 
 test("chips remove filters and Clear all restores the catalogue", async ({ page }) => {
   await openCatalogue(page);
-  await page.selectOption("[data-category]", "hero");
+  await clickCategory(page, "hero");
   await page.selectOption("[data-type]", "included");
   await expect(page.locator("[data-chip-list] li")).toHaveCount(2);
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page).first()).toHaveAttribute("href", "/pets/ninja/");
 
-  const authorChip = page
+  const categoryChip = page
     .locator("[data-chip-list] li")
     .filter({ hasText: "Heroes" })
     .locator("button");
-  await authorChip.click();
+  await categoryChip.click();
   await expect(cards(page)).toHaveCount(3);
   await expect.poll(() => page.url()).not.toContain("category=");
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
@@ -208,9 +215,10 @@ test("the mobile Filters disclosure opens the extra selects", async ({ page }) =
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator("[data-category]")).toBeVisible();
-  await page.selectOption("[data-category]", "legend");
-  await expect(cards(page)).toHaveCount(2);
+  await expect(page.locator("[data-author]")).toBeVisible();
+  await expect(page.locator("[data-type]")).toBeVisible();
+  await page.selectOption("[data-type]", "included");
+  await expect(cards(page)).toHaveCount(3);
 });
 
 test("a failed index leaves the static catalogue untouched", async ({ page }) => {
@@ -222,6 +230,147 @@ test("a failed index leaves the static catalogue untouched", async ({ page }) =>
   await page.locator("[data-pagination] a[rel='next']").click();
   await expect(page).toHaveURL(/\/pets\/page\/2\/$/);
   await expect(cards(page)).toHaveCount(3);
+});
+
+test("history restores static pages with breadcrumb, title and canonical", async ({ page }) => {
+  await gotoThemed(page, "/pets/page/2/", "light");
+  await ready(page);
+  await expect(cards(page)).toHaveCount(3);
+  await expect(page.locator("[data-pagination] a[aria-current='page']")).toHaveText("2");
+  const crumbs = page.locator('nav[aria-label="Breadcrumb"]');
+  await expect(crumbs).toBeVisible();
+  await expect(crumbs).toContainText("Page 2");
+
+  await page.selectOption("[data-author]", "deskpet");
+  await expect(cards(page)).toHaveCount(12);
+  await expect(page).toHaveURL(/\/pets\/\?author=deskpet$/);
+  await expect(crumbs).toBeHidden();
+  await expect(page).toHaveTitle("Pets · DeskPet");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    /\/pets\/\?author=deskpet$/,
+  );
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/pets\/page\/2\/$/);
+  await expect(cards(page)).toHaveCount(3);
+  await expect(page.locator("[data-pagination] a[aria-current='page']")).toHaveText("2");
+  await expect(crumbs).toBeVisible();
+  await expect(crumbs).toContainText("Page 2");
+  await expect(page).toHaveTitle("Pets · Page 2 · DeskPet");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/pets\/page\/2\/$/);
+
+  await page.goForward();
+  await expect(cards(page)).toHaveCount(12);
+  await expect(crumbs).toBeHidden();
+  await expect(page).toHaveURL(/author=deskpet$/);
+});
+
+test("single-page catalogues still get working controls", async ({ page, request }) => {
+  const response = await request.get("/pets/catalogue.json");
+  const body = (await response.json()) as { pets: unknown[] };
+  await page.route("**/pets/catalogue.json", (route) =>
+    route.fulfill({ json: { pets: body.pets.slice(0, 12) } }),
+  );
+
+  await gotoThemed(page, "/pets/?page=1", "light");
+  await ready(page);
+  await expect(cards(page)).toHaveCount(12);
+  await expect(page.locator("[data-pagination]")).toBeHidden();
+
+  await page.locator("input[data-q]").fill("mochi");
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.locator("[data-pagination]")).toBeHidden();
+});
+
+test("client-created chips and pagination links keep their styles", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await gotoThemed(page, "/pets/?author=deskpet", "light");
+  await ready(page);
+
+  const chipButton = page.locator("[data-chip-list] li button").first();
+  const removeBox = await chipButton.boundingBox();
+  expect(removeBox?.width ?? 0).toBeGreaterThanOrEqual(24);
+  expect(removeBox?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+  const chipBorder = await page
+    .locator("[data-chip-list] li")
+    .first()
+    .evaluate((element) => getComputedStyle(element).borderTopWidth);
+  expect(chipBorder).not.toBe("0px");
+
+  const anchors = page.locator("[data-pagination] a");
+  const linkCount = await anchors.count();
+  expect(linkCount).toBeGreaterThan(0);
+  for (let index = 0; index < linkCount; index++) {
+    const box = await anchors.nth(index).boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+  }
+
+  const linkBorder = await page
+    .locator("[data-pagination] a[data-page='1']")
+    .evaluate((element) => getComputedStyle(element).borderTopStyle);
+  expect(linkBorder).toBe("solid");
+});
+
+test("category chips replace the removed category select", async ({ page }) => {
+  await openCatalogue(page);
+  await expect(page.locator("select[data-category]")).toHaveCount(0);
+
+  const allChip = page.locator('[data-category-nav] a[data-cat=""]');
+  const heroChip = page.locator('[data-category-nav] a[data-cat="hero"]');
+  await expect(allChip).toHaveAttribute("aria-current", "page");
+
+  await heroChip.click();
+  await expect(cards(page)).toHaveCount(8);
+  await expect.poll(() => page.url()).toContain("category=hero");
+  await expect(heroChip).toHaveAttribute("aria-current", "page");
+  await expect(allChip).not.toHaveAttribute("aria-current", "page");
+
+  await allChip.click();
+  await expect(cards(page)).toHaveCount(12);
+  await expect(page).toHaveURL(/\/pets\/$/);
+  await expect(allChip).toHaveAttribute("aria-current", "page");
+});
+
+test("the mobile Filters toggle counts the filters inside its panel", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await openCatalogue(page);
+  const toggle = page.locator("[data-filters-toggle]");
+  await toggle.click();
+
+  await page.selectOption("[data-author]", "deskpet");
+  await page.selectOption("[data-type]", "included");
+  await expect(page.locator("[data-filter-count]")).toHaveText("2");
+  await expect(toggle).toContainText("2");
+
+  await page.selectOption("[data-author]", "");
+  await expect(page.locator("[data-filter-count]")).toHaveText("1");
+});
+
+test("pagination shows a page status on static and enhanced views", async ({ page }) => {
+  await openCatalogue(page);
+  await expect(page.locator("[data-pagination]")).toContainText("Page 1 of 2");
+
+  await page.selectOption("[data-author]", "deskpet");
+  await expect(page.locator("[data-pagination]")).toContainText("Page 1 of 2");
+});
+
+test("toolbar tab order follows the visual order", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openCatalogue(page);
+  await page.locator("input[data-q]").focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("select[data-author]")).toBeFocused();
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await openCatalogue(page);
+  await page.locator("input[data-q]").focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("[data-filters-toggle]")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("select[data-sort]")).toBeFocused();
 });
 
 test.describe("without JavaScript", () => {

@@ -23,9 +23,9 @@ export function initCatalogue(): void {
   const reset = document.querySelector<HTMLButtonElement>("[data-reset]");
   const toggle = document.querySelector<HTMLButtonElement>("[data-filters-toggle]");
   const panel = document.querySelector<HTMLElement>("[data-filters-panel]");
+  const filterCount = document.querySelector<HTMLElement>("[data-filter-count]");
   const qInput = document.querySelector<HTMLInputElement>("input[data-q]");
   const sortSelect = document.querySelector<HTMLSelectElement>("select[data-sort]");
-  const categorySelect = document.querySelector<HTMLSelectElement>("select[data-category]");
   const authorSelect = document.querySelector<HTMLSelectElement>("select[data-author]");
   const typeSelect = document.querySelector<HTMLSelectElement>("select[data-type]");
   if (
@@ -33,7 +33,6 @@ export function initCatalogue(): void {
     !grid ||
     !template ||
     !count ||
-    !pagination ||
     !empty ||
     !chipsRow ||
     !chipList ||
@@ -43,7 +42,6 @@ export function initCatalogue(): void {
     !panel ||
     !qInput ||
     !sortSelect ||
-    !categorySelect ||
     !authorSelect ||
     !typeSelect
   ) {
@@ -72,27 +70,117 @@ export function initCatalogue(): void {
       authors: [...new Set(index.map((pet) => pet.authorSlug))],
     };
 
-    let state: CatalogueState = parseState(new URLSearchParams(location.search), valid);
+    let state: CatalogueState = readLocation();
     let searchTimer: ReturnType<typeof setTimeout> | undefined;
     let searchCommitted = false;
     let pageCount = 1;
+
+    function readLocation(): CatalogueState {
+      const params = new URLSearchParams(location.search);
+      const next = parseState(params, valid);
+      if (!params.has("page")) {
+        const match = location.pathname.match(/\/pets\/page\/(\d+)\/?$/);
+        if (match) next.page = Math.max(1, Number.parseInt(match[1], 10));
+      }
+      return next;
+    }
 
     function optionText(select: HTMLSelectElement, value: string): string {
       return Array.from(select.options).find((option) => option.value === value)?.text ?? value;
     }
 
+    function categoryLabel(id: string): string {
+      for (const chip of document.querySelectorAll<HTMLElement>(
+        "[data-category-nav] a[data-cat]",
+      )) {
+        if ((chip.dataset.cat ?? "") !== id) continue;
+        const clone = chip.cloneNode(true) as HTMLElement;
+        clone.querySelector(".cat-count")?.remove();
+        return clone.textContent?.trim() || id;
+      }
+      return id;
+    }
+
+    function syncFilterCount() {
+      if (!filterCount) return;
+      const active = (state.author ? 1 : 0) + (state.type ? 1 : 0);
+      filterCount.textContent = String(active);
+      filterCount.hidden = active === 0;
+    }
+
     function syncControls() {
       qInput!.value = state.q;
       sortSelect!.value = state.sort;
-      categorySelect!.value = state.category;
       authorSelect!.value = state.author;
       typeSelect!.value = state.type;
+      syncFilterCount();
+    }
+
+    function syncCategory() {
+      for (const chip of document.querySelectorAll<HTMLElement>(
+        "[data-category-nav] a[data-cat]",
+      )) {
+        if ((chip.dataset.cat ?? "") === state.category) chip.setAttribute("aria-current", "page");
+        else chip.removeAttribute("aria-current");
+      }
+    }
+
+    function syncBreadcrumb() {
+      let nav = document.querySelector<HTMLElement>('nav[aria-label="Breadcrumb"]');
+      if (state.page <= 1) {
+        if (nav) {
+          nav.hidden = true;
+          nav.style.display = "none";
+        }
+        return;
+      }
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.className = "crumbs";
+        nav.setAttribute("aria-label", "Breadcrumb");
+        const slot = document.querySelector<HTMLElement>("[data-crumbs]");
+        const head = document.querySelector<HTMLElement>(".listing-head");
+        if (slot) slot.append(nav);
+        else if (head?.parentElement) head.parentElement.insertBefore(nav, head);
+        else document.body.prepend(nav);
+      }
+      nav.hidden = false;
+      nav.style.removeProperty("display");
+      let list = nav.querySelector<HTMLOListElement>("ol.crumb-list");
+      if (!list) {
+        list = document.createElement("ol");
+        list.className = "crumb-list";
+        nav.replaceChildren(list);
+      }
+      const root = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = "/pets/";
+      link.textContent = "All pets";
+      root.append(link);
+      const current = document.createElement("li");
+      const separator = document.createElement("span");
+      separator.setAttribute("aria-hidden", "true");
+      separator.textContent = "/";
+      const label = document.createElement("span");
+      label.setAttribute("aria-current", "page");
+      label.textContent = `Page ${state.page}`;
+      current.append(separator, label);
+      list.replaceChildren(root, current);
+    }
+
+    function syncDocument() {
+      document.title = state.page > 1 ? `Pets · Page ${state.page} · DeskPet` : "Pets · DeskPet";
+      const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+      if (canonical) {
+        canonical.href = location.origin + location.pathname + location.search;
+      }
     }
 
     function commit(push: boolean) {
       const params = stateParams(state).toString();
       const url = `/pets/${params ? `?${params}` : ""}`;
       history[push ? "pushState" : "replaceState"]({}, "", url);
+      syncDocument();
     }
 
     function renderCard(pet: IndexPet): HTMLLIElement {
@@ -103,6 +191,8 @@ export function initCatalogue(): void {
         img.src = pet.gallery.src;
         img.width = pet.gallery.width;
         img.height = pet.gallery.height;
+        img.style.transform =
+          pet.gallery.zoom && pet.gallery.zoom !== 1 ? `scale(${pet.gallery.zoom})` : "";
       }
       const title = card.querySelector<HTMLElement>("[data-title]");
       if (title) {
@@ -136,10 +226,9 @@ export function initCatalogue(): void {
       }
       if (state.category) {
         chips.push({
-          label: optionText(categorySelect!, state.category),
+          label: categoryLabel(state.category),
           clear: () => {
             state.category = "";
-            categorySelect!.value = "";
           },
         });
       }
@@ -191,12 +280,13 @@ export function initCatalogue(): void {
     }
 
     function renderPagination() {
+      if (!pagination) return;
       if (pageCount <= 1) {
-        pagination!.hidden = true;
-        pagination!.replaceChildren();
+        pagination.hidden = true;
+        pagination.replaceChildren();
         return;
       }
-      pagination!.hidden = false;
+      pagination.hidden = false;
       const fullyDefault = stateParams({ ...state, page: 1 }).toString() === "";
       const hrefFor = (page: number) =>
         fullyDefault ? pagePath("/pets/", page) : `/pets/?${stateParams({ ...state, page })}`;
@@ -225,7 +315,10 @@ export function initCatalogue(): void {
         next.setAttribute("aria-label", "Next page");
         nodes.push(next);
       }
-      pagination!.replaceChildren(...nodes);
+      const status = document.createElement("span");
+      status.className = "pagination-status";
+      status.textContent = `Page ${state.page} of ${pageCount}`;
+      pagination.replaceChildren(status, ...nodes);
     }
 
     function render() {
@@ -241,6 +334,10 @@ export function initCatalogue(): void {
 
       count!.textContent = `${filtered.length} ${filtered.length === 1 ? "pet" : "pets"}`;
       renderChips();
+      syncCategory();
+      syncFilterCount();
+      syncBreadcrumb();
+      syncDocument();
       empty!.hidden = filtered.length > 0;
       renderPagination();
     }
@@ -280,12 +377,6 @@ export function initCatalogue(): void {
         },
       ],
       [
-        categorySelect,
-        (value) => {
-          state.category = value;
-        },
-      ],
-      [
         authorSelect,
         (value) => {
           state.author = value;
@@ -309,10 +400,24 @@ export function initCatalogue(): void {
       });
     }
 
+    for (const link of document.querySelectorAll<HTMLAnchorElement>(
+      "[data-category-nav] a[data-cat]",
+    )) {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        state.category = link.dataset.cat ?? "";
+        state.page = 1;
+        searchCommitted = false;
+        clearTimeout(searchTimer);
+        render();
+        commit(true);
+      });
+    }
+
     clear.addEventListener("click", resetAll);
     reset.addEventListener("click", resetAll);
 
-    pagination.addEventListener("click", (event) => {
+    pagination?.addEventListener("click", (event) => {
       const link = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[data-page]");
       if (!link) return;
       if (stateParams({ ...state, page: 1 }).toString() === "") return;
@@ -328,7 +433,7 @@ export function initCatalogue(): void {
     });
 
     window.addEventListener("popstate", () => {
-      state = parseState(new URLSearchParams(location.search), valid);
+      state = readLocation();
       searchCommitted = false;
       clearTimeout(searchTimer);
       syncControls();
@@ -339,6 +444,10 @@ export function initCatalogue(): void {
     if (location.search) {
       render();
       if (stateParams(state).toString() !== location.search.slice(1)) commit(false);
+    } else {
+      syncCategory();
+      syncBreadcrumb();
+      syncDocument();
     }
     controls.dataset.ready = "true";
   })();

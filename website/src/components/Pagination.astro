@@ -11,37 +11,64 @@ const { basePath, page, pageCount } = record;
 const pages = Array.from({ length: pageCount }, (_, index) => index + 1);
 ---
 
-{pageCount > 1 ? (
-  <nav class="pagination" aria-label="Pagination" data-pagination>
-    {page > 1 ? (
-      <a
-        href={pagePath(basePath, page - 1)}
-        rel="prev"
-        data-page={page - 1}
-        aria-label="Previous page"
-      >
-        Previous
-      </a>
-    ) : null}
-    {pages.map((n) => (
-      <a href={pagePath(basePath, n)} data-page={n} aria-current={n === page ? 'page' : undefined}>
-        {n}
-      </a>
-    ))}
-    {page < pageCount ? (
-      <a href={pagePath(basePath, page + 1)} rel="next" data-page={page + 1} aria-label="Next page">
-        Next
-      </a>
-    ) : null}
-  </nav>
-) : null}
+<nav class="pagination" aria-label="Pagination" data-pagination hidden={pageCount <= 1}>
+  {pageCount > 1 ? (
+    <>
+      <span class="pagination-status">
+        Page {page} of {pageCount}
+      </span>
+      {page > 1 ? (
+        <a
+          href={pagePath(basePath, page - 1)}
+          rel="prev"
+          data-page={page - 1}
+          aria-label="Previous page"
+        >
+          Previous
+        </a>
+      ) : null}
+      {pages.map((n) => (
+        <a
+          href={pagePath(basePath, n)}
+          data-page={n}
+          aria-current={n === page ? 'page' : undefined}
+        >
+          {n}
+        </a>
+      ))}
+      {page < pageCount ? (
+        <a
+          href={pagePath(basePath, page + 1)}
+          rel="next"
+          data-page={page + 1}
+          aria-label="Next page"
+        >
+          Next
+        </a>
+      ) : null}
+    </>
+  ) : null}
+</nav>
 
-<style>
+<style is:global>
   .pagination {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
     gap: var(--spacing-tight);
     margin-top: var(--spacing-room);
+  }
+
+  .pagination[hidden] {
+    display: none;
+  }
+
+  .pagination-status {
+    color: var(--muted);
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
   }
 
   .pagination a {
