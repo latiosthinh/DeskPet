@@ -210,7 +210,6 @@ def grid_html():
                     f"<br><sub>{desc}</sub></td>"
                 )
                 lines.append(cell)
-            lines.extend(["<td></td>"] * (4 - len(row[start:start + 4])))
             lines.append("</tr>")
         lines.append("</table>")
     return "\n".join(lines)

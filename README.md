@@ -51,9 +51,6 @@ The rest are one-click add-ons from the website: open **Pet → Get More Pets…
 </tr>
 <tr>
 <td align="center" valign="top"><img src="docs/readme/pet-sprout.png" width="96" height="64" alt="Sprout the seedling"><br><strong>Sprout the seedling</strong><br><sub>A tiny seedling who plants itself, grows up, chases butterflies and gives you flowers.</sub></td>
-<td></td>
-<td></td>
-<td></td>
 </tr>
 </table>
 
@@ -80,8 +77,6 @@ The rest are one-click add-ons from the website: open **Pet → Get More Pets…
 <tr>
 <td align="center" valign="top"><img src="docs/readme/pet-moona.png" width="96" height="64" alt="Moona the moon knight"><br><strong>Moona the moon knight</strong> · <em>included</em><br><sub>A moon knight riding a black panther. Throws her glaive, splits in three and calls down the moonlight.</sub></td>
 <td align="center" valign="top"><img src="docs/readme/pet-witcher.png" width="96" height="64" alt="Orbis the witcher"><br><strong>Orbis the witcher</strong><br><sub>A sorcerer with three orbs circling overhead. Casts meteors, tornadoes, sun strikes and fire spirits.</sub></td>
-<td></td>
-<td></td>
 </tr>
 </table>
 
