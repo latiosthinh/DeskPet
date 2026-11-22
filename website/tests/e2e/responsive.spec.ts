@@ -45,13 +45,33 @@ for (const theme of themes) {
       await expect(page.locator("[data-controls]")).toHaveAttribute("data-ready", "true");
 
       await page.locator("[data-filters-toggle]").click();
-      await expect(page.locator("[data-category]")).toBeVisible();
+      await expect(page.locator("[data-author]")).toBeVisible();
       await loadAllImages(page);
       await expectNoHorizontalOverflow(page);
       await page.screenshot({
         path: join(process.cwd(), "qa", "screenshots", `catalogue-filters-open-375-${theme}.png`),
         fullPage: true,
       });
+    });
+
+    test("catalogue filtered state fits and screenshots at 375 and 1440", async ({ page }) => {
+      for (const width of [375, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await gotoThemed(page, "/pets/?author=deskpet", theme, { reducedMotion: true });
+        await expectTheme(page, theme);
+        await expect(page.locator("[data-controls]")).toHaveAttribute("data-ready", "true");
+        await loadAllImages(page);
+        await expectNoHorizontalOverflow(page);
+        await page.screenshot({
+          path: join(
+            process.cwd(),
+            "qa",
+            "screenshots",
+            `catalogue-filtered-${width}-${theme}.png`,
+          ),
+          fullPage: true,
+        });
+      }
     });
   });
 }

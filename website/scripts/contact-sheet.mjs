@@ -18,6 +18,7 @@ const PAGES = [
   "support",
   "catalogue",
   "catalogue-page-2",
+  "catalogue-filtered",
   "category-hero",
   "authors",
   "author-deskpet",

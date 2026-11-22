@@ -71,10 +71,20 @@ export async function expectNoHorizontalOverflow(page: Page) {
   const report = await page.evaluate(() => {
     const viewport = document.documentElement.clientWidth;
     const offenders: string[] = [];
+    // Children of a horizontal scroll/clip container may legitimately sit outside the
+    // viewport; the container itself is still measured.
+    const clippedByAncestor = (element: HTMLElement) => {
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const overflowX = getComputedStyle(parent).overflowX;
+        if (overflowX === "auto" || overflowX === "scroll" || overflowX === "hidden") return true;
+      }
+      return false;
+    };
     for (const element of document.body.querySelectorAll<HTMLElement>("*")) {
       if (element.classList.contains("sr-only")) continue;
       const rect = element.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) continue;
+      if (clippedByAncestor(element)) continue;
       if (rect.right > viewport + 1 || rect.left < -2) {
         offenders.push(
           `${element.tagName.toLowerCase()}.${String(element.className).slice(0, 70)} left=${Math.round(rect.left)} right=${Math.round(rect.right)}`,
