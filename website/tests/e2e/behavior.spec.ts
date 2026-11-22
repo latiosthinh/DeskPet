@@ -693,7 +693,7 @@ async function expectMobileHeader(page: Page, width: number) {
   const animBox = await page.locator("[data-anim-global]").boundingBox();
   const supportBox = await page.locator("header .support-btn").boundingBox();
   const githubBox = await page
-    .locator('header .header-actions a[aria-label="DeskPet on GitHub"]')
+    .locator('header .header-actions a[aria-label="DeskPet on GitHub (opens in a new tab)"]')
     .boundingBox();
   const navBox = await page.locator(".main-nav").boundingBox();
   expect(brandBox, `${width}px brand has no box`).not.toBeNull();
@@ -739,6 +739,7 @@ async function expectMobileHeader(page: Page, width: number) {
       clientWidth: list.clientWidth,
       left: listBox.left,
       right: listBox.right,
+      gap: parseFloat(getComputedStyle(list).columnGap),
       links: [...list.querySelectorAll<HTMLElement>(".nav-link")].map((link) => {
         const box = link.getBoundingClientRect();
         const range = document.createRange();
@@ -789,6 +790,18 @@ async function expectMobileHeader(page: Page, width: number) {
       );
     }
   }
+
+  expect(
+    nav.links[0].x - nav.left,
+    `${width}px nav list should be left-aligned`,
+  ).toBeLessThanOrEqual(1);
+  for (let index = 1; index < nav.links.length; index += 1) {
+    const actualGap = nav.links[index].x - nav.links[index - 1].right;
+    expect(
+      Math.abs(actualGap - nav.gap),
+      `${width}px nav gap before ${nav.links[index].text}`,
+    ).toBeLessThanOrEqual(1);
+  }
 }
 
 test("mobile header: brand and both controls row 1, every nav link row 2 at 320-639px", async ({
@@ -820,10 +833,40 @@ test("desktop header keeps Download visible at 1440px", async ({ page }) => {
   const download = page.locator("header .header-download");
   await expect(download, "header Download should be visible at 1440px").toBeVisible();
   await expect(
-    page.locator('header .header-actions a[aria-label="DeskPet on GitHub"]'),
+    page.locator('header .header-actions a[aria-label="DeskPet on GitHub (opens in a new tab)"]'),
     "GitHub icon link should be visible at 1440px",
   ).toBeVisible();
   await expect(page.locator("header .nav-list")).not.toContainText("GitHub");
+});
+
+test("GitHub links open in a new tab with an announced suffix", async ({ page }) => {
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+
+    const headerLink = page.locator(
+      'header .header-actions a[aria-label="DeskPet on GitHub (opens in a new tab)"]',
+    );
+    await expect(headerLink).toHaveAttribute("target", "_blank");
+    await expect(headerLink).toHaveAttribute("rel", /noopener/);
+    await expect(headerLink).toHaveAttribute("rel", /noreferrer/);
+    await expect(headerLink).toHaveAttribute("title", "DeskPet on GitHub (opens in a new tab)");
+    await expect(headerLink).toHaveAccessibleName("DeskPet on GitHub (opens in a new tab)");
+
+    const footerLink = page.locator('footer nav a[href="https://github.com/latiosthinh/DeskPet"]');
+    await expect(footerLink).toHaveAttribute("target", "_blank");
+    await expect(footerLink).toHaveAttribute("rel", /noopener/);
+    await expect(footerLink).toHaveAttribute("rel", /noreferrer/);
+    await expect(footerLink).toHaveAccessibleName("Source on GitHub (opens in a new tab)");
+    await expect(footerLink).toContainText("Source on GitHub");
+
+    const suffixBox = await footerLink.locator(".visually-hidden").boundingBox();
+    expect(suffixBox, `${width}px visually-hidden suffix has no box`).not.toBeNull();
+    expect(
+      suffixBox!.width,
+      `${width}px visually-hidden suffix should stay clipped`,
+    ).toBeLessThanOrEqual(1);
+  }
 });
 
 test("hero scene image drives frame height at 375 and 1440px", async ({ page }) => {

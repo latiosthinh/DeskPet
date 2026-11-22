@@ -366,7 +366,6 @@
   @media (max-width: 639px) {
     .nav-list {
       flex-wrap: nowrap;
-      justify-content: space-between;
     }
 
     .nav-link {
