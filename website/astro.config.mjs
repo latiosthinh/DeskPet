@@ -2,8 +2,8 @@ import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
-// Public production origin used by the Mac/Windows apps (windows/src/net.rs, site()).
-export const SITE_URL = "https://deskpet.pages.dev";
+// Public production origin used by the Mac/Windows apps (shared/host/src/catalog.rs, site()).
+export const SITE_URL = "https://deskpet-vn.pages.dev";
 
 export default defineConfig({
   site: SITE_URL,

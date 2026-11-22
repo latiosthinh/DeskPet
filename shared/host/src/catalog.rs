@@ -28,7 +28,7 @@ pub struct Entry {
 /// The pet website. `DESKPET_SITE` points the app at another copy (e.g. `http://127.0.0.1:8788`
 /// while trying the site locally with `wrangler pages dev`).
 pub fn site() -> String {
-    std::env::var("DESKPET_SITE").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "https://deskpet.pages.dev".into()).trim_end_matches('/').to_string()
+    std::env::var("DESKPET_SITE").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "https://deskpet-vn.pages.dev".into()).trim_end_matches('/').to_string()
 }
 
 /// Reads a module's description (starting it briefly to ask).

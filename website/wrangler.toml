@@ -1,6 +1,6 @@
 ﻿# Cloudflare Pages project for the DeskPet pet website.
 # Run wrangler from this folder (website/).
-name = "deskpet"
+name = "deskpet-vn"
 compatibility_date = "2026-06-01"
 # `npm run build` writes the static site to dist/ (Astro). public/ holds the pet GIFs,
 # .deskpet modules and donation QR that get copied into dist/.

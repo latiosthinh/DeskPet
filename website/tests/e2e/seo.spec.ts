@@ -35,7 +35,7 @@ const pets = JSON.parse(
   readFileSync(join(process.cwd(), "src", "data", "pets.generated.json"), "utf8"),
 ).pets as PetRecord[];
 
-const ORIGIN = "https://deskpet.pages.dev";
+const ORIGIN = "https://deskpet-vn.pages.dev";
 const PAGE_SIZE = 12;
 
 const absolute = (path: string) => `${ORIGIN}${path}`;
@@ -148,5 +148,5 @@ test("pet routes and static assets keep working", async ({ request }) => {
 test("robots.txt points search engines at sitemap.xml", async ({ request }) => {
   const response = await request.get("/robots.txt");
   expect(response.status()).toBe(200);
-  expect(await response.text()).toContain("Sitemap: https://deskpet.pages.dev/sitemap.xml");
+  expect(await response.text()).toContain("Sitemap: https://deskpet-vn.pages.dev/sitemap.xml");
 });
