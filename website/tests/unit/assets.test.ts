@@ -18,12 +18,14 @@ import {
 import { deriveCategories } from "../../scripts/lib/categories.mjs";
 import { makeFallbackGif, readGifInfo } from "../../scripts/lib/gif.mjs";
 import {
+  CANVAS_MARGIN,
   GALLERY_HEIGHT,
   GALLERY_WIDTH,
   connectedComponents,
   detectPixelGrid,
   findBubble,
   frameView,
+  galleryFit,
   heroBodyHeight,
   isContent,
   largestBody,
@@ -334,6 +336,19 @@ async function bodyHeights(file: string): Promise<number[]> {
   }
   return heights.sort((a, b) => a - b);
 }
+
+describe("galleryFit", () => {
+  it("caps the 1x display zoom so a wide, short body still fits the poster canvas", () => {
+    const { zoom, scale } = galleryFit(180, 80, 1, 1);
+    expect(zoom).toBe(1.35);
+    expect(Math.round(180 * scale)).toBeLessThanOrEqual(GALLERY_WIDTH - CANVAS_MARGIN * 2);
+    expect(Math.round(80 * scale)).toBeLessThanOrEqual(GALLERY_HEIGHT - CANVAS_MARGIN * 2);
+  });
+
+  it("leaves an integer 2x fit unchanged", () => {
+    expect(galleryFit(40, 60, 2, 2)).toEqual({ zoom: 1, scale: 2 });
+  });
+});
 
 describe("formatting", () => {
   it("formats bytes and durations for the page", () => {

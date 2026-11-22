@@ -1,0 +1,2 @@
+# Prettier formats Astro files with LF; keep Windows checkouts identical.
+*.astro text eol=lf

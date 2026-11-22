@@ -177,6 +177,12 @@ describe("deriveCategories", () => {
 });
 
 describe("stable ordering", () => {
+  it("bounds long non-latin author slugs with a fixed-length digest", () => {
+    const slug = authorSlug("作".repeat(42));
+    expect(slug).toMatch(/^author-[0-9a-f]{32}$/);
+    expect(slug.length).toBeLessThanOrEqual(65);
+  });
+
   it("keeps author slugs unique and listings stable under input order", () => {
     expect(authorSlug("A B")).not.toBe(authorSlug("A-B"));
     expect(authorSlug("一")).not.toBe(authorSlug("业"));

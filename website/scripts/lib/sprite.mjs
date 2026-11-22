@@ -239,6 +239,17 @@ export function targetScale(bodyHeight) {
   return Math.max(1, Math.round(TARGET_BODY_HEIGHT / Math.max(1, bodyHeight)));
 }
 
+/** Integer fit plus the 1x display zoom, capped so the zoomed body still fits the canvas. */
+export function galleryFit(width, height, scale, grid) {
+  const zoom =
+    grid === 1 ? Math.min(1.35, Math.max(1, Math.round((108 / height) * 1000) / 1000)) : 1;
+  const availW = GALLERY_WIDTH - CANVAS_MARGIN * 2;
+  const availH = GALLERY_HEIGHT - CANVAS_MARGIN * 2;
+  const maxScale = Math.max(1, Math.floor(Math.min(availW / width, availH / height)));
+  const base = Math.min(scale, maxScale);
+  return { zoom, scale: Math.min(base * zoom, availW / width, availH / height) };
+}
+
 /**
  * The source art is a mix of 1x and 2x pixel grids. Detect which one a pet uses
  * by checking whether its body is composed of 2x2 identical pixel blocks; 2x art

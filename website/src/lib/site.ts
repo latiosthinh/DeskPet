@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import generated from "../data/pets.generated.json";
 
 /** BNB Smart Chain (BEP-20) support address. Stored once; never log it with card data. */
@@ -93,7 +94,8 @@ export function authorSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `${readable || "author"}-${Buffer.from(name, "utf8").toString("hex")}`;
+  const digest = createHash("sha256").update(name, "utf8").digest("hex").slice(0, 32);
+  return `${(readable || "author").slice(0, 32)}-${digest}`;
 }
 
 /** Groups pets by author: DeskPet first, then every community author alphabetically. */

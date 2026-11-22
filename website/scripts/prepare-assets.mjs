@@ -28,6 +28,7 @@ import {
   encodeFrames,
   findBubble,
   frameView,
+  galleryFit,
   heroBodyHeight,
   isContent,
   largestBody,
@@ -201,8 +202,7 @@ async function galleryPoster(pet, frames, scale, grid) {
 
   const width = body.width;
   const height = body.height;
-  const zoom =
-    grid === 1 ? Math.min(1.35, Math.max(1, Math.round((108 / height) * 1000) / 1000)) : 1;
+  const { zoom, scale: finalScale } = galleryFit(width, height, scale, grid);
   const cropped = Buffer.alloc(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -219,18 +219,8 @@ async function galleryPoster(pet, frames, scale, grid) {
     }
   }
 
-  const maxScale = Math.max(
-    1,
-    Math.floor(
-      Math.min(
-        (GALLERY_WIDTH - CANVAS_MARGIN * 2) / width,
-        (GALLERY_HEIGHT - CANVAS_MARGIN * 2) / height,
-      ),
-    ),
-  );
-  const galleryScale = Math.min(scale, maxScale);
-  const scaledWidth = Math.round(width * galleryScale * zoom);
-  const scaledHeight = Math.round(height * galleryScale * zoom);
+  const scaledWidth = Math.round(width * finalScale);
+  const scaledHeight = Math.round(height * finalScale);
   const scaled = await sharp(cropped, { raw: { width, height, channels: 4 } })
     .resize(scaledWidth, scaledHeight, { kernel: "nearest" })
     .png()

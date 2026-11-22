@@ -81,9 +81,18 @@ const groups = authorGroups().map((group) => ({
     list-style: none;
   }
 
+  .author-grid > li {
+    display: flex;
+  }
+
+  .author-grid > li > a {
+    flex: 1;
+  }
+
   .author-card {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--spacing-snug);
     padding: var(--spacing-cozy);
     text-decoration: none;
@@ -123,13 +132,16 @@ const groups = authorGroups().map((group) => ({
   @media (min-width: 641px) {
     .author-card {
       flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: var(--spacing-cozy);
     }
 
     .author-pets {
+      min-width: 0;
       margin-left: auto;
+      flex-wrap: wrap;
     }
   }
 
