@@ -74,7 +74,7 @@ const groups = authorGroups().map((group) => ({
 
   .author-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     gap: var(--spacing-grid);
     margin: var(--spacing-cozy) 0 0;
     padding: 0;
@@ -118,6 +118,19 @@ const groups = authorGroups().map((group) => ({
     height: 44px;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+  }
+
+  @media (min-width: 641px) {
+    .author-card {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-cozy);
+    }
+
+    .author-pets {
+      margin-left: auto;
+    }
   }
 
   .author-cta {
