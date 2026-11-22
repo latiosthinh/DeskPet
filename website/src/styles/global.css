@@ -1860,11 +1860,21 @@
     }
 
     .dialog-panel .support-content {
+      gap: var(--spacing-tight);
+    }
+
+    /* The dialog heading already says Support; drop the duplicate label. */
+    .dialog-panel .eyebrow {
+      display: none;
+    }
+
+    .dialog-panel .support-crypto {
       gap: var(--spacing-snug);
+      padding-top: var(--spacing-snug);
     }
 
     .dialog-panel .support-content p {
-      margin-top: var(--spacing-tight);
+      margin-top: var(--spacing-hair);
     }
 
     .dialog-panel .support-intro p {
