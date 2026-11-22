@@ -674,16 +674,19 @@ async function expectMobileHeader(page: Page, width: number) {
   const brandBox = await page.locator(".brand").boundingBox();
   const themeBox = await page.locator("[data-theme-toggle]").boundingBox();
   const animBox = await page.locator("[data-anim-global]").boundingBox();
+  const supportBox = await page.locator("header .support-btn").boundingBox();
   const navBox = await page.locator(".main-nav").boundingBox();
   expect(brandBox, `${width}px brand has no box`).not.toBeNull();
   expect(themeBox, `${width}px theme toggle has no box`).not.toBeNull();
   expect(animBox, `${width}px animation toggle has no box`).not.toBeNull();
+  expect(supportBox, `${width}px support button has no box`).not.toBeNull();
   expect(navBox, `${width}px nav has no box`).not.toBeNull();
 
   const rowOneBottom = Math.max(
     brandBox!.y + brandBox!.height,
     themeBox!.y + themeBox!.height,
     animBox!.y + animBox!.height,
+    supportBox!.y + supportBox!.height,
   );
   expect(
     Math.abs(themeBox!.y - brandBox!.y),
@@ -692,6 +695,10 @@ async function expectMobileHeader(page: Page, width: number) {
   expect(
     Math.abs(animBox!.y - brandBox!.y),
     `${width}px brand and animation toggle should share the first row`,
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(supportBox!.y - brandBox!.y),
+    `${width}px brand and support button should share the first row`,
   ).toBeLessThanOrEqual(2);
   expect(navBox!.y, `${width}px nav should be below the brand row`).toBeGreaterThanOrEqual(
     rowOneBottom - 2,
@@ -728,7 +735,7 @@ async function expectMobileHeader(page: Page, width: number) {
   expect(
     nav.links.map((link) => link.text),
     `${width}px nav labels`,
-  ).toEqual(["Pets", "Make a pet", "Support", "GitHub"]);
+  ).toEqual(["Pets", "Make a pet", "GitHub"]);
 
   const rowY = nav.links[0].y;
   for (const [index, link] of nav.links.entries()) {

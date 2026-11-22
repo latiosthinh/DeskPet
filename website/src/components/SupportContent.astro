@@ -12,21 +12,25 @@ const Heading = headingLevel === 1 ? 'h1' : 'h2';
 ---
 
 <section class="support-content" aria-labelledby={titleId}>
-  <img
-    class="support-qr"
-    src={qr.src}
-    width={qr.width}
-    height={qr.height}
-    alt="Donation QR code. Scan it to support DeskPet."
-    loading="lazy"
-    decoding="async"
-  />
-  <div>
+  <picture class="support-card">
+    <source srcset={qr.webp} type="image/webp" />
+    <img
+      class="support-qr"
+      src={qr.src}
+      width={qr.width}
+      height={qr.height}
+      alt="MoMo and VietQR donation QR code for DeskPet"
+      loading="lazy"
+      decoding="async"
+    />
+  </picture>
+  <div class="support-copy">
     <p class="eyebrow">Support</p>
     <Heading id={titleId}>Support DeskPet</Heading>
     <p>
       DeskPet and every pet here are free, with no ads, no cookies and no accounts. If {name} made
-      your desk a little happier, you can chip in by scanning the code. It keeps new pets coming.
+      your desk a little happier, you can chip in by scanning the card. It works with MoMo and
+      Vietnamese banking apps (VietQR / napas 247), and it keeps new pets coming.
     </p>
     <p class="support-thanks">Thank you for keeping DeskPet free for everyone.</p>
   </div>

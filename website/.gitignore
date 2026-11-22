@@ -14,3 +14,4 @@ src/data/pets.generated.json
 # Open Graph images, fallback art); see README. Only the owner's donation QR code is kept here.
 public/*
 !public/donate-qr.png
+!public/donate-qr.webp

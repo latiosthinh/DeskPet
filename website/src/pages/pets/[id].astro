@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPaths } from 'astro';
 import AnimatedMedia from '../../components/AnimatedMedia.astro';
+import SupportButton from '../../components/SupportButton.astro';
 import Base from '../../layouts/Base.astro';
 import {
   INCLUDED_LABEL,
@@ -133,6 +134,13 @@ const schema = {
             </div>
           )}
         </div>
+
+        <aside class="support-prompt">
+          <SupportButton />
+          <p>
+            Enjoying {pet.shortName}? <strong>Support DeskPet</strong>
+          </p>
+        </aside>
       </div>
     </section>
   </div>

@@ -375,24 +375,22 @@ function fileSize(pet) {
 
 async function ensureQr() {
   const file = join(PUBLIC, "donate-qr.png");
-  if (!existsSync(file)) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">
-      <rect width="360" height="360" fill="${palette.surface}"/>
-      <g fill="${palette.ink}">
-        <rect x="24" y="24" width="84" height="84"/><rect x="252" y="24" width="84" height="84"/>
-        <rect x="24" y="252" width="84" height="84"/><rect x="48" y="48" width="36" height="36" fill="${palette.surface}"/>
-        <rect x="276" y="48" width="36" height="36" fill="${palette.surface}"/><rect x="48" y="276" width="36" height="36" fill="${palette.surface}"/>
-      </g>
-      <text x="180" y="196" font-family="monospace" font-size="22" text-anchor="middle" fill="${palette.ink}">DONATION QR</text>
-    </svg>`;
-    await sharp(Buffer.from(svg)).png().toFile(file);
-    console.warn(
-      "[prepare-assets] public/donate-qr.png was missing; wrote a placeholder (never overwritten)",
-    );
+  const webp = join(PUBLIC, "donate-qr.webp");
+  if (!existsSync(file) || !existsSync(webp)) {
+    throw new Error("public/donate-qr.png and public/donate-qr.webp are required (no placeholder)");
   }
   const info = await sharp(file).metadata();
+  const webpInfo = await sharp(webp).metadata();
   if (!info.width || !info.height) throw new Error("donate-qr.png cannot be read");
-  return { src: "/donate-qr.png", width: info.width, height: info.height };
+  if (webpInfo.width !== info.width || webpInfo.height !== info.height) {
+    throw new Error("donate-qr.webp must have the same dimensions as donate-qr.png");
+  }
+  return {
+    src: "/donate-qr.png",
+    webp: "/donate-qr.webp",
+    width: info.width,
+    height: info.height,
+  };
 }
 
 async function makeOg(posterPaths, out, label) {

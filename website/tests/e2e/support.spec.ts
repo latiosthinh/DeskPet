@@ -1,8 +1,15 @@
+import { mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { gotoThemed } from "../helpers";
+import { gotoThemed, loadAllImages } from "../helpers";
 
 const themes = ["light", "dark"] as const;
+const pets = JSON.parse(
+  readFileSync(join(process.cwd(), "src", "data", "pets.generated.json"), "utf8"),
+).pets as { id: string; shortName: string }[];
+const QR_ALT = "MoMo and VietQR donation QR code for DeskPet";
+const SOURCE_QR_FRACTION = 310 / 1008;
 
 test("the Support link opens a native dialog and returns focus on close", async ({ page }) => {
   await gotoThemed(page, "/", "light");
@@ -14,7 +21,8 @@ test("the Support link opens a native dialog and returns focus on close", async 
   await expect(dialog.getByRole("heading", { name: "Support DeskPet" })).toBeVisible();
   await expect(dialog).toContainText("no ads, no cookies and no accounts");
   await expect(dialog).toContainText("Thank you for keeping DeskPet free for everyone.");
-  await expect(dialog.getByRole("img", { name: /Donation QR code/ })).toBeVisible();
+  await expect(dialog.getByRole("img", { name: QR_ALT })).toBeVisible();
+  await expect(dialog).toContainText("VietQR / napas 247");
 
   const close = dialog.getByRole("button", { name: "Close support dialog" });
   await expect(close).toBeFocused();
@@ -75,7 +83,7 @@ test.describe("without JavaScript", () => {
     await trigger.click();
     await expect(page).toHaveURL(/\/support\/$/);
     await expect(page.getByRole("heading", { name: "Support DeskPet" })).toBeVisible();
-    await expect(page.getByRole("img", { name: /Donation QR code/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: QR_ALT })).toBeVisible();
     await expect(page.locator("main .support-content")).toContainText(
       "no ads, no cookies and no accounts",
     );
@@ -87,3 +95,114 @@ test.describe("without JavaScript", () => {
     );
   });
 });
+
+for (const width of [320, 375, 1440]) {
+  test(`header Support sits in the action group and stays visible at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await gotoThemed(page, "/", "light", { reducedMotion: true });
+
+    const support = page.locator("header .header-actions .support-btn");
+    await expect(support).toHaveCount(1);
+    await expect(support).toBeVisible();
+    await expect(support).toHaveAttribute("href", "/support/");
+    await expect(page.locator("header .main-nav .support-btn")).toHaveCount(0);
+    await expect(page.locator("header .nav-list")).not.toContainText("Support");
+
+    const box = await support.boundingBox();
+    expect(box, `${width}px Support button has no box`).not.toBeNull();
+    expect(box!.width, `${width}px Support target width`).toBeGreaterThanOrEqual(24);
+    expect(box!.height, `${width}px Support target height`).toBeGreaterThanOrEqual(24);
+    await expect(support).toHaveAccessibleName(/Support/);
+
+    await support.focus();
+    const outline = await support.evaluate((element) => getComputedStyle(element).outlineWidth);
+    expect(outline, `${width}px Support focus outline`).not.toBe("0px");
+  });
+}
+
+test("desktop dialog shows the whole QR card, uncropped, with a 200px+ QR region", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await gotoThemed(page, "/", "light", { reducedMotion: true });
+  await page.locator("header .support-btn").click();
+  const dialog = page.locator("dialog[open]");
+  await expect(dialog).toBeVisible();
+  await loadAllImages(page);
+
+  const image = dialog.getByRole("img", { name: QR_ALT });
+  await expect(image).toBeVisible();
+  const shape = await image.evaluate((element) => {
+    const img = element as HTMLImageElement;
+    const box = img.getBoundingClientRect();
+    return {
+      width: box.width,
+      height: box.height,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      objectFit: getComputedStyle(img).objectFit,
+    };
+  });
+
+  expect(shape.naturalWidth).toBe(1008);
+  expect(shape.naturalHeight).toBe(1102);
+  expect(shape.objectFit).not.toBe("cover");
+  expect(
+    Math.abs(shape.width / shape.height - shape.naturalWidth / shape.naturalHeight),
+    "rendered card ratio differs from the source card",
+  ).toBeLessThan(0.01);
+  expect(
+    Math.abs(shape.height - (shape.width * shape.naturalHeight) / shape.naturalWidth),
+    "card is cropped vertically",
+  ).toBeLessThanOrEqual(1);
+  expect(
+    shape.width * SOURCE_QR_FRACTION,
+    "desktop QR region is smaller than 200 CSS px",
+  ).toBeGreaterThanOrEqual(200);
+  await expect(dialog.locator("picture source")).toHaveAttribute("type", "image/webp");
+});
+
+test("every pet page shows the support prompt right after the action and opens the dialog", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  for (const pet of pets) {
+    await gotoThemed(page, `/pets/${pet.id}/`, "light", { reducedMotion: true });
+    const prompt = page.locator(".pet-copy .support-prompt");
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toContainText(`Enjoying ${pet.shortName}? Support DeskPet`);
+    expect(
+      await page
+        .locator(".pet-copy .pet-action")
+        .evaluate((action) => action.nextElementSibling?.classList.contains("support-prompt")),
+      `${pet.id} support prompt is not directly after the pet action`,
+    ).toBe(true);
+
+    await prompt.locator(".support-btn").click();
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Support DeskPet" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+  }
+});
+
+const DIALOG_SHOTS = join(process.cwd(), "qa", "support-dialog");
+mkdirSync(DIALOG_SHOTS, { recursive: true });
+
+for (const theme of themes) {
+  for (const width of [375, 1440]) {
+    test(`dialog open screenshot ${width}px (${theme})`, async ({ page }) => {
+      await page.setViewportSize({ width, height: width === 1440 ? 1000 : 900 });
+      await gotoThemed(page, "/", theme, { reducedMotion: true });
+      await page.locator("header .support-btn").click();
+      await expect(page.locator("dialog[open]")).toBeVisible();
+      await loadAllImages(page);
+      await page.screenshot({
+        path: join(DIALOG_SHOTS, `dialog-${width}-${theme}.png`),
+      });
+    });
+  }
+}

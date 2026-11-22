@@ -1,11 +1,11 @@
 ---
 import { SITE } from '../lib/site';
+import SupportButton from './SupportButton.astro';
 
 const path = Astro.url.pathname;
 const links = [
   { href: '/', label: 'Pets' },
   { href: '/contribute/', label: 'Make a pet' },
-  { href: '/support/', label: 'Support' },
 ];
 ---
 
@@ -95,6 +95,7 @@ const links = [
           <path d="M7 4.5v15l13-7.5z"></path>
         </svg>
       </button>
+      <SupportButton />
       <a class="btn btn-primary header-download" href={SITE.release}>
         Download
       </a>
@@ -108,7 +109,6 @@ const links = [
               href={link.href}
               aria-current={path === link.href ? 'page' : undefined}
               class="nav-link"
-              data-support-open={link.href === '/support/' ? '' : undefined}
             >
               {link.label}
             </a>

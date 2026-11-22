@@ -55,7 +55,12 @@ export interface Pet {
 export const categories = generated.categories as Category[];
 export const pets = generated.pets as Pet[];
 export const builtinShortNames = generated.builtinShortNames as string[];
-export const qr = generated.qr as { src: string; width: number; height: number };
+export const qr = generated.qr as {
+  src: string;
+  webp: string;
+  width: number;
+  height: number;
+};
 
 export const petsById = new Map(pets.map((pet) => [pet.id, pet]));
 

@@ -46,10 +46,11 @@ website/
     e2e/                      axe, every-width screenshots, behavior, support dialog
   functions/                  unchanged Pages Functions (visit/update/download/files/stats)
   lib/shared.js               unchanged pet lookup + D1 upsert
-  public/                     generated and git-ignored except donate-qr.png
+  public/                     generated and git-ignored except the donation card
     pets/<id>/                raw GIFs from petshot, plus generated .sprite clips/posters/og.png
     files/<id>.deskpet        add-on modules from petshot
-    donate-qr.png             owner's file, never overwritten
+    donate-qr.png             real donation card, committed, never overwritten
+    donate-qr.webp            same pixels as the PNG, committed, no placeholder
   wrangler.toml               Pages project, D1 binding, output directory = dist/
   schema.sql                  D1 table: counts(pet_id, kind, day, n)
 ```
@@ -144,7 +145,7 @@ npm run build
 `petshot site` writes each pet's GIFs into `public/pets/<id>/`, each add-on module into
 `public/files/`, and rewrites `pets.json` (names, descriptions, versions, trick ids, file sizes).
 `npm run build` then derives posters/OG images and true durations. `public/*` stays git-ignored
-except `donate-qr.png`.
+except the committed donation card (`donate-qr.png` and `donate-qr.webp`).
 
 ## Backend contract (unchanged)
 
@@ -175,7 +176,8 @@ npx wrangler pages project create deskpet --production-branch main
 npx wrangler pages secret put STATS_TOKEN --project-name deskpet
 ```
 
-Before the first deploy, replace `public/donate-qr.png` with the real QR code.
+The real donation card (`public/donate-qr.png` and `public/donate-qr.webp`) is committed; the build
+fails if either is missing or their dimensions differ.
 
 Before each deploy, from the repository root:
 
