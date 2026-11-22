@@ -1,0 +1,219 @@
+---
+import { INCLUDED_LABEL, authorGroups, categories } from '../lib/site';
+
+const authors = authorGroups();
+---
+
+<div class="catalogue-controls" data-controls>
+  <div class="controls-row">
+    <div class="field field-search">
+      <label for="catalogue-q">Search pets</label>
+      <input
+        id="catalogue-q"
+        data-q
+        type="search"
+        placeholder="Search by name, description or author"
+        autocomplete="off"
+      />
+    </div>
+    <div class="field">
+      <label for="catalogue-sort">Sort by</label>
+      <select id="catalogue-sort" data-sort>
+        <option value="az">A–Z</option>
+        <option value="newest">Newest</option>
+        <option value="tricks">Most tricks</option>
+      </select>
+    </div>
+    <button
+      type="button"
+      class="filters-toggle"
+      data-filters-toggle
+      aria-expanded="false"
+      aria-controls="catalogue-filters"
+    >
+      Filters
+    </button>
+  </div>
+  <div class="filters-panel" id="catalogue-filters" data-filters-panel>
+    <div class="field">
+      <label for="catalogue-category">Category</label>
+      <select id="catalogue-category" data-category>
+        <option value="">All categories</option>
+        {categories.map((category) => (
+          <option value={category.id}>{category.title}</option>
+        ))}
+      </select>
+    </div>
+    <div class="field">
+      <label for="catalogue-author">Author</label>
+      <select id="catalogue-author" data-author>
+        <option value="">All authors</option>
+        {authors.map((author) => (
+          <option value={author.slug}>{author.name}</option>
+        ))}
+      </select>
+    </div>
+    <div class="field">
+      <label for="catalogue-type">Type</label>
+      <select id="catalogue-type" data-type>
+        <option value="">All types</option>
+        <option value="included">{INCLUDED_LABEL}</option>
+        <option value="addon">Add-on</option>
+      </select>
+    </div>
+  </div>
+  <div class="chips-row" data-chips-row hidden>
+    <ul class="chips" data-chip-list aria-label="Active filters"></ul>
+    <button type="button" class="clear-all" data-clear>
+      Clear all
+    </button>
+  </div>
+</div>
+
+<style>
+  .catalogue-controls {
+    display: none;
+  }
+
+  html.js .catalogue-controls {
+    display: block;
+    visibility: hidden;
+    margin-top: var(--spacing-cozy);
+  }
+
+  html.js .catalogue-controls[data-ready='true'] {
+    visibility: visible;
+  }
+
+  .controls-row {
+    display: grid;
+    gap: var(--spacing-tight);
+    grid-template-columns: 1fr;
+  }
+
+  .field {
+    display: grid;
+    gap: var(--spacing-hair);
+  }
+
+  .field label {
+    font-size: var(--text-small);
+    font-weight: 650;
+  }
+
+  .field input,
+  .field select {
+    min-height: 2.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    padding-inline: var(--spacing-snug);
+    font-size: var(--text-body);
+    width: 100%;
+  }
+
+  .filters-toggle {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    padding-inline: var(--spacing-cozy);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .filters-panel {
+    display: none;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-tight);
+  }
+
+  .filters-panel[data-open='true'] {
+    display: grid;
+  }
+
+  .chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-tight);
+    margin-top: var(--spacing-tight);
+  }
+
+  .chips-row[hidden] {
+    display: none;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-hair);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chips li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    padding: var(--spacing-hair) var(--spacing-tight);
+    font-size: var(--text-small);
+    font-weight: 650;
+  }
+
+  .chips li button {
+    display: inline-flex;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--radius-mini);
+    background: none;
+    color: var(--ink);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .chips li button:hover {
+    background: var(--badge-bg);
+  }
+
+  .clear-all {
+    border: 0;
+    background: none;
+    color: var(--brand-strong);
+    font-weight: 700;
+    font-size: var(--text-small);
+    min-height: 1.5rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  @media (min-width: 900px) {
+    .controls-row {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+    }
+
+    .filters-toggle {
+      display: none;
+    }
+
+    .filters-panel,
+    .filters-panel[data-open='true'] {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: var(--spacing-tight);
+    }
+  }
+</style>

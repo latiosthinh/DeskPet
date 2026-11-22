@@ -1,11 +1,14 @@
 ---
 import type { GetStaticPaths } from 'astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import CatalogueControls from '../../components/CatalogueControls.astro';
 import CategoryNav from '../../components/CategoryNav.astro';
 import Pagination from '../../components/Pagination.astro';
+import PetCard from '../../components/PetCard.astro';
 import PetGrid from '../../components/PetGrid.astro';
 import Base from '../../layouts/Base.astro';
 import { breadcrumbSchema, listingRecords, type ListingRecord } from '../../lib/catalogue';
+import { pets } from '../../lib/site';
 
 interface Props {
   record: ListingRecord;
@@ -45,10 +48,26 @@ const description =
     <p class="count" data-count aria-live="polite">
       {total} {total === 1 ? 'pet' : 'pets'}
     </p>
+    <CatalogueControls />
     <PetGrid pets={record.pets} id="catalogue-grid" />
+    <div class="empty-state" data-empty hidden>
+      <p class="lede">No pets match your search.</p>
+      <button type="button" class="btn btn-secondary" data-reset>
+        Reset filters
+      </button>
+    </div>
     <Pagination record={record} />
+    <template id="pet-card-template">
+      <PetCard pet={pets[0]} template />
+    </template>
   </section>
 </Base>
+
+<script>
+  import { initCatalogue } from '../../lib/catalogue-client';
+
+  initCatalogue();
+</script>
 
 <style>
   .listing-head {
@@ -57,5 +76,19 @@ const description =
 
   .count[data-count] {
     margin-top: var(--spacing-snug);
+  }
+
+  .empty-state {
+    margin-top: var(--spacing-room);
+  }
+
+  .empty-state[hidden] {
+    display: none;
+  }
+</style>
+
+<style is:global>
+  [hidden] {
+    display: none !important;
   }
 </style>

@@ -1,32 +1,27 @@
 import { absoluteUrl, authorGroups, authorSlug, categories, pets, type Pet } from "./site";
+import {
+  PAGE_SIZE,
+  filterPets as filterCataloguePets,
+  pagePath,
+  parseState as parseCatalogueState,
+  sortPets as sortCataloguePets,
+  type CatalogueState,
+  type ListingScope,
+  type SortKey,
+} from "./catalogue-core";
 
-export const PAGE_SIZE = 12;
-
-export type SortKey = "az" | "newest" | "tricks";
-export type TypeKey = "included" | "addon";
-
-export interface CatalogueState {
-  q: string;
-  category: string;
-  author: string;
-  type: "" | TypeKey;
-  sort: SortKey;
-  page: number;
-}
-
-export const DEFAULT_STATE: CatalogueState = {
-  q: "",
-  category: "",
-  author: "",
-  type: "",
-  sort: "az",
-  page: 1,
-};
-
-export type ListingScope =
-  | { kind: "all" }
-  | { kind: "category"; id: string }
-  | { kind: "author"; slug: string };
+export {
+  DEFAULT_STATE,
+  PAGE_SIZE,
+  pagePath,
+  stateParams,
+  type CataloguePet,
+  type CatalogueState,
+  type IndexPet,
+  type ListingScope,
+  type SortKey,
+  type TypeKey,
+} from "./catalogue-core";
 
 export interface ListingRecord {
   scope: ListingScope;
@@ -38,40 +33,15 @@ export interface ListingRecord {
   pets: Pet[];
 }
 
-function compareAz(a: Pet, b: Pet): number {
-  return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
-}
-
 export function sortPets(list: readonly Pet[], sort: SortKey): Pet[] {
-  if (sort === "newest") return [...list].reverse();
-  if (sort === "tricks") {
-    return [...list].sort((a, b) => b.trickCount - a.trickCount || compareAz(a, b));
-  }
-  return [...list].sort(compareAz);
+  return sortCataloguePets(list, sort);
 }
 
 export function filterPets(
   list: readonly Pet[],
   state: Pick<CatalogueState, "q" | "category" | "author" | "type">,
 ): Pet[] {
-  const query = state.q.trim().toLowerCase();
-  return list.filter((pet) => {
-    if (
-      query &&
-      ![pet.name, pet.description, pet.author].some((value) => value.toLowerCase().includes(query))
-    ) {
-      return false;
-    }
-    if (state.category && pet.category !== state.category) return false;
-    if (state.author && authorSlug(pet.author) !== state.author) return false;
-    if (state.type === "included" && !pet.builtin) return false;
-    if (state.type === "addon" && pet.builtin) return false;
-    return true;
-  });
-}
-
-export function pagePath(basePath: string, page: number): string {
-  return page === 1 ? basePath : `${basePath}page/${page}/`;
+  return filterCataloguePets(list, state, (pet) => authorSlug(pet.author));
 }
 
 /** Category ids in list, derived shelves first, then curated shelves in `categories` order. */
@@ -122,38 +92,10 @@ export function listingRecords(list: readonly Pet[] = pets): ListingRecord[] {
 }
 
 export function parseState(params: URLSearchParams, list: readonly Pet[] = pets): CatalogueState {
-  const q = (params.get("q") ?? "").trim();
-
-  const categoryParam = params.get("category") ?? "";
-  const category =
-    categoryParam && list.some((pet) => pet.category === categoryParam) ? categoryParam : "";
-
-  const authorParam = params.get("author") ?? "";
-  const author =
-    authorParam && list.some((pet) => authorSlug(pet.author) === authorParam) ? authorParam : "";
-
-  const typeParam = params.get("type") ?? "";
-  const type = typeParam === "included" || typeParam === "addon" ? typeParam : "";
-
-  const sortParam = params.get("sort") ?? "";
-  const sort =
-    sortParam === "az" || sortParam === "newest" || sortParam === "tricks" ? sortParam : "az";
-
-  const pageParam = Number.parseInt(params.get("page") ?? "", 10);
-  const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;
-
-  return { q, category, author, type, sort, page };
-}
-
-export function stateParams(state: CatalogueState): URLSearchParams {
-  const params = new URLSearchParams();
-  if (state.q) params.set("q", state.q);
-  if (state.category) params.set("category", state.category);
-  if (state.author) params.set("author", state.author);
-  if (state.type) params.set("type", state.type);
-  if (state.sort !== "az") params.set("sort", state.sort);
-  if (state.page > 1) params.set("page", String(state.page));
-  return params;
+  return parseCatalogueState(params, {
+    categories: [...new Set(list.map((pet) => pet.category))],
+    authors: authorGroups(list).map((group) => group.slug),
+  });
 }
 
 export function breadcrumbSchema(
