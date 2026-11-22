@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
-import { lightPalette } from "./lib/palette.mjs";
+import { darkPalette, lightPalette } from "./lib/palette.mjs";
 
 const ROOT = process.cwd();
 const SHOTS = join(ROOT, "qa", "screenshots");
@@ -209,3 +209,90 @@ for (const theme of ["light", "dark"]) {
     await makePetSheet({ viewport, theme, width: viewport === 375 ? 160 : 220 });
   }
 }
+
+// Favicon preview: each icon at 1x and 8x (nearest) on light and dark swatches.
+const FAVICONS = [
+  { file: join(ROOT, "public", "favicon-16.png"), size: 16 },
+  { file: join(ROOT, "public", "favicon-32.png"), size: 32 },
+  { file: join(ROOT, "public", "favicon-48.png"), size: 48 },
+  { file: join(ROOT, "public", "apple-touch-icon.png"), size: 180 },
+];
+
+async function makeFaviconSheet() {
+  const missing = FAVICONS.filter((item) => !existsSync(item.file));
+  if (missing.length) {
+    console.warn(
+      `[contact-sheet] skipping favicon-preview; missing:\n  ${missing.map((item) => item.file).join("\n  ")}`,
+    );
+    return;
+  }
+
+  const pad = 8;
+  const gap = 20;
+  const caption = 90;
+  const themes = [lightPalette(), darkPalette()];
+
+  const rows = [];
+  for (const item of FAVICONS) {
+    const one = await sharp(item.file).toBuffer();
+    const eight = await sharp(item.file)
+      .resize(item.size * 8, item.size * 8, { kernel: "nearest" })
+      .toBuffer();
+    // Swatch order left-to-right: light-1x, light-8x, dark-1x, dark-8x.
+    rows.push({
+      size: item.size,
+      swatches: [
+        { data: one, w: item.size, bg: themes[0].canvas },
+        { data: eight, w: item.size * 8, bg: themes[0].canvas },
+        { data: one, w: item.size, bg: themes[1].canvas },
+        { data: eight, w: item.size * 8, bg: themes[1].canvas },
+      ],
+    });
+  }
+
+  const rowWidth = (row) =>
+    caption + row.swatches.reduce((sum, s) => sum + s.w + pad * 2 + gap, -gap);
+  const sheetWidth = pad * 2 + Math.max(...rows.map(rowWidth));
+  const sheetHeight = pad * 2 + rows.reduce((sum, row) => sum + row.size * 8 + pad * 2 + gap, -gap);
+
+  const layers = [];
+  let y = pad;
+  for (const row of rows) {
+    const rowHeight = row.size * 8 + pad * 2;
+    const label = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${caption}" height="${rowHeight}">
+        <text x="0" y="${rowHeight / 2 + 6}" font-family="system-ui, Segoe UI, sans-serif" font-size="16" font-weight="700" fill="${palette.ink}">${row.size} px</text>
+      </svg>`,
+    );
+    layers.push({ input: label, left: pad, top: y });
+
+    let x = pad + caption;
+    for (const swatch of row.swatches) {
+      const sw = swatch.w + pad * 2;
+      const blockTop = y + Math.round((rowHeight - sw) / 2);
+      const block = Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${sw}" height="${sw}">
+          <rect width="${sw}" height="${sw}" fill="${swatch.bg}"/>
+        </svg>`,
+      );
+      layers.push({ input: block, left: x, top: blockTop });
+      layers.push({ input: swatch.data, left: x + pad, top: blockTop + pad });
+      x += sw + gap;
+    }
+
+    y += rowHeight + gap;
+  }
+
+  const out = join(ROOT, "qa", "favicon-preview.png");
+  await sharp({
+    create: { width: sheetWidth, height: sheetHeight, channels: 3, background: palette.canvas },
+  })
+    .composite(layers)
+    .png({ compressionLevel: 9 })
+    .toFile(out);
+  if (!existsSync(out)) throw new Error(`[contact-sheet] failed to write ${out}`);
+
+  console.log(`[contact-sheet] wrote qa/favicon-preview.png (${sheetWidth}x${sheetHeight})`);
+}
+
+await makeFaviconSheet();

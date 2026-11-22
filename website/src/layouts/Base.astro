@@ -27,7 +27,6 @@ const {
 const canonical = absoluteUrl(path);
 const ogImage = absoluteUrl(image);
 const schemaJson = schema ? JSON.stringify(schema).replace(/</g, '\\u003c') : null;
-const favicon = '/pets/mochi/hero.sprite.png';
 ---
 
 <!doctype html>
@@ -63,7 +62,10 @@ const favicon = '/pets/mochi/hero.sprite.png';
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : null}
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href={favicon} />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap.xml" />
     <meta name="generator" content={Astro.generator} />
     <meta property="og:site_name" content={SITE.name} />

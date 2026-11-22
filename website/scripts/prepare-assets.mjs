@@ -9,6 +9,7 @@
 //     to every raw GIF (the raw GIFs are never edited)
 //   * writes one Open Graph image per pet and src/data/pets.generated.json with
 //     the true canvas sizes, durations and poster paths
+//   * derives square favicons, app icons and site.webmanifest from Mochi's poster
 //
 // It never overwrites donate-qr.png, raw GIFs or .deskpet modules produced by petshot.
 
@@ -168,6 +169,8 @@ const generated = {
   pets: built,
 };
 writeFileSync(DATA_FILE, `${JSON.stringify(generated, null, 2)}\n`);
+
+await makeIcons();
 
 if (fallbacks.length) {
   console.warn(
@@ -525,6 +528,176 @@ async function makeOg(posterPaths, out, label) {
   }
 
   await sharp(Buffer.from(background)).composite(layers).png({ compressionLevel: 9 }).toFile(out);
+}
+
+/**
+ * Square favicon/app icons from Mochi's settled hero frame. Crop the body-only
+ * mask on the native 1x pixel grid (heart/props excluded), then area/box
+ * downsample with an alpha threshold when shrinking so the outline survives;
+ * nearest-neighbour when enlarging.
+ */
+async function makeIcons() {
+  const mochiRaw = rawPets.find((r) => r.pet.id === "mochi");
+  if (!mochiRaw) throw new Error("prepare-assets: mochi hero is required for icons");
+
+  const frames = mochiRaw.heroFrames;
+  const { grid } = heroScale.get("mochi");
+  const idx = settledFrameIndex(frames, heroBodyHeight(frames));
+  const data = frameView(frames, idx);
+  const bubble = findBubble(data, frames.width, frames.height);
+  const { box, mask } = largestBody(data, frames.width, frames.height, bubble);
+  if (!box || !mask) throw new Error("prepare-assets: no mochi body found for icons");
+
+  const nw = Math.ceil(box.width / grid);
+  const nh = Math.ceil(box.height / grid);
+  const native = Buffer.alloc(nw * nh * 4);
+  for (let y = 0; y < nh; y++) {
+    for (let x = 0; x < nw; x++) {
+      const sx = box.minX + x * grid;
+      const sy = box.minY + y * grid;
+      const p = sy * frames.width + sx;
+      if (mask[p]) {
+        const o = p * 4;
+        const t = (y * nw + x) * 4;
+        native[t] = data[o];
+        native[t + 1] = data[o + 1];
+        native[t + 2] = data[o + 2];
+        native[t + 3] = 255;
+      }
+    }
+  }
+
+  const clear = { r: 0, g: 0, b: 0, alpha: 0 };
+  const brand = hexToRgb(palette.canvas);
+  const sizes = [16, 32, 48];
+  const favicons = [];
+  for (const size of sizes) {
+    const png = await iconPng(native, nw, nh, size, 0.06, clear, false);
+    writeFileSync(join(PUBLIC, `favicon-${size}.png`), png);
+    favicons.push(png);
+  }
+  for (const [name, size] of [
+    ["apple-touch-icon.png", 180],
+    ["icon-512.png", 512],
+  ]) {
+    const png = await iconPng(native, nw, nh, size, 0.12, brand, true);
+    writeFileSync(join(PUBLIC, name), png);
+  }
+
+  // PNG-in-ICO container; no extra dependency needed for three small entries.
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(sizes.length, 4);
+  let offset = 6 + sizes.length * 16;
+  const entries = favicons.map((png, index) => {
+    const entry = Buffer.alloc(16);
+    entry[0] = sizes[index];
+    entry[1] = sizes[index];
+    entry[2] = 0;
+    entry[3] = 0;
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(png.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    offset += png.length;
+    return entry;
+  });
+  writeFileSync(join(PUBLIC, "favicon.ico"), Buffer.concat([header, ...entries, ...favicons]));
+
+  const manifest = {
+    name: "DeskPet",
+    short_name: "DeskPet",
+    icons: [
+      { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    theme_color: palette.canvas,
+    background_color: palette.canvas,
+  };
+  writeFileSync(join(PUBLIC, "site.webmanifest"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+  console.log(
+    "[prepare-assets] icons: favicon 16/32/48, apple-touch 180, icon 512, favicon.ico, site.webmanifest",
+  );
+}
+
+/** Fit the native crop into a square SxS canvas; shrink with area filter, grow nearest. */
+async function iconPng(native, nw, nh, size, marginRatio, background, opaque) {
+  const margin = Math.round(size * marginRatio);
+  const inner = Math.max(1, size - 2 * margin);
+  const maxDim = Math.max(nw, nh);
+  const tw = Math.max(1, Math.round((nw * inner) / maxDim));
+  const th = Math.max(1, Math.round((nh * inner) / maxDim));
+
+  let scaledRaw;
+  if (tw >= nw && th >= nh) {
+    scaledRaw = await sharp(native, { raw: { width: nw, height: nh, channels: 4 } })
+      .resize(tw, th, { kernel: "nearest" })
+      .raw()
+      .toBuffer();
+  } else {
+    scaledRaw = boxDownsample(native, nw, nh, tw, th);
+  }
+
+  const scaledPng = await sharp(scaledRaw, { raw: { width: tw, height: th, channels: 4 } })
+    .png()
+    .toBuffer();
+
+  let canvas = sharp({ create: { width: size, height: size, channels: 4, background } }).composite([
+    {
+      input: scaledPng,
+      left: Math.round((size - tw) / 2),
+      top: Math.round((size - th) / 2),
+    },
+  ]);
+  if (opaque) canvas = canvas.flatten({ background: palette.canvas });
+  return canvas.png().toBuffer();
+}
+
+/** Premultiplied area/box downsample with a light alpha threshold (outline survives). */
+function boxDownsample(src, sw, sh, tw, th) {
+  const out = Buffer.alloc(tw * th * 4);
+  const xr = sw / tw;
+  const yr = sh / th;
+  for (let ty = 0; ty < th; ty++) {
+    const sy0 = ty * yr;
+    const sy1 = (ty + 1) * yr;
+    for (let tx = 0; tx < tw; tx++) {
+      const sx0 = tx * xr;
+      const sx1 = (tx + 1) * xr;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let wt = 0;
+      for (let sy = Math.floor(sy0); sy < Math.ceil(sy1); sy++) {
+        const wy = Math.min(sy1, sy + 1) - Math.max(sy0, sy);
+        if (wy <= 0) continue;
+        for (let sx = Math.floor(sx0); sx < Math.ceil(sx1); sx++) {
+          const wx = Math.min(sx1, sx + 1) - Math.max(sx0, sx);
+          if (wx <= 0) continue;
+          const w = wx * wy;
+          const o = (sy * sw + sx) * 4;
+          const al = src[o + 3] / 255;
+          r += src[o] * al * w;
+          g += src[o + 1] * al * w;
+          b += src[o + 2] * al * w;
+          a += al * w;
+          wt += w;
+        }
+      }
+      const avgA = wt ? a / wt : 0;
+      const o = (ty * tw + tx) * 4;
+      if (avgA >= 0.5 && a > 0) {
+        out[o] = Math.round(r / a);
+        out[o + 1] = Math.round(g / a);
+        out[o + 2] = Math.round(b / a);
+        out[o + 3] = 255;
+      }
+    }
+  }
+  return out;
 }
 
 function escapeXml(value) {
