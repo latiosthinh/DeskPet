@@ -139,7 +139,13 @@ export function formatDuration(ms: number): string {
 }
 
 export function categoryTitle(id: string): string {
-  return categories.find((category) => category.id === id)?.title ?? id;
+  return (
+    categories.find((category) => category.id === id)?.title ??
+    id
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  );
 }
 
 export function listText(items: readonly string[]): string {

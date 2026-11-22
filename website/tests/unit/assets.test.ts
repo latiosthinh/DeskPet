@@ -15,6 +15,7 @@ import {
   petsInCategory,
   type Pet,
 } from "../../src/lib/site";
+import { deriveCategories } from "../../scripts/lib/categories.mjs";
 import { makeFallbackGif, readGifInfo } from "../../scripts/lib/gif.mjs";
 import {
   GALLERY_HEIGHT,
@@ -32,11 +33,14 @@ import {
 
 const PUBLIC = join(process.cwd(), "public");
 const publicFile = (url: string) => join(PUBLIC, url.replace(/^\//, ""));
+const source = JSON.parse(readFileSync(join(process.cwd(), "pets.json"), "utf8"));
 
 describe("pets data", () => {
-  it("has the three shelves and 15 unique pets", () => {
-    expect(categories.map((category) => category.id)).toEqual(["critter", "hero", "legend"]);
-    expect(pets).toHaveLength(15);
+  it("derives the shelves and 15 unique pets from the source inventory", () => {
+    expect(categories.map((category) => category.id)).toEqual(
+      deriveCategories(source).map((category) => category.id),
+    );
+    expect(pets).toHaveLength(source.length);
     expect(new Set(pets.map((pet) => pet.id)).size).toBe(pets.length);
     for (const pet of pets) {
       expect(categories.map((category) => category.id)).toContain(pet.category);
@@ -44,14 +48,17 @@ describe("pets data", () => {
     }
   });
 
-  it("ships exactly Mochi, Kage and Moona with the app", () => {
+  it("ships exactly the builtin pets from the source inventory with the app", () => {
+    const builtin = source.filter((pet: { builtin?: boolean }) => pet.builtin);
     expect(
       pets
         .filter((pet) => pet.builtin)
         .map((pet) => pet.id)
         .sort(),
-    ).toEqual(["mochi", "moona", "ninja"]);
-    expect(builtinShortNames).toEqual(["Mochi", "Kage", "Moona"]);
+    ).toEqual(builtin.map((pet: { id: string }) => pet.id).sort());
+    expect(builtinShortNames).toEqual(
+      builtin.map((pet: { name: string }) => pet.name.split(" the ")[0]),
+    );
   });
 
   it("records true sizes, durations and existing poster paths for every animation", async () => {

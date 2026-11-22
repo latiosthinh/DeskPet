@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { CATEGORY_ID, deriveCategories } from "./lib/categories.mjs";
 import { makeFallbackGif, readGifInfo } from "./lib/gif.mjs";
 import { hexToRgb, lightPalette } from "./lib/palette.mjs";
 import {
@@ -43,12 +44,6 @@ const PETS_FILE = join(ROOT, "pets.json");
 const DATA_FILE = join(ROOT, "src", "data", "pets.generated.json");
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const palette = lightPalette();
-
-export const CATEGORIES = [
-  { id: "critter", title: "Critters", blurb: "Small, soft and always up to something." },
-  { id: "hero", title: "Heroes", blurb: "Tiny adventurers with big plans." },
-  { id: "legend", title: "Legends", blurb: "Detailed, dramatic and a little bit extra." },
-];
 
 const pets = JSON.parse(readFileSync(PETS_FILE, "utf8"));
 const fallbacks = [];
@@ -164,7 +159,7 @@ const MOMO_CARD_WIDTH = 640;
 const qr = await ensureQr();
 const momoCard = await ensureMomoCard();
 const generated = {
-  categories: CATEGORIES,
+  categories: deriveCategories(pets),
   qr,
   momoCard,
   builtinShortNames: built.filter((p) => p.builtin).map((p) => p.shortName),
@@ -365,8 +360,8 @@ function validate(list) {
     for (const key of ["name", "author", "version", "description"]) {
       if (typeof pet[key] !== "string" || !pet[key]) throw new Error(`${where}: missing ${key}`);
     }
-    if (!CATEGORIES.some((category) => category.id === pet.category)) {
-      throw new Error(`${where}: unknown category "${pet.category}"`);
+    if (typeof pet.category !== "string" || !CATEGORY_ID.test(pet.category)) {
+      throw new Error(`${where}: bad category "${pet.category}"`);
     }
     if (!Array.isArray(pet.tricks)) throw new Error(`${where}: tricks must be a list`);
     for (const trick of pet.tricks) {
