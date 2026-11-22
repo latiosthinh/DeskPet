@@ -269,7 +269,7 @@ test("an explicit light choice still wins over system dark", async ({ page }) =>
   expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
 });
 
-test("hero animates by default, and every animation can pause and resume", async ({ page }) => {
+test("hero animates by default and can pause and resume", async ({ page }) => {
   await gotoThemed(page, "/", "light");
   const hero = page.locator(".hero-stage [data-anim]");
   const heroImage = hero.locator("img");
@@ -282,15 +282,7 @@ test("hero animates by default, and every animation can pause and resume", async
   await page.locator(".hero-stage [data-anim-toggle]").click();
   await expect(hero).toHaveAttribute("data-playing", "true");
 
-  await page.locator("[data-anim-global]").click();
-  await expect(page.locator("[data-anim-global]")).toHaveAttribute("aria-pressed", "true");
-  for (const element of await page.locator("[data-anim]").all()) {
-    await expect(element).toHaveAttribute("data-playing", "false");
-  }
-
-  await page.locator("[data-anim-global]").click();
-  await expect(page.locator("[data-anim-global]")).toHaveAttribute("aria-pressed", "false");
-  await expect(hero).toHaveAttribute("data-playing", "true");
+  await expect(page.locator("[data-anim-global]")).toHaveCount(0);
 });
 
 test("trick GIFs animate when visible and pause individually", async ({ page }) => {
@@ -690,7 +682,6 @@ async function expectMobileHeader(page: Page, width: number) {
 
   const brandBox = await page.locator(".brand").boundingBox();
   const themeBox = await page.locator("[data-theme-toggle]").boundingBox();
-  const animBox = await page.locator("[data-anim-global]").boundingBox();
   const supportBox = await page.locator("header .support-btn").boundingBox();
   const githubBox = await page
     .locator('header .header-actions a[aria-label="DeskPet on GitHub (opens in a new tab)"]')
@@ -698,7 +689,6 @@ async function expectMobileHeader(page: Page, width: number) {
   const navBox = await page.locator(".main-nav").boundingBox();
   expect(brandBox, `${width}px brand has no box`).not.toBeNull();
   expect(themeBox, `${width}px theme toggle has no box`).not.toBeNull();
-  expect(animBox, `${width}px animation toggle has no box`).not.toBeNull();
   expect(supportBox, `${width}px support button has no box`).not.toBeNull();
   expect(githubBox, `${width}px GitHub icon has no box`).not.toBeNull();
   expect(navBox, `${width}px nav has no box`).not.toBeNull();
@@ -708,17 +698,12 @@ async function expectMobileHeader(page: Page, width: number) {
   const rowOneBottom = Math.max(
     brandBox!.y + brandBox!.height,
     themeBox!.y + themeBox!.height,
-    animBox!.y + animBox!.height,
     supportBox!.y + supportBox!.height,
     githubBox!.y + githubBox!.height,
   );
   expect(
     Math.abs(themeBox!.y - brandBox!.y),
     `${width}px brand and theme toggle should share the first row`,
-  ).toBeLessThanOrEqual(2);
-  expect(
-    Math.abs(animBox!.y - brandBox!.y),
-    `${width}px brand and animation toggle should share the first row`,
   ).toBeLessThanOrEqual(2);
   expect(
     Math.abs(supportBox!.y - brandBox!.y),
@@ -804,7 +789,7 @@ async function expectMobileHeader(page: Page, width: number) {
   }
 }
 
-test("mobile header: brand and both controls row 1, every nav link row 2 at 320-639px", async ({
+test("mobile header: brand and controls row 1, every nav link row 2 at 320-639px", async ({
   page,
 }) => {
   for (const width of MOBILE_HEADER_WIDTHS) {

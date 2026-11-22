@@ -2086,14 +2086,11 @@
     display: flex;
   }
 
-  [data-theme-toggle] .icon-sun,
-  [data-anim-global] .icon-play,
-  [data-anim-global][aria-pressed="true"] .icon-pause {
+  [data-theme-toggle] .icon-sun {
     display: none;
   }
 
-  .dark [data-theme-toggle] .icon-sun,
-  [data-anim-global][aria-pressed="true"] .icon-play {
+  .dark [data-theme-toggle] .icon-sun {
     display: inline;
   }
 

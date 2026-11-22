@@ -93,13 +93,11 @@ const favicon = '/pets/mochi/hero.sprite.png';
     <script>
       const root = document.documentElement;
       const themeButton = document.querySelector('[data-theme-toggle]');
-      const globalButton = document.querySelector('[data-anim-global]');
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
       const animated = Array.from(document.querySelectorAll('[data-anim]'));
       const visible = new Set();
       const userPaused = new WeakSet();
-      let globalPaused = false;
 
       function storedTheme() {
         try {
@@ -156,7 +154,7 @@ const favicon = '/pets/mochi/hero.sprite.png';
       }
 
       function play(element, force = false) {
-        if ((!force && reduceMotion.matches) || globalPaused || userPaused.has(element)) return;
+        if ((!force && reduceMotion.matches) || userPaused.has(element)) return;
         const image = imageOf(element);
         if (!image || !image.dataset.gif) return;
         if (image.getAttribute('src') !== image.dataset.gif) image.src = image.dataset.gif;
@@ -171,29 +169,6 @@ const favicon = '/pets/mochi/hero.sprite.png';
         element.dataset.playing = 'false';
         labelButton(element, false);
       }
-
-      function refreshGlobal() {
-        if (!globalButton) return;
-        globalButton.setAttribute('aria-pressed', String(globalPaused));
-        globalButton.setAttribute(
-          'aria-label',
-          globalPaused ? 'Play all animations' : 'Pause all animations',
-        );
-      }
-
-      refreshGlobal();
-
-      globalButton?.addEventListener('click', () => {
-        globalPaused = !globalPaused;
-        refreshGlobal();
-        if (globalPaused) {
-          for (const element of animated) still(element);
-        } else {
-          for (const element of animated) {
-            if (visible.has(element)) play(element, true);
-          }
-        }
-      });
 
       for (const element of animated) {
         labelButton(element, false);

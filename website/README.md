@@ -117,7 +117,7 @@ What the automated checks cover:
   overflow; screenshots in `qa/screenshots/`. A 320–1920 px overflow check runs too.
 - **Behavior:** gallery/navigation, download targets, OS links (`.dmg`/`.zip` → latest release),
   exactly one `POST /api/visit/<id>` per pet page load, theme persistence, system-dark fallback when
-  storage is blocked, per-image and global pause, hero autoplay, whole-image trick frames, inline
+  storage is blocked, per-image pause, hero autoplay, whole-image trick frames, inline
   text spacing, and reduced-motion stills (no GIF fetch until Play).
 - **SEO:** `/sitemap.xml` is a valid sitemap with home, contribute and every pet; `robots.txt` points
   at it.
