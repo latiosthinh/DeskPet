@@ -692,18 +692,25 @@ async function expectMobileHeader(page: Page, width: number) {
   const themeBox = await page.locator("[data-theme-toggle]").boundingBox();
   const animBox = await page.locator("[data-anim-global]").boundingBox();
   const supportBox = await page.locator("header .support-btn").boundingBox();
+  const githubBox = await page
+    .locator('header .header-actions a[aria-label="DeskPet on GitHub"]')
+    .boundingBox();
   const navBox = await page.locator(".main-nav").boundingBox();
   expect(brandBox, `${width}px brand has no box`).not.toBeNull();
   expect(themeBox, `${width}px theme toggle has no box`).not.toBeNull();
   expect(animBox, `${width}px animation toggle has no box`).not.toBeNull();
   expect(supportBox, `${width}px support button has no box`).not.toBeNull();
+  expect(githubBox, `${width}px GitHub icon has no box`).not.toBeNull();
   expect(navBox, `${width}px nav has no box`).not.toBeNull();
+  expect(githubBox!.height, `${width}px GitHub icon touch height`).toBeGreaterThanOrEqual(44);
+  expect(githubBox!.width, `${width}px GitHub icon touch width`).toBeGreaterThanOrEqual(24);
 
   const rowOneBottom = Math.max(
     brandBox!.y + brandBox!.height,
     themeBox!.y + themeBox!.height,
     animBox!.y + animBox!.height,
     supportBox!.y + supportBox!.height,
+    githubBox!.y + githubBox!.height,
   );
   expect(
     Math.abs(themeBox!.y - brandBox!.y),
@@ -716,6 +723,10 @@ async function expectMobileHeader(page: Page, width: number) {
   expect(
     Math.abs(supportBox!.y - brandBox!.y),
     `${width}px brand and support button should share the first row`,
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(githubBox!.y - brandBox!.y),
+    `${width}px brand and GitHub icon should share the first row`,
   ).toBeLessThanOrEqual(2);
   expect(navBox!.y, `${width}px nav should be below the brand row`).toBeGreaterThanOrEqual(
     rowOneBottom - 2,
@@ -752,7 +763,8 @@ async function expectMobileHeader(page: Page, width: number) {
   expect(
     nav.links.map((link) => link.text),
     `${width}px nav labels`,
-  ).toEqual(["Pets", "Authors", "Make a pet", "GitHub"]);
+  ).toEqual(["Pets", "Authors", "Make a pet"]);
+  await expect(page.locator("header .nav-list")).not.toContainText("GitHub");
 
   const rowY = nav.links[0].y;
   for (const [index, link] of nav.links.entries()) {
@@ -807,6 +819,11 @@ test("desktop header keeps Download visible at 1440px", async ({ page }) => {
 
   const download = page.locator("header .header-download");
   await expect(download, "header Download should be visible at 1440px").toBeVisible();
+  await expect(
+    page.locator('header .header-actions a[aria-label="DeskPet on GitHub"]'),
+    "GitHub icon link should be visible at 1440px",
+  ).toBeVisible();
+  await expect(page.locator("header .nav-list")).not.toContainText("GitHub");
 });
 
 test("hero scene image drives frame height at 375 and 1440px", async ({ page }) => {
