@@ -1,130 +1,153 @@
-# DeskPet
+<div align="center">
+  <img src="docs/readme/hero.gif" alt="Mochi the pixel cat saying hi" width="330">
+  <h1>DeskPet</h1>
+  <p>A tiny pixel pet that lives on your desktop, next to the Dock on a Mac and on top of the taskbar on Windows.</p>
+  <p><strong><a href="https://github.com/latiosthinh/DeskPet/releases/latest">Download for Mac</a></strong> · <strong><a href="https://github.com/latiosthinh/DeskPet/releases/latest">Download for Windows</a></strong> · <strong><a href="https://deskpet.pages.dev/pets/">Browse all pets</a></strong></p>
+  <p><img src="https://img.shields.io/github/v/release/latiosthinh/DeskPet" alt="latest release"> <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-7a5c3e" alt="platforms: macOS and Windows"></p>
+</div>
 
-A tiny pixel pet that lives in the bottom-right corner of your screen: next to the Dock on a Mac, on top of the taskbar on Windows 10/11.
+## See it in action
 
-## Pets
+<div align="center">
+  <img src="docs/readme/desktop.png" alt="Mochi the pixel cat saying hi on the Windows taskbar, next to the clock" width="730">
+  <br>
+  Mochi, on the taskbar, next to the clock. That's home.
+</div>
 
-Every pet is free. **Mochi** the cream cat, **Kage** the ninja and **Moona** the moon knight come with the app, one from each shelf (Critters, Heroes and Legends). The rest are on the DeskPet website, one page per pet with a GIF of each trick: open **Pet → Get More Pets…**, download a pet, and open the `.deskpet` file (double-click it, or drop it on your pet). **Pet → Remove** takes an added pet away again.
+Every pet has a pocketful of tricks. Three of them, live:
 
-A pet is a small sandboxed module (`<id>.deskpet`, WebAssembly) that can't touch your files, the network or the system. The same file works in the Mac and the Windows app. Added pets are kept up to date from the website: the app checks shortly after it starts, then once a day.
+<div align="center">
+  <img src="docs/readme/trick-mochi-yarn.gif" alt="Mochi batting at a ball of yarn" width="368">
+  <br>
+  Mochi — Play with Yarn
+</div>
 
-Anyone can make a pet: see [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md).
+<div align="center">
+  <img src="docs/readme/trick-ninja-smoke.gif" alt="Kage vanishing in a puff of smoke" width="242">
+  <br>
+  Kage — Smoke Bomb
+</div>
 
-## What the pet does
+<div align="center">
+  <img src="docs/readme/trick-moona-glaive.gif" alt="Moona throwing her glaive" width="292">
+  <br>
+  Moona — Throw the Glaive
+</div>
 
-- Wanders back and forth inside a small, limited area, sits, blinks, and turns to look at your mouse pointer.
-- Does one of its own tricks every 4–8 minutes (the first comes 1–3 minutes after launch). You can also start one from the menu under **Tricks**.
-- When you type, it gets busy too: Mochi types on a little laptop, and every pet has its own activity. Now and then it has a pastime, and Mochi also sweeps the floor.
-- Reminds you to drink water, eat lunch and dinner, and take a stretch break, and acts each one out.
-- Falls asleep after 90 seconds away, and wakes up when you come back.
-- Click it to pet it (this also dismisses a reminder). Drag it to move its home. Some pets, like Moona, do a trick when clicked or right-clicked; Shift+right-click then opens the menu.
+## Meet the pets
 
-## Menu
+Every pet is free. Mochi, Kage and Moona come with the app, one from each shelf.
 
-On a Mac, click the pet's face in the menu bar, or right-click the pet. On Windows, click its tray icon, or right-click the pet.
+The rest are one-click add-ons from the website: open **Pet → Get More Pets…**.
 
-| Item | What it does |
-| --- | --- |
-| Show Pet | Show or hide the pet |
-| Pet | Switch pets (grouped by shelf), **Get More Pets…** from the website, or **Remove** an added pet. The menu-bar or tray icon follows your choice |
-| Tricks | Start one of the current pet's tricks, or **Surprise Me** for a random one |
-| Roam Range | How far it may walk from home: Stay Put, Tiny ±80 (default), Small ±160, Medium ±300, Large ±500 |
-| Show Roam Area | Briefly outlines the area it walks in |
-| Move Home to Corner | Puts it back in the bottom-right corner |
-| Reminders | Turn each reminder on or off (all on by default): **Drink Water** every 20–30 minutes at the desk, **Main Meals** only at lunch (12:00–14:00) and dinner (18:30–20:30), once each a day, **Stretch Break** every 40–60 minutes of use (a 5-minute pause counts as a break). |
-| Open at Login | Start DeskPet automatically when you log in |
+### Critters
 
-## Mac
+<table>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/pet-mochi.png" width="96" height="64" alt="Mochi"><br><strong>Mochi</strong> · <em>included</em><br><sub>A sleepy little cat who naps on your taskbar, chases your cursor and sweeps up after you type.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-ember.png" width="96" height="64" alt="Ember the fox"><br><strong>Ember the fox</strong><br><sub>A curious fox who lights fireworks, explores with a flashlight and toasts marshmallows by the fire.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-pip.png" width="96" height="64" alt="Pip the penguin"><br><strong>Pip the penguin</strong><br><sub>A splashy penguin who swims, blows bubbles and hides in a puddle when you get too close.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-puddle.png" width="96" height="64" alt="Puddle the slime"><br><strong>Puddle the slime</strong><br><sub>A wobbly slime who changes colour, splits in two to play and always has a snack inside.</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/pet-sprout.png" width="96" height="64" alt="Sprout the seedling"><br><strong>Sprout the seedling</strong><br><sub>A tiny seedling who plants itself, grows up, chases butterflies and gives you flowers.</sub></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</table>
 
-- Menu-bar only (a tiny picture of your pet), no Dock icon, and no Accessibility or Input Monitoring permission needed.
-- Ranges larger than Tiny may overlap the right end of the Dock, depending on how wide your Dock is.
-- Added pets live in `~/Library/Application Support/DeskPet/Pets`.
+### Heroes
 
-### Install
+<table>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/pet-grumbo.png" width="96" height="64" alt="Grumbo the warrior"><br><strong>Grumbo the warrior</strong><br><sub>A small warrior with a big helmet. Spins until dizzy and tries, really tries, to chop a log.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-wispaling.png" width="96" height="64" alt="Wisp-a-ling the spirit"><br><strong>Wisp-a-ling the spirit</strong><br><sub>A floating little spirit who reaches for your pointer and gets tied up in its own thread.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-hexley.png" width="96" height="64" alt="Hexley the apprentice"><br><strong>Hexley the apprentice</strong><br><sub>An apprentice wizard whose spells mostly turn them into frogs and sheep. The book bites.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-mossback.png" width="96" height="64" alt="Mossback the pebble giant"><br><strong>Mossback the pebble giant</strong><br><sub>A gentle pebble giant who sprouts flowers, enjoys the rain and naps after any effort.</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/pet-sirclank.png" width="96" height="64" alt="Sir Clank"><br><strong>Sir Clank</strong><br><sub>A wind-up knight who runs down, needs winding up again and never misses tea time.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-lunette.png" width="96" height="64" alt="Lunette the moon rabbit"><br><strong>Lunette the moon rabbit</strong><br><sub>A moon rabbit who pounds rice cakes, wishes on shooting stars and naps in a crescent moon.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-ninja.png" width="96" height="64" alt="Kage the ninja"><br><strong>Kage the ninja</strong> · <em>included</em><br><sub>A quiet ninja who vanishes in smoke, throws shuriken, makes clones and hides in a bush.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-samurai.png" width="96" height="64" alt="Ronin the samurai"><br><strong>Ronin the samurai</strong><br><sub>A calm samurai with a lightning quick draw, a proper bow and a tea ceremony between duels.</sub></td>
+</tr>
+</table>
 
-1. Download `DeskPet-<version>.dmg` from the latest release, open it, and drag **DeskPet** to **Applications**.
+### Legends
+
+<table>
+<tr>
+<td align="center" valign="top"><img src="docs/readme/pet-moona.png" width="96" height="64" alt="Moona the moon knight"><br><strong>Moona the moon knight</strong> · <em>included</em><br><sub>A moon knight riding a black panther. Throws her glaive, splits in three and calls down the moonlight.</sub></td>
+<td align="center" valign="top"><img src="docs/readme/pet-witcher.png" width="96" height="64" alt="Orbis the witcher"><br><strong>Orbis the witcher</strong><br><sub>A sorcerer with three orbs circling overhead. Casts meteors, tornadoes, sun strikes and fire spirits.</sub></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+Added pets update themselves from the website once a day, and **Pet → Remove** takes one away.
+
+## What your pet does
+
+- 🚶 Wanders back and forth inside a small, limited area, sits, blinks, and turns to look at your pointer.
+- ✨ Does one of its own tricks every 4–8 minutes (the first comes 1–3 minutes after launch), or starts one from the **Tricks** menu.
+- 💻 Types along when you type (Mochi on a little laptop), and now and then has a pastime.
+- 💧 Reminds you to drink water, eat lunch and dinner, and take a stretch break, and acts each one out.
+- 😴 Falls asleep after 90 seconds away, and wakes up when you come back.
+- 🐾 Click it to pet it (this also dismisses a reminder).
+- 🏠 Drag it to move its home.
+
+## Install
+
+### Mac
+
+1. Download [`DeskPet-<version>.dmg`](https://github.com/latiosthinh/DeskPet/releases/latest) from the latest release, open it, and drag **DeskPet** to **Applications**.
 2. The app isn't notarized, so clear the download flag before the first launch:
    ```bash
    xattr -dr com.apple.quarantine /Applications/DeskPet.app
    ```
 3. Open DeskPet.
 
-### Build from source
+### Windows
 
-Requires the Xcode Command Line Tools and [Rust](https://rustup.rs). macOS 13 or later.
+For Windows 10 and 11.
 
-```bash
-macos/build.sh          # build and install to ~/Applications
-macos/build.sh --dmg    # build a release disk image in build/
-open ~/Applications/DeskPet.app --args --demo     # cycle through every activity, reminder and trick
-open ~/Applications/DeskPet.app --args --tricks   # only the current pet's tricks
-open ~/Applications/DeskPet.app --args --typing   # what the current pet does while you type
-macos/build-pets.sh                                  # every pet, into build/pets
-build/DeskPet.app/Contents/MacOS/DeskPet --pets build/pets --pet witcher --tricks   # try one without adding it
-```
+1. Download [`DeskPet-<version>-windows.zip`](https://github.com/latiosthinh/DeskPet/releases/latest) from the latest release and unzip it anywhere, for example into `%LOCALAPPDATA%\Programs\DeskPet`.
+2. Run `DeskPet.exe`.
+3. It isn't signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
 
-`--pastime` shows the current pet's pastime, and `--pet <id>` starts with that pet.
+Tip: Windows 11 hides new tray icons in the overflow (**^**) — drag DeskPet's onto the taskbar.
 
-## Windows
+**Update:** download the new release and run it; your pets and settings stay. **Uninstall:** delete the app (Mac: drag DeskPet to the Trash; Windows: delete the unzipped folder). Added pets live in `~/Library/Application Support/DeskPet` (Mac) or `%LOCALAPPDATA%\DeskPet` (Windows); Windows settings sit in the registry under `HKCU\Software\DeskPet`.
 
-The pet stands on top of the taskbar, above the clock.
+## Privacy and safety
 
-- **Menu:** Windows 11 puts new tray icons in the overflow (**^**) at first; drag it onto the taskbar, or turn it on in **Settings → Personalization → Taskbar → Other system tray icons**.
-- **Open at Login** adds DeskPet to your startup apps. If you turn it off in **Task Manager → Startup apps**, the menu shows a dot instead of a tick; choosing it turns it back on.
-- The pet hides while a fullscreen app, game or presentation is in front.
-- Added pets live in `%LOCALAPPDATA%\DeskPet\pets`. Settings are kept in the registry under `HKCU\Software\DeskPet`.
+No ads, no accounts, no tracking.
 
-### Install
+Pets are sandboxed WebAssembly modules: they can't touch your files, the network or the system. They only get the time and your pointer position, and say what to draw.
 
-1. Download `DeskPet-<version>-windows.zip` from the latest release and unzip it anywhere, for example into `%LOCALAPPDATA%\Programs\DeskPet`.
-2. Run `DeskPet.exe`. It isn't signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
+The only network use is keeping added pets up to date: about 20 seconds after launch, then once a day, the app asks `https://deskpet.pages.dev/api/update/<pet-id>` for each added pet. All that request carries is the pet's id in the address and the user agent "DeskPet" — no body, no cookies, nothing about you or your computer. If a newer version exists it downloads the pet file from `/download/<pet-id>`. The three built-in pets never check.
 
-It needs nothing else: it's a single native exe of about 1.5 MB, written in Rust. It uses about 8 MB of private memory and around 1–2% of one CPU core while the pet moves, and almost nothing while it sits still.
+The website keeps anonymous per-pet counters (how many downloads/updates a pet got); nothing identifies you.
 
-### Build from source
+**Get More Pets…** opens the website in your own browser; the app itself never browses.
 
-Requires [Rust](https://rustup.rs) (stable, with the default `x86_64-pc-windows-msvc` toolchain) and the Visual Studio C++ build tools. The exe links the C runtime statically, so it runs without any redistributable.
+The whole network code is one small file, [windows/src/net.rs](windows/src/net.rs), and the sandbox lives in [shared/host/src/module.rs](shared/host/src/module.rs).
 
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\build.ps1                    # build build\DeskPet.exe
-powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Zip               # also make the release zip
-powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Run -RunArgs --demo
-powershell -ExecutionPolicy Bypass -File windows\build-pets.ps1              # every pet, into build\pets
-build\DeskPet.exe --pets build\pets --pet witcher --tricks                    # try one without adding it
-```
+## Make your own pet
 
-`--demo`, `--tricks`, `--typing` and `--pastime` work as on the Mac, and `--pet <id>` starts with that pet. `windows\make-icon.ps1` redraws `DeskPet.ico` from Mochi's art.
+A pet is a small Rust crate of pixel art and tricks, sandboxed like the rest.
 
-## How it fits together
+Start with [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md).
 
-The apps and the pets are one Cargo workspace at the top of the repo. Each pet is its own crate in `pets/<id>` (one file per trick), written against the pet API in `shared/petkit`, and built as a WebAssembly module. `shared/host/` runs those modules in the wasmi interpreter and draws what they render into a pixel buffer. Both apps use it: the Windows app directly, the Mac app through a small C interface (`macos/core`, declared in `macos/core/deskpet.h`). Each app only adds the native parts: window, menus, mouse, reminders, settings, text and HTTP.
+## Support DeskPet
 
-To make a pet of your own, see [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md): `windows\new-pet.ps1` starts one from a template, `windows\try-pet.ps1` shows it on the taskbar and `windows\check-pet.ps1` checks it and makes its GIFs.
+DeskPet is free. If it makes you smile, you can [buy the pets a coffee](https://deskpet.pages.dev/support/).
 
-`DESKPET_SITE` points either app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `website/` locally.
+## For developers
 
-## Repository layout
+Everything technical lives in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): repo layout, building both apps, the pet module format, the menu reference, the website and releasing.
 
-| Folder | What's in it |
-| --- | --- |
-| `macos/` | The Mac app (`main.swift`), `build.sh` and `build-pets.sh`. `core/` is the C interface to the shared host |
-| `windows/` | The Windows app (Rust), `build.ps1`, and the pet scripts (`new-pet.ps1`, `try-pet.ps1`, `check-pet.ps1`, `build-pets.ps1`). `src/bin/petshot` is the pet checker and GIF maker |
-| `shared/host/` | What both apps share: running pet modules, drawing them, and the list of pets (built in, added, updated) |
-| `shared/petkit/` | The pet API every pet is written against, and the shared behaviour (walking, sleeping, reminders, picking tricks) |
-| `pets/` | One Rust crate per pet: its art, one file per trick, and what it does while you type. `pets/_template` is the starting point for a new pet ([CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md)) |
-| `website/` | The pet website: gallery, pet pages, downloads and counters |
-| `prototypes/` | HTML mock-ups of the pets and their tricks |
-| `.github/workflows/` | The build check and the release build |
+The pet-making guide is [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md), and the website docs are in [website/README.md](website/README.md).
 
-Both builds write to `build/` at the top of the repo.
-
-## Releasing
-
-Push a version tag and GitHub Actions builds both apps and attaches them to a draft release:
-
-```bash
-git tag v1.2.0
-git push origin v1.2.0
-```
-
-The release has `DeskPet-<version>.dmg` (Mac, universal) and `DeskPet-<version>-windows.zip`, each with a `.sha256`. Check the draft, then publish it.
+The pets and the shared pet kit are MIT-licensed — see [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md).
