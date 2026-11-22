@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import {
   PAGES,
   expectNoHorizontalOverflow,
@@ -37,5 +37,21 @@ for (const theme of themes) {
         }
       });
     }
+
+    test("catalogue mobile filters open fits and screenshots at 375px", async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 900 });
+      await gotoThemed(page, "/pets/", theme, { reducedMotion: true });
+      await expectTheme(page, theme);
+      await expect(page.locator("[data-controls]")).toHaveAttribute("data-ready", "true");
+
+      await page.locator("[data-filters-toggle]").click();
+      await expect(page.locator("[data-category]")).toBeVisible();
+      await loadAllImages(page);
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: join(process.cwd(), "qa", "screenshots", `catalogue-filters-open-375-${theme}.png`),
+        fullPage: true,
+      });
+    });
   });
 }

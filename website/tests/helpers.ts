@@ -9,6 +9,12 @@ export const PAGES = [
   { name: "contribute", path: "/contribute/" },
   { name: "support", path: "/support/" },
   { name: "not-found", path: "/this-page-does-not-exist/" },
+  { name: "catalogue", path: "/pets/" },
+  { name: "catalogue-page-2", path: "/pets/page/2/" },
+  { name: "category-hero", path: "/pets/category/hero/" },
+  { name: "authors", path: "/authors/" },
+  { name: "author-deskpet", path: "/authors/deskpet/" },
+  { name: "author-deskpet-page-2", path: "/authors/deskpet/page/2/" },
 ] as const;
 
 export async function gotoThemed(

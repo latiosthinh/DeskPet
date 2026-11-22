@@ -16,7 +16,7 @@
     "test": "npm run test:unit && npm run test:e2e",
     "backend": "node scripts/check-backend.mjs",
     "qa:lighthouse": "node scripts/lighthouse.mjs",
-    "qa": "npm run build && npm run lint:tokens && npm run test && npm run backend && npm run qa:contact && npm run qa:lighthouse",
+    "qa": "npm run build && npm run lint && npm run format:check && npm run lint:tokens && npm run test && npm run backend && npm run qa:contact && npm run qa:lighthouse",
     "lint:tokens": "node scripts/design-tokens.mjs",
     "qa:contact": "node scripts/contact-sheet.mjs"
   },

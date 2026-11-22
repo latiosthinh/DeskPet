@@ -9,7 +9,20 @@ import { lightPalette } from "./lib/palette.mjs";
 
 const ROOT = process.cwd();
 const SHOTS = join(ROOT, "qa", "screenshots");
-const PAGES = ["home", "pet-builtin", "pet-addon", "contribute", "not-found", "support"];
+const PAGES = [
+  "home",
+  "pet-builtin",
+  "pet-addon",
+  "contribute",
+  "not-found",
+  "support",
+  "catalogue",
+  "catalogue-page-2",
+  "category-hero",
+  "authors",
+  "author-deskpet",
+  "author-deskpet-page-2",
+];
 const palette = lightPalette();
 
 const SHEETS = [
@@ -65,17 +78,64 @@ async function makeSheet({ name, viewport, theme, width }) {
     y += label + row.height + gap;
   }
 
+  const out = join(ROOT, "qa", `${name}.png`);
   await sharp({
     create: { width: sheetWidth, height: sheetHeight, channels: 3, background: palette.canvas },
   })
     .composite(layers)
     .png({ compressionLevel: 9 })
-    .toFile(join(ROOT, "qa", `${name}.png`));
+    .toFile(out);
+  if (!existsSync(out)) throw new Error(`[contact-sheet] failed to write ${out}`);
 
   console.log(`[contact-sheet] wrote qa/${name}.png (${sheetWidth}x${sheetHeight})`);
 }
 
 for (const sheet of SHEETS) await makeSheet(sheet);
+
+// One mobile-only sheet per theme for the open filter drawer.
+async function makeSingleSheet({ name, file, caption, width }) {
+  if (!existsSync(file)) {
+    console.warn(`[contact-sheet] skipping ${name}; missing:\n  ${file}`);
+    return;
+  }
+
+  const pad = 24;
+  const label = 28;
+  const image = await sharp(file)
+    .resize({ width, withoutEnlargement: true })
+    .toBuffer({ resolveWithObject: true });
+  const previewWidth = image.info.width;
+  const sheetWidth = pad * 2 + previewWidth;
+  const sheetHeight = pad * 2 + label + image.info.height;
+  const text = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${previewWidth}" height="${label}">
+      <text x="0" y="20" font-family="system-ui, Segoe UI, sans-serif" font-size="15" font-weight="700" fill="${palette.ink}">${caption}</text>
+    </svg>`,
+  );
+
+  const out = join(ROOT, "qa", `${name}.png`);
+  await sharp({
+    create: { width: sheetWidth, height: sheetHeight, channels: 3, background: palette.canvas },
+  })
+    .composite([
+      { input: text, left: pad, top: pad },
+      { input: image.data, left: pad, top: pad + label },
+    ])
+    .png({ compressionLevel: 9 })
+    .toFile(out);
+  if (!existsSync(out)) throw new Error(`[contact-sheet] failed to write ${out}`);
+
+  console.log(`[contact-sheet] wrote qa/${name}.png (${sheetWidth}x${sheetHeight})`);
+}
+
+for (const theme of ["light", "dark"]) {
+  await makeSingleSheet({
+    name: `contact-mobile-filters-${theme}`,
+    file: join(SHOTS, `catalogue-filters-open-375-${theme}.png`),
+    caption: "catalogue · filters open",
+    width: 250,
+  });
+}
 
 // All 15 pet pages, one overview sheet per viewport/theme (60 views in total).
 const PET_SHOTS = join(ROOT, "qa", "pet-pages");

@@ -13,6 +13,9 @@ const TARGETS = [
   { name: "home", path: "/" },
   { name: "pet-builtin", path: "/pets/mochi/" },
   { name: "pet-addon", path: "/pets/ember/" },
+  { name: "catalogue", path: "/pets/" },
+  { name: "category-hero", path: "/pets/category/hero/" },
+  { name: "author-deskpet", path: "/authors/deskpet/" },
 ];
 const THRESHOLDS = { performance: 100, accessibility: 100, "best-practices": 100, seo: 100 };
 const OUT = join(ROOT, "qa", "lighthouse");
