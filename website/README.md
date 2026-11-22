@@ -172,8 +172,8 @@ Copy the printed `database_id` into `wrangler.toml`, then:
 
 ```powershell
 npx wrangler d1 execute deskpet --remote --file=schema.sql
-npx wrangler pages project create deskpet --production-branch main
-npx wrangler pages secret put STATS_TOKEN --project-name deskpet
+npx wrangler pages project create deskpet-vn --production-branch main
+npx wrangler pages secret put STATS_TOKEN --project-name deskpet-vn
 ```
 
 The real donation card (`public/donate-qr.png` and `public/donate-qr.webp`) is committed; the build
@@ -193,5 +193,5 @@ npx wrangler pages deploy
 before; functions and the D1 binding are unchanged. Nothing in this repository deploys
 automatically, and CI has no deploy step and no secrets.
 
-The app's **Get More Pets…** and update check use `https://deskpet.pages.dev`. If the project
-gets another address, change `site()` in `windows/src/net.rs` before releasing the app.
+The app's **Get More Pets…** and update check use `https://deskpet-vn.pages.dev`. If the project
+gets another address, change `site()` in `shared/host/src/catalog.rs` before releasing the app.

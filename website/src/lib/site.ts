@@ -6,7 +6,7 @@ export const BNB_ADDRESS = "0x4d809c797169fa32448f075c15c4ad0c500bb109";
 
 export const SITE = {
   name: "DeskPet",
-  url: "https://deskpet.pages.dev",
+  url: "https://deskpet-vn.pages.dev",
   repo: "https://github.com/latiosthinh/DeskPet",
   release: "https://github.com/latiosthinh/DeskPet/releases/latest",
   contributing: "https://github.com/latiosthinh/DeskPet/blob/main/CONTRIBUTING-PETS.md",

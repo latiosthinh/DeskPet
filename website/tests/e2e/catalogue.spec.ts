@@ -262,7 +262,7 @@ test("history restores static pages with breadcrumb, title and canonical", async
   await expect(page).toHaveTitle("Pets · DeskPet");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    "https://deskpet.pages.dev/pets/?author=deskpet",
+    "https://deskpet-vn.pages.dev/pets/?author=deskpet",
   );
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
@@ -270,7 +270,7 @@ test("history restores static pages with breadcrumb, title and canonical", async
   );
   const filteredLd = await jsonLd(page);
   expect(filteredLd.itemListElement).toHaveLength(1);
-  expect(filteredLd.itemListElement[0].item).toBe("https://deskpet.pages.dev/pets/");
+  expect(filteredLd.itemListElement[0].item).toBe("https://deskpet-vn.pages.dev/pets/");
 
   await page.goBack();
   await expect(page).toHaveURL(/\/pets\/page\/2\/$/);
@@ -281,7 +281,7 @@ test("history restores static pages with breadcrumb, title and canonical", async
   await expect(page).toHaveTitle("Pets · Page 2 · DeskPet");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    "https://deskpet.pages.dev/pets/page/2/",
+    "https://deskpet-vn.pages.dev/pets/page/2/",
   );
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
@@ -291,8 +291,8 @@ test("history restores static pages with breadcrumb, title and canonical", async
   expect(pageLd.itemListElement).toHaveLength(2);
   expect(pageLd.itemListElement.map((entry) => entry.position)).toEqual([1, 2]);
   expect(pageLd.itemListElement.map((entry) => entry.item)).toEqual([
-    "https://deskpet.pages.dev/pets/",
-    "https://deskpet.pages.dev/pets/page/2/",
+    "https://deskpet-vn.pages.dev/pets/",
+    "https://deskpet-vn.pages.dev/pets/page/2/",
   ]);
 
   await page.goForward();
@@ -301,7 +301,7 @@ test("history restores static pages with breadcrumb, title and canonical", async
   await expect(page).toHaveURL(/author=deskpet$/);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    "https://deskpet.pages.dev/pets/?author=deskpet",
+    "https://deskpet-vn.pages.dev/pets/?author=deskpet",
   );
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
@@ -309,7 +309,7 @@ test("history restores static pages with breadcrumb, title and canonical", async
   );
   const forwardLd = await jsonLd(page);
   expect(forwardLd.itemListElement).toHaveLength(1);
-  expect(forwardLd.itemListElement[0].item).toBe("https://deskpet.pages.dev/pets/");
+  expect(forwardLd.itemListElement[0].item).toBe("https://deskpet-vn.pages.dev/pets/");
 });
 
 test("single-page catalogues still get working controls", async ({ page, request }) => {

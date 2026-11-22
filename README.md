@@ -2,7 +2,7 @@
   <img src="docs/readme/hero.gif" alt="Mochi the pixel cat saying hi" width="330">
   <h1>DeskPet</h1>
   <p>A tiny pixel pet that lives on your desktop, next to the Dock on a Mac and on top of the taskbar on Windows.</p>
-  <p><a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Mac-a75d2b?style=for-the-badge&amp;logo=apple&amp;logoColor=white" alt="Download for Mac"></a> <a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Windows-a75d2b?style=for-the-badge&amp;logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTAgMy40NDlMOS43NSAyLjF2OS40NTFIMG0xMC45NDktOS42MDJMMjQgMHYxMS40SDEwLjk0OU0wIDEyLjZoOS43NXY5LjQ1MUwwIDIwLjY5OU0xMC45NDkgMTIuNkgyNFYyNGwtMTIuOS0xLjgwMSIvPjwvc3ZnPg%3D%3D&amp;logoColor=white" alt="Download for Windows"></a> <a href="https://deskpet.pages.dev/pets/"><img src="https://img.shields.io/badge/Browse_all_pets-7a5c3e?style=for-the-badge" alt="Browse all pets"></a></p>
+  <p><a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Mac-a75d2b?style=for-the-badge&amp;logo=apple&amp;logoColor=white" alt="Download for Mac"></a> <a href="https://github.com/latiosthinh/DeskPet/releases/latest"><img src="https://img.shields.io/badge/Download_for_Windows-a75d2b?style=for-the-badge&amp;logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTAgMy40NDlMOS43NSAyLjF2OS40NTFIMG0xMC45NDktOS42MDJMMjQgMHYxMS40SDEwLjk0OU0wIDEyLjZoOS43NXY5LjQ1MUwwIDIwLjY5OU0xMC45NDkgMTIuNkgyNFYyNGwtMTIuOS0xLjgwMSIvPjwvc3ZnPg%3D%3D&amp;logoColor=white" alt="Download for Windows"></a> <a href="https://deskpet-vn.pages.dev/pets/"><img src="https://img.shields.io/badge/Browse_all_pets-7a5c3e?style=for-the-badge" alt="Browse all pets"></a></p>
   <p><img src="https://img.shields.io/github/v/release/latiosthinh/DeskPet" alt="latest release" height="18"> <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-7a5c3e" alt="platforms: macOS and Windows" height="18"></p>
 </div>
 
@@ -113,7 +113,7 @@ No ads, no accounts, no tracking.
 
 Pets are sandboxed WebAssembly modules: they can't touch your files, the network or the system. They only get the time and your pointer position, and say what to draw.
 
-The only network use is keeping added pets up to date: about 20 seconds after launch, then once a day, the app asks `https://deskpet.pages.dev/api/update/<pet-id>` for each added pet. All that request carries is the pet's id in the address and the user agent "DeskPet" — no body, no cookies, nothing about you or your computer. If a newer version exists it downloads the pet file from `/download/<pet-id>`. The three built-in pets never check.
+The only network use is keeping added pets up to date: about 20 seconds after launch, then once a day, the app asks `https://deskpet-vn.pages.dev/api/update/<pet-id>` for each added pet. All that request carries is the pet's id in the address and the user agent "DeskPet" — no body, no cookies, nothing about you or your computer. If a newer version exists it downloads the pet file from `/download/<pet-id>`. The three built-in pets never check.
 
 The website keeps anonymous per-pet counters (how many downloads/updates a pet got); nothing identifies you.
 
@@ -129,7 +129,7 @@ Start with [CONTRIBUTING-PETS.md](CONTRIBUTING-PETS.md).
 
 ## Support DeskPet
 
-DeskPet is free. If it makes you smile, you can [buy the pets a coffee](https://deskpet.pages.dev/support/).
+DeskPet is free. If it makes you smile, you can [buy the pets a coffee](https://deskpet-vn.pages.dev/support/).
 
 ## For developers
 

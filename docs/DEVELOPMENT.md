@@ -115,7 +115,20 @@ Build pets first with `windows\build-pets.ps1` (they go to `build\pets`).
 
 ## Website
 
-The site lives in `website/`; its stack, build, local development, tests and deploy are documented in [website/README.md](../website/README.md). It is generated from `website/pets.json` and the GIFs and modules that `petshot site` writes. `DESKPET_SITE` points either app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `website/` locally (for example with `wrangler pages dev`).
+The site lives in `website/`; its stack, build, local development, tests and deploy are documented in [website/README.md](../website/README.md). It is generated from `website/pets.json` and the GIFs and modules that `petshot site` writes. It is published at <https://deskpet-vn.pages.dev> from the Cloudflare Pages project `deskpet-vn`. `DESKPET_SITE` points either app at another copy of the website for **Get More Pets…** and the update check, for example `http://localhost:8788` while trying `website/` locally (for example with `wrangler pages dev`).
+
+Setting the site up is a one-time owner task, run from `website/`. Log in to Cloudflare and create the D1 database named `deskpet`, copy the printed `database_id` into `wrangler.toml`, then apply the schema and create the Pages project and its `STATS_TOKEN` secret:
+
+```powershell
+npx wrangler login
+npx wrangler d1 create deskpet
+# copy the printed database_id into wrangler.toml, then:
+npx wrangler d1 execute deskpet --remote --file=schema.sql
+npx wrangler pages project create deskpet-vn --production-branch main
+npx wrangler pages secret put STATS_TOKEN --project-name deskpet-vn
+```
+
+For each deploy, from the repository root run `powershell -ExecutionPolicy Bypass -File windows\check-pet.ps1` and `target\release\petshot.exe site build\pets website`, then from `website/` run `npm run build` and `npx wrangler pages deploy`. Full detail is in [website/README.md](../website/README.md), under **Deploying (owner, not CI)**.
 
 ## Releasing
 

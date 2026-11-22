@@ -351,8 +351,8 @@ describe("real data", () => {
     const items = schema.itemListElement as { position: number; item: string }[];
     expect(items.map((item) => item.position)).toEqual([1, 2]);
     expect(items.map((item) => item.item)).toEqual([
-      "https://deskpet.pages.dev/pets/",
-      "https://deskpet.pages.dev/pets/page/2/",
+      "https://deskpet-vn.pages.dev/pets/",
+      "https://deskpet-vn.pages.dev/pets/page/2/",
     ]);
   });
 });
