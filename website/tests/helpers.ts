@@ -81,7 +81,7 @@ export async function expectNoHorizontalOverflow(page: Page) {
       return false;
     };
     for (const element of document.body.querySelectorAll<HTMLElement>("*")) {
-      if (element.classList.contains("sr-only")) continue;
+      if (element.classList.contains("visually-hidden")) continue;
       const rect = element.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) continue;
       if (clippedByAncestor(element)) continue;
