@@ -14,6 +14,27 @@ const widths = [320, 375, 768, 1024, 1440, 1920].map((width) => ({ width, height
 
 mkdirSync(join(process.cwd(), "qa", "screenshots"), { recursive: true });
 
+test("author cards contain their sprite strip at 768px", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  for (const theme of themes) {
+    await gotoThemed(page, "/authors/", theme);
+    await loadAllImages(page);
+    const card = page.locator("a.author-card").first();
+    const cardBox = await card.boundingBox();
+    if (!cardBox) throw new Error("missing author card");
+    const images = card.locator(".author-pets img");
+    await expect(images).toHaveCount(4);
+    for (let index = 0; index < 4; index++) {
+      const box = await images.nth(index).boundingBox();
+      if (!box) throw new Error("missing author sprite");
+      expect(box.x).toBeGreaterThanOrEqual(cardBox.x - 1);
+      expect(box.y).toBeGreaterThanOrEqual(cardBox.y - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(cardBox.x + cardBox.width + 1);
+      expect(box.y + box.height).toBeLessThanOrEqual(cardBox.y + cardBox.height + 1);
+    }
+  }
+});
+
 for (const theme of themes) {
   test.describe(`responsive + screenshots (${theme})`, () => {
     for (const target of PAGES) {
@@ -50,6 +71,18 @@ for (const theme of themes) {
       await expectNoHorizontalOverflow(page);
       await page.screenshot({
         path: join(process.cwd(), "qa", "screenshots", `catalogue-filters-open-375-${theme}.png`),
+        fullPage: true,
+      });
+    });
+
+    test("catalogue long-query chip fits and screenshots at 320", async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 900 });
+      await gotoThemed(page, `/pets/?q=${"x".repeat(80)}`, theme, { reducedMotion: true });
+      await expect(page.locator("[data-controls]")).toHaveAttribute("data-ready", "true");
+      await loadAllImages(page);
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: join(process.cwd(), "qa", "screenshots", `catalogue-long-query-320-${theme}.png`),
         fullPage: true,
       });
     });

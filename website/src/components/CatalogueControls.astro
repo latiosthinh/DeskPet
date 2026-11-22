@@ -68,7 +68,9 @@ const authors = authorGroups();
     </div>
   </div>
   <div class="field field-sort">
-    <label for="catalogue-sort">Sort by</label>
+    <label for="catalogue-sort" class="visually-hidden sort-label">
+      Sort by
+    </label>
     <select id="catalogue-sort" data-sort>
       <option value="az">A–Z</option>
       <option value="newest">Newest</option>
@@ -224,6 +226,16 @@ const authors = authorGroups();
 
     .field-sort {
       order: 4;
+    }
+
+    .sort-label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
     }
 
     .filters-toggle {

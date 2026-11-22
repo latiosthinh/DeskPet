@@ -11,6 +11,7 @@ import {
 } from "./catalogue-core";
 
 export {
+  CATALOGUE_DESCRIPTION,
   DEFAULT_STATE,
   PAGE_SIZE,
   pagePath,

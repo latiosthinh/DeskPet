@@ -7,7 +7,12 @@ import Pagination from '../../components/Pagination.astro';
 import PetCard from '../../components/PetCard.astro';
 import PetGrid from '../../components/PetGrid.astro';
 import Base from '../../layouts/Base.astro';
-import { breadcrumbSchema, listingRecords, type ListingRecord } from '../../lib/catalogue';
+import {
+  CATALOGUE_DESCRIPTION,
+  breadcrumbSchema,
+  listingRecords,
+  type ListingRecord,
+} from '../../lib/catalogue';
 import { pets } from '../../lib/site';
 
 interface Props {
@@ -32,9 +37,7 @@ const items =
         { label: `Page ${page}`, path: record.path },
       ];
 const title = page === 1 ? 'Pets · DeskPet' : `Pets · Page ${page} · DeskPet`;
-const description =
-  'Browse every DeskPet pixel pet. Search, filter by category, author and type, and find your next desktop companion.' +
-  (page > 1 ? ` Page ${page} of ${pageCount}.` : '');
+const description = CATALOGUE_DESCRIPTION + (page > 1 ? ` Page ${page} of ${pageCount}.` : '');
 ---
 
 <Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
@@ -111,6 +114,7 @@ const description =
     flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-tight);
+    max-width: 100%;
   }
 
   .chips-row[hidden] {
@@ -124,6 +128,7 @@ const description =
     margin: 0;
     padding: 0;
     list-style: none;
+    max-width: 100%;
   }
 
   .chips li {
@@ -136,10 +141,18 @@ const description =
     padding: var(--spacing-hair) var(--spacing-tight);
     font-size: var(--text-small);
     font-weight: 650;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .chips li > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .chips li button {
     display: inline-flex;
+    flex: none;
     min-width: 2rem;
     min-height: 2rem;
     align-items: center;

@@ -1,4 +1,5 @@
 import {
+  CATALOGUE_DESCRIPTION,
   DEFAULT_STATE,
   PAGE_SIZE,
   filterPets,
@@ -75,6 +76,16 @@ export function initCatalogue(): void {
     let searchCommitted = false;
     let pageCount = 1;
 
+    const canonicalLink = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    let configuredOrigin = location.origin;
+    if (canonicalLink?.href) {
+      try {
+        configuredOrigin = new URL(canonicalLink.href).origin;
+      } catch {
+        configuredOrigin = location.origin;
+      }
+    }
+
     function readLocation(): CatalogueState {
       const params = new URLSearchParams(location.search);
       const next = parseState(params, valid);
@@ -125,9 +136,22 @@ export function initCatalogue(): void {
       }
     }
 
+    function canonicalPath(): string {
+      return stateParams({ ...state, page: 1 }).toString() === ""
+        ? pagePath("/pets/", state.page)
+        : `/pets/?${stateParams(state)}`;
+    }
+
+    function breadcrumbItems(): { label: string; path: string }[] {
+      const items = [{ label: "All pets", path: "/pets/" }];
+      if (state.page > 1) items.push({ label: `Page ${state.page}`, path: canonicalPath() });
+      return items;
+    }
+
     function syncBreadcrumb() {
+      const items = breadcrumbItems();
       let nav = document.querySelector<HTMLElement>('nav[aria-label="Breadcrumb"]');
-      if (state.page <= 1) {
+      if (items.length <= 1) {
         if (nav) {
           nav.hidden = true;
           nav.style.display = "none";
@@ -152,27 +176,57 @@ export function initCatalogue(): void {
         list.className = "crumb-list";
         nav.replaceChildren(list);
       }
-      const root = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = "/pets/";
-      link.textContent = "All pets";
-      root.append(link);
-      const current = document.createElement("li");
-      const separator = document.createElement("span");
-      separator.setAttribute("aria-hidden", "true");
-      separator.textContent = "/";
-      const label = document.createElement("span");
-      label.setAttribute("aria-current", "page");
-      label.textContent = `Page ${state.page}`;
-      current.append(separator, label);
-      list.replaceChildren(root, current);
+      const nodes = items.map((item, index) => {
+        const li = document.createElement("li");
+        if (index > 0) {
+          const separator = document.createElement("span");
+          separator.setAttribute("aria-hidden", "true");
+          separator.textContent = "/";
+          li.append(separator);
+        }
+        if (index === items.length - 1) {
+          const label = document.createElement("span");
+          label.setAttribute("aria-current", "page");
+          label.textContent = item.label;
+          li.append(label);
+        } else {
+          const link = document.createElement("a");
+          link.href = item.path;
+          link.textContent = item.label;
+          li.append(link);
+        }
+        return li;
+      });
+      list.replaceChildren(...nodes);
     }
 
     function syncDocument() {
       document.title = state.page > 1 ? `Pets · Page ${state.page} · DeskPet` : "Pets · DeskPet";
-      const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-      if (canonical) {
-        canonical.href = location.origin + location.pathname + location.search;
+      const url = configuredOrigin + canonicalPath();
+      if (canonicalLink) canonicalLink.href = url;
+      const description =
+        CATALOGUE_DESCRIPTION + (state.page > 1 ? ` Page ${state.page} of ${pageCount}.` : "");
+      for (const meta of document.querySelectorAll<HTMLMetaElement>(
+        'meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]',
+      )) {
+        meta.content = description;
+      }
+      const ogUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+      if (ogUrl) ogUrl.content = url;
+      const script = document.querySelector<HTMLScriptElement>(
+        'script[type="application/ld+json"]',
+      );
+      if (script) {
+        script.textContent = JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: breadcrumbItems().map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: item.label,
+            item: configuredOrigin + item.path,
+          })),
+        });
       }
     }
 
@@ -443,6 +497,10 @@ export function initCatalogue(): void {
       render();
       if (stateParams(state).toString() !== location.search.slice(1)) commit(false);
     } else {
+      pageCount = Math.max(
+        1,
+        Math.ceil(filterPets(index, state, (pet) => pet.authorSlug).length / PAGE_SIZE),
+      );
       syncCategory();
       syncBreadcrumb();
       syncDocument();

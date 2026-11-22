@@ -1,7 +1,15 @@
 ﻿import { expect, test, type Page } from "@playwright/test";
-import { gotoThemed } from "../helpers";
+import { CATALOGUE_DESCRIPTION } from "../../src/lib/catalogue-core";
+import { expectNoHorizontalOverflow, gotoThemed } from "../helpers";
 
 const CARD_COUNT = 15;
+
+async function jsonLd(page: Page) {
+  const text = await page.locator('script[type="application/ld+json"]').textContent();
+  return JSON.parse(text ?? "{}") as {
+    itemListElement: { position: number; item: string }[];
+  };
+}
 
 async function ready(page: Page) {
   await expect(page.locator("[data-controls]")).toHaveAttribute("data-ready", "true");
@@ -213,6 +221,12 @@ test("the mobile Filters disclosure opens the extra selects", async ({ page }) =
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("[data-filters-panel]")).toBeHidden();
 
+  const toggleBox = await toggle.boundingBox();
+  const sortBox = await page.locator("select[data-sort]").boundingBox();
+  if (!toggleBox || !sortBox) throw new Error("missing toolbar boxes");
+  expect(Math.abs(toggleBox.y - sortBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(toggleBox.height - sortBox.height)).toBeLessThanOrEqual(1);
+
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-author]")).toBeVisible();
@@ -248,8 +262,15 @@ test("history restores static pages with breadcrumb, title and canonical", async
   await expect(page).toHaveTitle("Pets · DeskPet");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    /\/pets\/\?author=deskpet$/,
+    "https://deskpet.pages.dev/pets/?author=deskpet",
   );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    CATALOGUE_DESCRIPTION,
+  );
+  const filteredLd = await jsonLd(page);
+  expect(filteredLd.itemListElement).toHaveLength(1);
+  expect(filteredLd.itemListElement[0].item).toBe("https://deskpet.pages.dev/pets/");
 
   await page.goBack();
   await expect(page).toHaveURL(/\/pets\/page\/2\/$/);
@@ -258,12 +279,37 @@ test("history restores static pages with breadcrumb, title and canonical", async
   await expect(crumbs).toBeVisible();
   await expect(crumbs).toContainText("Page 2");
   await expect(page).toHaveTitle("Pets · Page 2 · DeskPet");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/pets\/page\/2\/$/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://deskpet.pages.dev/pets/page/2/",
+  );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    `${CATALOGUE_DESCRIPTION} Page 2 of 2.`,
+  );
+  const pageLd = await jsonLd(page);
+  expect(pageLd.itemListElement).toHaveLength(2);
+  expect(pageLd.itemListElement.map((entry) => entry.position)).toEqual([1, 2]);
+  expect(pageLd.itemListElement.map((entry) => entry.item)).toEqual([
+    "https://deskpet.pages.dev/pets/",
+    "https://deskpet.pages.dev/pets/page/2/",
+  ]);
 
   await page.goForward();
   await expect(cards(page)).toHaveCount(12);
   await expect(crumbs).toBeHidden();
   await expect(page).toHaveURL(/author=deskpet$/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://deskpet.pages.dev/pets/?author=deskpet",
+  );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    CATALOGUE_DESCRIPTION,
+  );
+  const forwardLd = await jsonLd(page);
+  expect(forwardLd.itemListElement).toHaveLength(1);
+  expect(forwardLd.itemListElement[0].item).toBe("https://deskpet.pages.dev/pets/");
 });
 
 test("single-page catalogues still get working controls", async ({ page, request }) => {
@@ -480,4 +526,23 @@ test("enhanced cards keep one card geometry and one status treatment", async ({ 
     expect(card.badge).toBe(true);
     expect(card.addon).toBe(false);
   }
+});
+
+test("a long unbroken search chip fits on a 320px viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await gotoThemed(page, `/pets/?q=${"x".repeat(80)}`, "light");
+  await ready(page);
+  const chips = page.locator("[data-chip-list] li");
+  await expect(chips).toHaveCount(1);
+  await expectNoHorizontalOverflow(page);
+
+  const chipBox = await chips.first().boundingBox();
+  if (!chipBox) throw new Error("missing chip");
+  expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(320);
+
+  const removeBox = await chips.first().locator("button").boundingBox();
+  if (!removeBox) throw new Error("missing chip remove button");
+  expect(removeBox.x + removeBox.width).toBeLessThanOrEqual(320);
+  expect(removeBox.width).toBeGreaterThanOrEqual(24);
+  expect(removeBox.height).toBeGreaterThanOrEqual(24);
 });

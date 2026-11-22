@@ -1,5 +1,8 @@
 export const PAGE_SIZE = 12;
 
+export const CATALOGUE_DESCRIPTION =
+  "Browse every DeskPet pixel pet. Search, filter by category, author and type, and find your next desktop companion.";
+
 export type SortKey = "az" | "newest" | "tricks";
 export type TypeKey = "included" | "addon";
 
