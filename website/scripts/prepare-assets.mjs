@@ -188,6 +188,8 @@ if (!fallbacks.length) {
  * Static gallery poster: one settled hero frame, cropped to the pet body (no
  * bubble, no detached hearts/props), integer-enlarged and centred on the shared
  * 4:3 canvas. Kept separate from the animation clips so tricks stay uncropped.
+ * 2x art stays integer-scaled; 1x art gets a fractional display zoom baked in at
+ * build so every pet fills a similar area.
  */
 async function galleryPoster(pet, frames, scale, grid) {
   const median = heroBodyHeight(frames);
@@ -227,8 +229,8 @@ async function galleryPoster(pet, frames, scale, grid) {
     ),
   );
   const galleryScale = Math.min(scale, maxScale);
-  const scaledWidth = width * galleryScale;
-  const scaledHeight = height * galleryScale;
+  const scaledWidth = Math.round(width * galleryScale * zoom);
+  const scaledHeight = Math.round(height * galleryScale * zoom);
   const scaled = await sharp(cropped, { raw: { width, height, channels: 4 } })
     .resize(scaledWidth, scaledHeight, { kernel: "nearest" })
     .png()

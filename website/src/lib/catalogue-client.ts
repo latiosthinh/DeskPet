@@ -191,8 +191,6 @@ export function initCatalogue(): void {
         img.src = pet.gallery.src;
         img.width = pet.gallery.width;
         img.height = pet.gallery.height;
-        img.style.transform =
-          pet.gallery.zoom && pet.gallery.zoom !== 1 ? `scale(${pet.gallery.zoom})` : "";
       }
       const title = card.querySelector<HTMLElement>("[data-title]");
       if (title) {

@@ -253,7 +253,7 @@ describe("normalised sprites", () => {
           0.67,
         );
         bodies.push(boxHeight);
-        const visible = boxHeight * pet.gallery.zoom;
+        const visible = boxHeight;
         expect(visible, `${pet.id} effective gallery body is too small`).toBeGreaterThanOrEqual(84);
         expect(visible, `${pet.id} effective gallery body is too large`).toBeLessThanOrEqual(116);
         effective.push(visible);

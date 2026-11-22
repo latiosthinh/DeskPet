@@ -20,7 +20,6 @@ const { pet, template = false } = Astro.props;
         alt=""
         loading="lazy"
         decoding="async"
-        style={pet.gallery.zoom !== 1 ? `transform: scale(${pet.gallery.zoom})` : undefined}
       />
     </span>
     <span class="card-body">
@@ -48,7 +47,6 @@ const { pet, template = false } = Astro.props;
         alt=""
         loading="lazy"
         decoding="async"
-        style={pet.gallery.zoom !== 1 ? `transform: scale(${pet.gallery.zoom})` : undefined}
       />
     </span>
     <span class="card-body">
