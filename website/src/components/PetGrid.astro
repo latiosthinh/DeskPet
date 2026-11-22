@@ -1,0 +1,19 @@
+---
+import type { Pet } from '../lib/site';
+import PetCard from './PetCard.astro';
+
+interface Props {
+  pets: Pet[];
+  id?: string;
+}
+
+const { pets, id } = Astro.props;
+---
+
+<ul class="gallery-grid" id={id}>
+  {pets.map((pet) => (
+    <li>
+      <PetCard pet={pet} />
+    </li>
+  ))}
+</ul>

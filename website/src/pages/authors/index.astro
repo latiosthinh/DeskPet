@@ -1,0 +1,80 @@
+---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Base from '../../layouts/Base.astro';
+import { breadcrumbSchema } from '../../lib/catalogue';
+import { authorGroups } from '../../lib/site';
+
+const items = [{ label: 'Authors', path: '/authors/' }];
+const groups = authorGroups();
+---
+
+<Base
+  title="Authors · DeskPet"
+  description="Meet the makers who share pixel pets with the DeskPet community."
+  path="/authors/"
+  schema={breadcrumbSchema(items)}
+>
+  <section class="wrap section">
+    <Breadcrumbs items={items} />
+    <div class="listing-head">
+      <h1 class="page-title">Authors</h1>
+      <p class="lede">Every maker who has shared a pet with the DeskPet community.</p>
+    </div>
+    <ul class="author-grid">
+      {groups.map((group) => (
+        <li>
+          <a class="panel author-card" href={`/authors/${group.slug}/`}>
+            <span class="author-avatar" aria-hidden="true">
+              {group.name.charAt(0).toUpperCase()}
+            </span>
+            <span class="card-title">{group.name}</span>
+            <span class="count">
+              {group.pets.length} {group.pets.length === 1 ? 'pet' : 'pets'}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .listing-head {
+    margin-top: var(--spacing-cozy);
+  }
+
+  .author-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: var(--spacing-grid);
+    margin: var(--spacing-cozy) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .author-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-cozy);
+    padding: var(--spacing-cozy);
+    text-decoration: none;
+  }
+
+  .author-card:hover {
+    border-color: var(--brand);
+  }
+
+  .author-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-card);
+    background: var(--badge-bg);
+    color: var(--badge-ink);
+    font-size: var(--text-heading);
+    font-weight: 800;
+  }
+</style>

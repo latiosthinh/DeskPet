@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { listingRecords } from '../lib/catalogue';
 import { absoluteUrl, pets } from '../lib/site';
 
 export const GET: APIRoute = () => {
@@ -7,6 +8,8 @@ export const GET: APIRoute = () => {
     '/contribute/',
     '/support/',
     ...pets.map((pet) => `/pets/${pet.id}/`),
+    '/authors/',
+    ...listingRecords().map((record) => record.path),
   ];
   const urls = paths
     .map((path) => `  <url>\n    <loc>${absoluteUrl(path)}</loc>\n  </url>`)

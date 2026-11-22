@@ -1,0 +1,78 @@
+---
+import { categories, pets, petsInCategory } from '../lib/site';
+
+interface Props {
+  active?: string;
+}
+
+const { active = '' } = Astro.props;
+const shelves = categories
+  .map((category) => ({ ...category, count: petsInCategory(category.id).length }))
+  .filter((category) => category.count > 0);
+---
+
+<nav class="category-nav" aria-label="Categories">
+  <ul>
+    <li>
+      <a class="cat-chip" href="/pets/" aria-current={active === '' ? 'page' : undefined}>
+        All pets
+        <span class="cat-count">{pets.length}</span>
+      </a>
+    </li>
+    {shelves.map((category) => (
+      <li>
+        <a
+          class="cat-chip"
+          href={`/pets/category/${category.id}/`}
+          aria-current={active === category.id ? 'page' : undefined}
+        >
+          {category.title}
+          <span class="cat-count">{category.count}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  .category-nav {
+    margin-top: var(--spacing-room);
+  }
+
+  .category-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-tight);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-tight);
+    min-height: 2.75rem;
+    padding-inline: var(--spacing-snug);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    font-weight: 650;
+    font-size: var(--text-small);
+    text-decoration: none;
+  }
+
+  .cat-chip:hover {
+    border-color: var(--brand);
+  }
+
+  .cat-chip[aria-current='page'] {
+    border-color: var(--brand);
+    background: var(--surface-2);
+  }
+
+  .cat-count {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

@@ -58,9 +58,7 @@ export function filterPets(
   return list.filter((pet) => {
     if (
       query &&
-      ![pet.name, pet.description, pet.author].some((value) =>
-        value.toLowerCase().includes(query),
-      )
+      ![pet.name, pet.description, pet.author].some((value) => value.toLowerCase().includes(query))
     ) {
       return false;
     }

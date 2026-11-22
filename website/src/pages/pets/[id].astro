@@ -1,8 +1,10 @@
 ---
 import type { GetStaticPaths } from 'astro';
 import AnimatedMedia from '../../components/AnimatedMedia.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import SupportButton from '../../components/SupportButton.astro';
 import Base from '../../layouts/Base.astro';
+import { breadcrumbSchema } from '../../lib/catalogue';
 import {
   INCLUDED_LABEL,
   SITE,
@@ -27,25 +29,33 @@ export const getStaticPaths = (() =>
 const { pet } = Astro.props;
 const path = `/pets/${pet.id}/`;
 const category = categoryTitle(pet.category);
-const authorAnchor = `/#author-${authorSlug(pet.author)}`;
+const authorAnchor = `/authors/${authorSlug(pet.author)}/`;
 const size = formatBytes(pet.fileSize);
 const { previous, next } = neighbors(pet.id);
+const items = [
+  { label: 'All pets', path: '/pets/' },
+  { label: category, path: `/pets/category/${pet.category}/` },
+  { label: pet.name, path },
+];
 
-const schema = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: pet.name,
-  description: pet.description,
-  url: absoluteUrl(path),
-  image: absoluteUrl(pet.og),
-  applicationCategory: 'UtilitiesApplication',
-  operatingSystem: 'macOS, Windows',
-  softwareVersion: pet.version,
-  isAccessibleForFree: true,
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  author: { '@type': 'Organization', name: pet.author },
-  isPartOf: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE.url },
-};
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: pet.name,
+    description: pet.description,
+    url: absoluteUrl(path),
+    image: absoluteUrl(pet.og),
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'macOS, Windows',
+    softwareVersion: pet.version,
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    author: { '@type': 'Organization', name: pet.author },
+    isPartOf: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE.url },
+  },
+  breadcrumbSchema(items),
+];
 ---
 
 <Base
@@ -56,11 +66,7 @@ const schema = {
   schema={schema}
 >
   <div class="wrap">
-    <nav class="crumbs" aria-label="Breadcrumb">
-      <a href="/">All pets</a>
-      <span aria-hidden="true">/</span>
-      <a href={authorAnchor}>{pet.author}</a>
-    </nav>
+    <Breadcrumbs items={items} />
 
     <section class="pet-hero">
       <div class="panel pet-stage">
