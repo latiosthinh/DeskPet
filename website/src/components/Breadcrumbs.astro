@@ -6,22 +6,24 @@ interface Props {
 const { items } = Astro.props;
 ---
 
-<nav class="crumbs" aria-label="Breadcrumb">
-  <ol class="crumb-list">
-    {items.map((item, index) => (
-      <li>
-        {index > 0 ? <span aria-hidden="true">/</span> : null}
-        {index === items.length - 1 ? (
-          <span aria-current="page">{item.label}</span>
-        ) : (
-          <a href={item.path}>{item.label}</a>
-        )}
-      </li>
-    ))}
-  </ol>
-</nav>
+{items.length >= 2 ? (
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <ol class="crumb-list">
+      {items.map((item, index) => (
+        <li>
+          {index > 0 ? <span aria-hidden="true">/</span> : null}
+          {index === items.length - 1 ? (
+            <span aria-current="page">{item.label}</span>
+          ) : (
+            <a href={item.path}>{item.label}</a>
+          )}
+        </li>
+      ))}
+    </ol>
+  </nav>
+) : null}
 
-<style>
+<style is:global>
   .crumb-list {
     display: flex;
     flex-wrap: wrap;

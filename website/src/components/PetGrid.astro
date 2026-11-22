@@ -5,12 +5,13 @@ import PetCard from './PetCard.astro';
 interface Props {
   pets: Pet[];
   id?: string;
+  compact?: boolean;
 }
 
-const { pets, id } = Astro.props;
+const { pets, id, compact = false } = Astro.props;
 ---
 
-<ul class="gallery-grid" id={id}>
+<ul class:list={['gallery-grid', { 'listing-grid': compact }]} id={id}>
   {pets.map((pet) => (
     <li>
       <PetCard pet={pet} />

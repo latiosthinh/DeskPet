@@ -5,7 +5,12 @@ import { breadcrumbSchema } from '../../lib/catalogue';
 import { authorGroups } from '../../lib/site';
 
 const items = [{ label: 'Authors', path: '/authors/' }];
-const groups = authorGroups();
+const groups = authorGroups().map((group) => ({
+  ...group,
+  petCount: group.pets.length,
+  categoryCount: new Set(group.pets.map((pet) => pet.category)).size,
+  sprites: group.pets.slice(0, 4),
+}));
 ---
 
 <Base
@@ -14,7 +19,7 @@ const groups = authorGroups();
   path="/authors/"
   schema={breadcrumbSchema(items)}
 >
-  <section class="wrap section">
+  <section class="wrap section-listing">
     <Breadcrumbs items={items} />
     <div class="listing-head">
       <h1 class="page-title">Authors</h1>
@@ -24,16 +29,40 @@ const groups = authorGroups();
       {groups.map((group) => (
         <li>
           <a class="panel author-card" href={`/authors/${group.slug}/`}>
-            <span class="author-avatar" aria-hidden="true">
-              {group.name.charAt(0).toUpperCase()}
+            <span class="author-top">
+              <span class="author-avatar" aria-hidden="true">
+                {group.name.charAt(0).toUpperCase()}
+              </span>
+              <span class="author-name">
+                <span class="card-title">{group.name}</span>
+                <span class="count">
+                  {group.petCount} {group.petCount === 1 ? 'pet' : 'pets'} · {group.categoryCount}{' '}
+                  {group.categoryCount === 1 ? 'category' : 'categories'}
+                </span>
+              </span>
             </span>
-            <span class="card-title">{group.name}</span>
-            <span class="count">
-              {group.pets.length} {group.pets.length === 1 ? 'pet' : 'pets'}
+            <span class="author-pets" aria-hidden="true">
+              {group.sprites.map((pet) => (
+                <img
+                  src={pet.gallery.src}
+                  width={pet.gallery.width}
+                  height={pet.gallery.height}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
             </span>
           </a>
         </li>
       ))}
+      <li>
+        <a class="panel author-cta" href="/contribute/">
+          <span class="card-title">Made a pet? Share it</span>
+          <span class="count">Add your pixel pet to the shelf.</span>
+          <span class="author-cta-action">Make a pet →</span>
+        </a>
+      </li>
     </ul>
   </section>
 </Base>
@@ -54,27 +83,59 @@ const groups = authorGroups();
 
   .author-card {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-cozy);
+    flex-direction: column;
+    gap: var(--spacing-snug);
     padding: var(--spacing-cozy);
     text-decoration: none;
   }
 
-  .author-card:hover {
+  .author-card:hover,
+  .author-cta:hover {
     border-color: var(--brand);
   }
 
-  .author-avatar {
-    display: inline-flex;
+  .author-top {
+    display: flex;
     align-items: center;
+    gap: var(--spacing-cozy);
+  }
+
+  .author-name {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--spacing-hair);
+  }
+
+  .author-pets {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-hair);
+  }
+
+  .author-pets img {
+    width: auto;
+    height: 44px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .author-cta {
+    display: flex;
+    flex-direction: column;
     justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex-shrink: 0;
-    border-radius: var(--radius-card);
-    background: var(--badge-bg);
-    color: var(--badge-ink);
-    font-size: var(--text-heading);
-    font-weight: 800;
+    gap: var(--spacing-tight);
+    padding: var(--spacing-cozy);
+    border-style: dashed;
+    text-decoration: none;
+  }
+
+  .author-cta .count {
+    white-space: normal;
+  }
+
+  .author-cta-action {
+    color: var(--brand-strong);
+    font-weight: 650;
   }
 </style>

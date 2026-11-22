@@ -20,6 +20,7 @@ const { pet, template = false } = Astro.props;
         alt=""
         loading="lazy"
         decoding="async"
+        style={pet.gallery.zoom !== 1 ? `transform: scale(${pet.gallery.zoom})` : undefined}
       />
     </span>
     <span class="card-body">
@@ -30,7 +31,7 @@ const { pet, template = false } = Astro.props;
           <span class="badge" data-badge hidden>
             {INCLUDED_SHORT_LABEL}
           </span>
-          <span class="card-meta" data-addon hidden>
+          <span class="badge badge--outline" data-addon hidden>
             Free add-on
           </span>
         </span>
@@ -47,6 +48,7 @@ const { pet, template = false } = Astro.props;
         alt=""
         loading="lazy"
         decoding="async"
+        style={pet.gallery.zoom !== 1 ? `transform: scale(${pet.gallery.zoom})` : undefined}
       />
     </span>
     <span class="card-body">
@@ -61,7 +63,7 @@ const { pet, template = false } = Astro.props;
           {pet.builtin ? (
             <span class="badge">{INCLUDED_SHORT_LABEL}</span>
           ) : (
-            <span class="card-meta">Free add-on</span>
+            <span class="badge badge--outline">Free add-on</span>
           )}
         </span>
       </span>

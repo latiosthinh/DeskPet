@@ -40,7 +40,7 @@ const description =
 ---
 
 <Base title={title} description={description} path={record.path} schema={breadcrumbSchema(items)}>
-  <section class="wrap section">
+  <section class="wrap section-listing">
     <Breadcrumbs items={items} />
     <div class="listing-head">
       <h1 class="page-title">{category.title}</h1>
@@ -50,7 +50,7 @@ const description =
     <p class="count" data-count aria-live="polite">
       {total} {total === 1 ? 'pet' : 'pets'}
     </p>
-    <PetGrid pets={record.pets} />
+    <PetGrid pets={record.pets} compact />
     <Pagination record={record} />
   </section>
 </Base>
